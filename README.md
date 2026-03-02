@@ -148,17 +148,35 @@ another-pkg@1.0.0
   data/other-file.txt
 ```
 
+### 5. Purge managed files
+
+Remove all files previously extracted by one or more packages without touching any other files in the output directory. No network access or package installation is required — only the local `.npmdata` marker state is used.
+
+```sh
+# remove all files managed by a package
+npx npmdata purge --packages my-shared-assets --output ./data
+
+# purge multiple packages at once
+npx npmdata purge --packages "my-shared-assets,another-pkg" --output ./data
+
+# preview what would be deleted without removing anything
+npx npmdata purge --packages my-shared-assets --output ./data --dry-run
+```
+
+After a purge, the corresponding entries are removed from the `.npmdata` marker file and any empty directories are cleaned up. `.gitignore` sections written by `extract` are also removed.
+
 ## CLI reference
 
 ```
 Usage:
-  npx npmdata [init|extract|check|list] [options]
+  npx npmdata [init|extract|check|list|purge] [options]
 
 Commands:
   init      Set up publishing configuration in a package
   extract   Extract files from a published package into a local directory
   check     Verify local files are in sync with the published package
   list      List all files managed by npmdata in an output directory
+  purge     Remove all managed files previously extracted by given packages
 
 Global options:
   --help, -h       Show help
@@ -197,6 +215,12 @@ Check options:
   --packages <specs>       Same format as extract (required)
   --output, -o <dir>       Output directory to check (default: current directory)
 
+Purge options:
+  --packages <specs>       Comma-separated package names whose managed files should be removed
+  --output, -o <dir>       Output directory to purge from (default: current directory)
+  --dry-run                Simulate purge without removing any files
+  --silent                 Suppress per-file output
+
 List options:
   --output, -o <dir>       Output directory to inspect (default: current directory)
 ```
@@ -206,8 +230,8 @@ List options:
 `npmdata` also exports a programmatic API:
 
 ```typescript
-import { extract, check, list, initPublisher, parsePackageSpec, isBinaryFile } from 'npmdata';
-import type { ConsumerConfig, ConsumerResult, CheckResult, ProgressEvent } from 'npmdata';
+import { extract, check, list, purge, initPublisher, parsePackageSpec, isBinaryFile } from 'npmdata';
+import type { ConsumerConfig, ConsumerResult, CheckResult, PurgeConfig, ProgressEvent } from 'npmdata';
 
 // extract files from one package
 const result = await extract({
@@ -272,6 +296,29 @@ if (!status.ok) {
     }
   }
 }
+
+// remove all files previously extracted by a package (no network required)
+await purge({
+  packages: ['my-shared-assets'],
+  outputDir: './data',
+});
+
+// dry-run: preview what would be deleted without removing anything
+const purgePreview = await purge({
+  packages: ['my-shared-assets'],
+  outputDir: './data',
+  dryRun: true,
+});
+console.log('Would delete', purgePreview.deleted, 'files');
+
+// track progress during purge
+await purge({
+  packages: ['my-shared-assets'],
+  outputDir: './data',
+  onProgress: (event: ProgressEvent) => {
+    if (event.type === 'file-deleted') console.log('D', event.file);
+  },
+});
 
 // list all files managed by npmdata in an output directory
 const managed = await list('./data');

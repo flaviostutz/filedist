@@ -303,6 +303,36 @@ describe('Publisher', () => {
       expect(entries[0].outputDir).toBe('.');
     });
 
+    it('should not set gitignore on npmdata entries when gitignore defaults to true', async () => {
+      fs.mkdirSync(path.join(tmpDir, 'docs'));
+
+      await initPublisher(['docs/**'], { workingDir: tmpDir });
+
+      const pkgJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'package.json')).toString());
+      const entries = pkgJson.npmdata as Array<{ package: string; gitignore?: boolean }>;
+      // eslint-disable-next-line no-restricted-syntax
+      for (const entry of entries) {
+        expect(entry.gitignore).toBeUndefined();
+      }
+    });
+
+    it('should set gitignore: false on npmdata entries when gitignore option is false', async () => {
+      fs.mkdirSync(path.join(tmpDir, 'docs'));
+
+      await initPublisher(['docs/**'], {
+        workingDir: tmpDir,
+        additionalPackages: ['other-pkg'],
+        gitignore: false,
+      });
+
+      const pkgJson = JSON.parse(fs.readFileSync(path.join(tmpDir, 'package.json')).toString());
+      const entries = pkgJson.npmdata as Array<{ package: string; gitignore?: boolean }>;
+      // eslint-disable-next-line no-restricted-syntax
+      for (const entry of entries) {
+        expect(entry.gitignore).toBe(false);
+      }
+    });
+
     it('should set unmanaged: true on all npmdata entries when unmanaged option is true', async () => {
       fs.mkdirSync(path.join(tmpDir, 'docs'));
 

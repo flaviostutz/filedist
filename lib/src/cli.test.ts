@@ -6,7 +6,7 @@ import path from 'node:path';
 import { cli } from './cli';
 
 // eslint-disable-next-line import/order, import/first
-import { extract, check, list } from './consumer';
+import { extract, check, list, purge } from './consumer';
 // eslint-disable-next-line import/order, import/first
 import { initPublisher } from './publisher';
 // eslint-disable-next-line import/order, import/first
@@ -18,6 +18,7 @@ jest.mock('./consumer', () => ({
   extract: jest.fn(),
   check: jest.fn(),
   list: jest.fn(),
+  purge: jest.fn(),
 }));
 
 jest.mock('./publisher', () => ({
@@ -32,12 +33,14 @@ jest.mock('./utils', () => ({
 type MockedExtract = jest.MockedFunction<typeof extract>;
 type MockedCheck = jest.MockedFunction<typeof check>;
 type MockedList = jest.MockedFunction<typeof list>;
+type MockedPurge = jest.MockedFunction<typeof purge>;
 type MockedInitPublisher = jest.MockedFunction<typeof initPublisher>;
 type MockedGetInstalledPackageVersion = jest.MockedFunction<typeof getInstalledPackageVersion>;
 
 const mockExtract = extract as MockedExtract;
 const mockCheck = check as MockedCheck;
 const mockList = list as MockedList;
+const mockPurge = purge as MockedPurge;
 const mockInitPublisher = initPublisher as MockedInitPublisher;
 const mockGetInstalledPackageVersion =
   getInstalledPackageVersion as MockedGetInstalledPackageVersion;
@@ -84,6 +87,14 @@ describe('CLI', () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'info').mockImplementation(() => {});
     mockGetInstalledPackageVersion.mockReturnValue('1.0.0');
+    // set default resolved value for purge so tests that don't configure it don't throw
+    mockPurge.mockResolvedValue({
+      added: [],
+      modified: [],
+      deleted: [],
+      skipped: [],
+      sourcePackages: [],
+    });
     // delete ./output folder if it exists to ensure clean state for tests
     const outputPath = path.join(__dirname, 'output');
     if (fs.existsSync(outputPath)) {
@@ -644,6 +655,111 @@ describe('CLI', () => {
 
       await cli(['node', 'cli.js', 'check', '--packages', 'my-pkg', './output', '--check']);
       expect(mockCheck).toHaveBeenCalled();
+    });
+  });
+
+  describe('purge subcommand', () => {
+    it('should call purge with correct packages and outputDir', async () => {
+      mockPurge.mockResolvedValue({
+        added: [],
+        modified: [],
+        deleted: ['docs/guide.md', 'data/file.json'],
+        skipped: [],
+        sourcePackages: [],
+      });
+
+      const exitCode = await cli([
+        'node',
+        'cli.js',
+        'purge',
+        '--packages',
+        'my-pkg',
+        '--output',
+        './data',
+      ]);
+
+      expect(exitCode).toBe(0);
+      expect(mockPurge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packages: ['my-pkg'],
+          outputDir: expect.stringContaining('data'),
+        }),
+      );
+    });
+
+    it('should return 1 and print error when --packages is missing', async () => {
+      const exitCode = await cli(['node', 'cli.js', 'purge', '--output', './data']);
+      expect(exitCode).toBe(1);
+      expect(mockPurge).not.toHaveBeenCalled();
+    });
+
+    it('should pass dryRun: true when --dry-run is specified', async () => {
+      mockPurge.mockResolvedValue({
+        added: [],
+        modified: [],
+        deleted: ['docs/guide.md'],
+        skipped: [],
+        sourcePackages: [],
+      });
+
+      await cli([
+        'node',
+        'cli.js',
+        'purge',
+        '--packages',
+        'my-pkg',
+        '--output',
+        './data',
+        '--dry-run',
+      ]);
+
+      expect(mockPurge).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
+    });
+
+    it('should pass comma-separated packages as array', async () => {
+      await cli(['node', 'cli.js', 'purge', '--packages', 'pkg-a,pkg-b', '--output', './out']);
+
+      expect(mockPurge).toHaveBeenCalledWith(
+        expect.objectContaining({ packages: ['pkg-a', 'pkg-b'] }),
+      );
+    });
+
+    it('should omit onProgress when --silent is specified', async () => {
+      await cli([
+        'node',
+        'cli.js',
+        'purge',
+        '--packages',
+        'my-pkg',
+        '--output',
+        './out',
+        '--silent',
+      ]);
+
+      const callArgs = mockPurge.mock.calls[0][0] as Record<string, unknown>;
+      expect(callArgs.onProgress).toBeUndefined();
+    });
+
+    it('should warn when --output is not provided', async () => {
+      await cli(['node', 'cli.js', 'purge', '--packages', 'my-pkg']);
+
+      const infoLogs = (console.info as jest.Mock).mock.calls.flat().join('\n');
+      expect(infoLogs).toContain('No --output specified');
+    });
+
+    it('should print the number of deleted files in the summary', async () => {
+      mockPurge.mockResolvedValue({
+        added: [],
+        modified: [],
+        deleted: ['docs/a.md', 'docs/b.md'],
+        skipped: [],
+        sourcePackages: [],
+      });
+
+      await cli(['node', 'cli.js', 'purge', '--packages', 'my-pkg', '--output', './data']);
+
+      const allLogs = (console.log as jest.Mock).mock.calls.flat().join('\n');
+      expect(allLogs).toContain('2 deleted');
     });
   });
 

@@ -1,5 +1,6 @@
 // Main exports
-export { extract, check, list } from './consumer';
+export { extract, check, list, purge } from './consumer';
+export type { PurgeConfig } from './consumer';
 export { initPublisher } from './publisher';
 
 // Type exports

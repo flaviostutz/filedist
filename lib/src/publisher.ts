@@ -129,8 +129,10 @@ function preparePackageJson(
   // Set file glob patterns and gitignore on all npmdata entries
   for (const entry of existingEntries) {
     entry.files = fileGlobs;
-    if (gitignore) {
-      entry.gitignore = true;
+    if (!gitignore) {
+      entry.gitignore = false;
+    } else {
+      delete entry.gitignore;
     }
     if (unmanaged) {
       entry.unmanaged = true;
@@ -149,7 +151,7 @@ function preparePackageJson(
         package: pkgSpec,
         outputDir: '.',
         files: fileGlobs,
-        ...(gitignore ? { gitignore: true } : {}),
+        ...(!gitignore ? { gitignore: false } : {}),
         ...(unmanaged ? { unmanaged: true } : {}),
       });
     }

@@ -10,6 +10,7 @@
   "files": [
     "docs/**",
     "data/**",
+    "conf/globals.js",
     "package.json",
     "bin/npmdata.js"
   ],
@@ -19,18 +20,24 @@
       "outputDir": ".",
       "files": [
         "docs/**",
-        "data/**"
+        "data/**",
+        "conf/globals.js"
       ],
-      "gitignore": true
+      "tags": [
+        "basic"
+      ]
     },
     {
       "package": "eslint@8",
       "outputDir": ".",
       "files": [
         "docs/**",
-        "data/**"
+        "data/**",
+        "conf/globals.js"
       ],
-      "gitignore": true
+      "tags": [
+        "extra"
+      ]
     }
   ],
   "bin": "bin/npmdata.js"

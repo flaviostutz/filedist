@@ -4,7 +4,13 @@ SHELL := /bin/bash
 	@echo "Unknown target: $@. Ignoring"
 
 init-publisher: install
-	pnpm exec npmdata init --files "docs/**,data/**" --packages eslint@8
+	pnpm exec npmdata init --files "docs/**,data/**,conf/globals.js" --packages eslint@8
+
+# 	add tags to the npmdata config for the main package and eslint
+	main_name=$$(jq -r '.name' package.json); \
+	jq --arg main "$$main_name" \
+	   '.npmdata |= map((.package | if startswith("@") then "@"+split("@")[1] else split("@")[0] end) as $$n | if $$n==$$main then .+{tags:["basic"]} elif $$n=="eslint" then .+{tags:["extra"]} else . end)' \
+	   package.json > package.json.tmp && mv package.json.tmp package.json
 
 build: install
 	rm -rf dist

@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { extract, check, list } from './consumer';
+import { extract, check, list, purge } from './consumer';
 import { ConsumerConfig, ProgressEvent } from './types';
 import { initPublisher } from './publisher';
 
@@ -135,9 +135,81 @@ export async function cli(processArgs: string[]): Promise<number> {
     return 0;
   }
 
+  // Handle purge command
+  if (command === 'purge') {
+    let purgePackageSpecs: string | undefined;
+    let purgeOutDir = process.cwd();
+    let purgeOutputFlagProvided = false;
+    let purgeDryRun = false;
+    let purgeSilent = false;
+
+    for (let i = 1; i < args.length; i++) {
+      if (args[i] === '--packages') {
+        purgePackageSpecs = args[++i];
+      } else if (args[i] === '--output' || args[i] === '-o') {
+        purgeOutDir = args[++i];
+        purgeOutputFlagProvided = true;
+      } else if (args[i] === '--dry-run') {
+        purgeDryRun = true;
+      } else if (args[i] === '--silent') {
+        purgeSilent = true;
+      } else if (!args[i].startsWith('-')) {
+        purgeOutDir = args[i];
+        purgeOutputFlagProvided = true;
+      }
+    }
+
+    if (!purgePackageSpecs) {
+      console.error(`Error: --packages option is required for 'purge' command`);
+      printUsage();
+      return 1;
+    }
+
+    if (!purgeOutputFlagProvided && !purgeSilent) {
+      console.info(`No --output specified. Using current directory: ${purgeOutDir}`);
+    }
+
+    const purgePackages = purgePackageSpecs.split(',').map((s) => s.trim());
+
+    const purgeOnProgress = purgeSilent
+      ? // eslint-disable-next-line no-undefined
+        undefined
+      : (event: ProgressEvent): void => {
+          switch (event.type) {
+            case 'package-start':
+              console.log(`\n>> Package ${event.packageName}`);
+              break;
+            case 'file-deleted':
+              console.log(`D\t${event.file}`);
+              break;
+            default:
+              break;
+          }
+        };
+
+    if (!purgeSilent) {
+      if (purgeDryRun) console.info('Dry run: simulating purge (no files will be removed)...');
+      else console.info('Purging managed files...');
+    }
+
+    const purgeResult = await purge({
+      packages: purgePackages,
+      outputDir: path.resolve(purgeOutDir),
+      dryRun: purgeDryRun,
+      onProgress: purgeOnProgress,
+    });
+
+    console.log(
+      `\nPurge complete: ${purgeResult.deleted.length} deleted${purgeDryRun ? ' (dry run)' : ''}`,
+    );
+    return 0;
+  }
+
   // Consumer commands (extract, check)
   if (!['extract', 'check'].includes(command)) {
-    console.error(`Error: unknown command '${command}'. Use 'init', 'extract', 'check', or 'list'`);
+    console.error(
+      `Error: unknown command '${command}'. Use 'init', 'extract', 'check', 'purge', or 'list'`,
+    );
     printUsage();
     return 1;
   }
@@ -286,12 +358,13 @@ function printUsage(): void {
 npmdata
 
 Usage:
-  npx npmdata [init|extract|check|list] [options]
+  npx npmdata [init|extract|check|purge|list] [options]
 
 Commands:
   init                         Initialize publishing configuration
   extract                      Extract files from one or more published packages
   check                        Verify if local files are in sync with packages
+  purge                        Remove all managed files written by given packages
   list                         List all managed files in the output directory
 
 Global Options:
@@ -322,6 +395,12 @@ Extract / Check Options:
   --files <pattern>            Comma-separated shell glob patterns to filter files
   --content-regex <regex>      Regex pattern to match file contents
 
+Purge Options:
+  --packages <specs>           Comma-separated package names whose managed files should be removed
+  --output, -o <dir>           Output directory to purge from (default: current directory)
+  --dry-run                    Simulate purge without removing any files
+  --silent                     Suppress per-file output
+
 List Options:
   --output, -o <dir>           Directory to inspect (default: current directory)
 
@@ -337,5 +416,7 @@ Examples:
   npx npmdata check --packages mydataset --output ./data
   npx npmdata check --packages "mydataset,otherpkg" --output ./data
   npx npmdata list --output ./data
+  npx npmdata purge --packages mydataset --output ./data
+  npx npmdata purge --packages "mydataset,otherpkg" --output ./data
 `);
 }

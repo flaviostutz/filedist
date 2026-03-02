@@ -4,11 +4,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { NpmdataExtractEntry } from './types';
+import { parsePackageSpec } from './utils';
 
 type PackageJson = {
   name: string;
   npmdata?: NpmdataExtractEntry[];
 };
+
+/**
+ * Extract just the package name (without version specifier) from a package spec string.
+ * Delegates to the shared parsePackageSpec utility.
+ */
+function parseEntryPackageName(spec: string): { name: string } {
+  const { name } = parsePackageSpec(spec);
+  return { name };
+}
 
 function buildExtractCommand(cliPath: string, entry: NpmdataExtractEntry): string {
   const outputFlag = ` --output "${entry.outputDir}"`;
@@ -25,6 +35,65 @@ function buildExtractCommand(cliPath: string, entry: NpmdataExtractEntry): strin
       ? ` --content-regex "${entry.contentRegexes.join(',')}"`
       : '';
   return `node "${cliPath}" extract --packages "${entry.package}"${outputFlag}${forceFlag}${gitignoreFlag}${unmanagedFlag}${silentFlag}${dryRunFlag}${upgradeFlag}${filesFlag}${contentRegexFlag}`;
+}
+
+/**
+ * Build a CLI command string that purges (removes) all managed files for the entry's package
+ * from its output directory. No package installation is required.
+ */
+export function buildPurgeCommand(cliPath: string, entry: NpmdataExtractEntry): string {
+  const { name } = parseEntryPackageName(entry.package);
+  const outputFlag = ` --output "${entry.outputDir}"`;
+  // Propagate silent/dry-run settings from the entry if present.
+  const silentFlag = entry.silent ? ' --silent' : '';
+  const dryRunFlag = entry.dryRun ? ' --dry-run' : '';
+  return `node "${cliPath}" purge --packages "${name}"${outputFlag}${silentFlag}${dryRunFlag}`;
+}
+
+/**
+ * Collects all unique tags that appear across the given npmdata entries, sorted alphabetically.
+ */
+export function collectAllTags(entries: NpmdataExtractEntry[]): string[] {
+  const tagSet = new Set<string>();
+  for (const entry of entries) {
+    if (entry.tags) {
+      for (const tag of entry.tags) {
+        tagSet.add(tag);
+      }
+    }
+  }
+  return Array.from(tagSet).sort();
+}
+
+/**
+ * Prints a help message to stdout, listing the extract action, all options, and available tags.
+ */
+export function printHelp(packageName: string, availableTags: string[]): void {
+  const tagsLine =
+    availableTags.length > 0 ? availableTags.join(', ') : '(none defined in package.json)';
+  const exampleTag = availableTags.length > 0 ? availableTags[0] : 'my-tag';
+  process.stdout.write(
+    [
+      `Usage: ${packageName} <action> [options]`,
+      '',
+      'Actions:',
+      '  extract  Extract files from the source package(s) defined in package.json',
+      '',
+      'Options:',
+      '  --help              Show this help message',
+      '  --tags <tag1,tag2>  Limit extraction to entries whose tags overlap (comma-separated)',
+      '',
+      `Available tags: ${tagsLine}`,
+      '',
+      'Examples:',
+      `  ${packageName} extract`,
+      '    Extract files for all entries defined in package.json',
+      '',
+      `  ${packageName} extract --tags ${exampleTag}`,
+      `    Extract files only for entries tagged "${exampleTag}"`,
+      '',
+    ].join('\n'),
+  );
 }
 
 /**
@@ -71,13 +140,37 @@ export function run(binDir: string, argv: string[] = process.argv): void {
   const allEntries: NpmdataExtractEntry[] =
     pkg.npmdata && pkg.npmdata.length > 0 ? pkg.npmdata : [{ package: pkg.name, outputDir: '.' }];
 
+  const userArgs = argv.slice(2);
+
+  if (userArgs.length === 0 || userArgs.includes('--help')) {
+    printHelp(pkg.name, collectAllTags(allEntries));
+    return;
+  }
+
+  const action = userArgs[0];
+
+  if (action !== 'extract') {
+    process.stderr.write(`Error: unknown action '${action}'. Use 'extract'.\n\n`);
+    printHelp(pkg.name, collectAllTags(allEntries));
+    return;
+  }
+
   const requestedTags = parseTagsFromArgv(argv);
   const entries = filterEntriesByTags(allEntries, requestedTags);
+  const excludedEntries =
+    requestedTags.length > 0 ? allEntries.filter((e) => !entries.includes(e)) : [];
 
   const cliPath = require.resolve('npmdata/dist/main.js', { paths: [binDir] });
 
   for (const entry of entries) {
     const command = buildExtractCommand(cliPath, entry);
+    execSync(command, { stdio: 'inherit' });
+  }
+
+  // When a tag filter is active, purge managed files from excluded entries so that
+  // the output directory contains only files from the currently active tag group.
+  for (const entry of excludedEntries) {
+    const command = buildPurgeCommand(cliPath, entry);
     execSync(command, { stdio: 'inherit' });
   }
 }
