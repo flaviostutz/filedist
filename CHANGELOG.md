@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0 (2026-03-02)
+
+### Features
+
+* content replacement on post extract [[6e92d3f](https://github.com/flaviostutz/npmdata/commit/6e92d3fe7784a7714d5dbdff401f8a938b0821c6)]
+
+### Maintenance
+
+* release: 0.4.0 [[2b0972e](https://github.com/flaviostutz/npmdata/commit/2b0972e854d7594374e169404c5a3055a7909d5d)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.4.0 (2026-03-02)
 
 ### Features
