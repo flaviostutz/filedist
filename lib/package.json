@@ -42,10 +42,6 @@
     "minimatch": "^10.2.2",
     "semver": "^7.7.4"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org"
-  },
   "pnpm": {
     "overrides": {
       "braces@<3.0.3": ">=3.0.3",
