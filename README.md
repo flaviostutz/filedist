@@ -7,6 +7,57 @@ Publish folders as npm packages and extract them in any workspace. Use it to dis
 - **Publisher**: a project that has folders to share. Running `init` prepares its `package.json` so those folders are included when the package is published.
 - **Consumer**: any project that installs that package and runs `extract` to download the files locally. A `.publisher` marker file is written alongside the managed files to track ownership and enable safe updates.
 
+## Extraction patterns
+
+There are two ways to extract data with `npmdata`. Choose the one that fits your situation:
+
+### Pattern 1 — Ad-hoc CLI extraction
+
+Use `npx npmdata extract` directly from the command line whenever you need to pull files from a package without any prior setup.
+
+```sh
+npx npmdata extract --packages my-shared-assets@^2.0.0 --output ./data
+```
+
+### Pattern 2 — Data packages with embedded configuration
+
+Create a dedicated npm package whose `package.json` declares an `npmdata` config block. That config encodes the extraction sources, output directories, filtering rules, and any combination of upstream packages. Consumers install the data package and run its bundled script — they don't need to know the internals.
+
+**Publisher** — add an `npmdata` block to the data package's `package.json`:
+
+```json
+{
+  "name": "my-org-data",
+  "version": "1.0.0",
+  "npmdata": [
+    {
+      "package": "base-datasets@^3.0.0",
+      "outputDir": "./data/base",
+      "files": ["datasets/**"]
+    },
+    {
+      "package": "org-configs@^1.2.0",
+      "outputDir": "./configs",
+      "contentRegexes": ["env: production"]
+    }
+  ]
+}
+```
+
+Run `pnpm dlx npmdata init` in that package and then `npm publish` to release it.
+
+**Consumer** — just install and run:
+
+```sh
+npx my-org-data extract --output ./local-data
+```
+
+No knowledge of the upstream packages or transformation rules is required.
+
+**When to use:** When an intermediary team (a platform, infrastructure, or data team) wants to bundle, curate, and version a collection of data from multiple sources and hand it to consumers as a single, opinionated package. Consumers get a stable, self-describing interface; producers control all the complexity.
+
+---
+
 ## Quick start
 
 ### 1. Prepare the publisher package
