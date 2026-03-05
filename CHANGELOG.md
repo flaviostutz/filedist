@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.3 (2026-03-05)
+
+### Maintenance
+
+* release: 0.10.2 [[c6d64e6](https://github.com/flaviostutz/npmdata/commit/c6d64e6878328ee2220c51d1d0140b33c16f3fae)]
+* dont delete files when unmanaged option [[68341eb](https://github.com/flaviostutz/npmdata/commit/68341eb1ea0c5c48c7a0f867120885b22cdc7ddb)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.10.2 (2026-03-05)
 
 ### Maintenance
