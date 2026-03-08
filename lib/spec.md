@@ -4,6 +4,13 @@ The extraction of a package is the process of looking at config, finding fileset
 
 The cli tools should only have logic related to UI: arguments processing, console logging and error handling for the user. All logic should be in package or fileset libs.
 
+So the overall code and the runtime follows functions organized in the following folders:
+  1. /cli - entrypoint for spawned process, parse input, prepare console, show output with error handling
+  2. /package - load package config, merge configs with context, orchestrate actions in two-phases (extract, list, purge, check). contains functions that does the actual mutation of output dir, including management, pre-post scripts, as they are part of the actions. separate each action processing in it's own file
+  3. /fileset - extract/calculate diff for a specific package, possibly calling functions from /package when another package is found as a dependency (recursiveness)
+
+Group basic package params into selector config, output config, execution config
+
 >> Pseudo algorithm for the extraction is as follows:
 
 Divide into two steps:
