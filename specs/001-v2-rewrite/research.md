@@ -98,6 +98,44 @@ Clarification session 2026-03-08 Q1: v2 intentionally breaks v1 schema; clean-ro
 | `silent`, `verbose` | root entry field | root entry field (same) |
 | `output.*` | `output.*` | `output.*` (same) |
 
+### Migration Example (v1 → v2 config schema)
+
+**v1 `.npmdatarc` (no longer valid in v2)**:
+```json
+{
+  "sets": [
+    {
+      "package": "my-pkg@^1.2.3",
+      "output": { "path": "./data" },
+      "selector": { "files": ["docs/**"] },
+      "presets": ["basic"],
+      "upgrade": false,
+      "silent": false
+    }
+  ]
+}
+```
+
+**v2 `.npmdatarc` (correct)**:
+```json
+{
+  "sets": [
+    {
+      "package": "my-pkg@^1.2.3",
+      "output": { "path": "./data" },
+      "selector": {
+        "files": ["docs/**"],
+        "presets": ["basic"],
+        "upgrade": false
+      },
+      "silent": false
+    }
+  ]
+}
+```
+
+**What changed**: `presets` and `upgrade` moved from the root entry level into the nested `selector` object. All other fields remain in the same location.
+
 ---
 
 ## 5. Config Discovery
@@ -130,6 +168,9 @@ Always `process.cwd()` (the CLI invocation directory). Never a fileset output pa
 
 ### Rationale
 Clarification session 2026-03-08 Q3. Stable, predictable cwd independent of fileset count or output path variation. v1 `runPostExtractScript` passes `runCwd` which is `parsedOutput ? path.resolve(cwd, parsedOutput) : process.cwd()` — in the multi-fileset case this reduces to `process.cwd()` when no `--output` flag is given, matching our decision.
+
+### ⚠️ Breaking Change for v1 Consumers
+In v1, when `--output` (a non-cwd output path) was provided AND `postExtractScript` was set, the script ran in the resolved output directory, not the CLI invocation directory. In v2, `postExtractScript` always runs in `process.cwd()` regardless of the `--output` value. **Consumers using `postExtractScript` with a non-default `--output` path must update their scripts** to not rely on the working directory being the output directory.
 
 ---
 
