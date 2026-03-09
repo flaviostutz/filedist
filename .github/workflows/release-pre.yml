@@ -20,5 +20,4 @@ jobs:
           npx -y monotag@1.24.0 tag-push \
             --git-username="Flavio Stutz" \
             --git-email="flaviostutz@gmail.com" \
-            --changelog-file CHANGELOG.md \
             --prerelease
