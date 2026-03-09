@@ -1,3 +1,4 @@
+/* eslint-disable no-undefined */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +18,6 @@ import {
 
 describe('parsePackageSpec', () => {
   it('parses a plain package name', () => {
-    // eslint-disable-next-line no-undefined
     expect(parsePackageSpec('my-pkg')).toEqual({ name: 'my-pkg', version: undefined });
   });
 
@@ -26,10 +26,9 @@ describe('parsePackageSpec', () => {
   });
 
   it('parses a scoped package name without version', () => {
-    // eslint-disable-next-line no-undefined
     expect(parsePackageSpec('@scope/my-pkg')).toEqual({
       name: '@scope/my-pkg',
-      // eslint-disable-next-line no-undefined
+
       version: undefined,
     });
   });
@@ -42,7 +41,6 @@ describe('parsePackageSpec', () => {
   });
 
   it('handles empty version after @', () => {
-    // eslint-disable-next-line no-undefined
     expect(parsePackageSpec('my-pkg@')).toEqual({ name: 'my-pkg', version: undefined });
   });
 });
@@ -126,7 +124,7 @@ describe('detectPackageManager', () => {
     fs.writeFileSync(path.join(tmpDir, 'package-lock.json'), '');
     expect(detectPackageManager(tmpDir)).toBe('pnpm');
   });
-  // eslint-disable-next-line camelcase
+
   it('detects pnpm from npm_config_user_agent env var', () => {
     const envKey = 'npm_config_user_agent';
     // eslint-disable-next-line no-process-env
@@ -282,7 +280,6 @@ describe('getInstalledPackagePath', () => {
   });
 
   it('returns null when the package is not installed', () => {
-    // eslint-disable-next-line unicorn/no-null
     expect(getInstalledPackagePath('nonexistent-pkg', tmpDir)).toBeNull();
   });
 

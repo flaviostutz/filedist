@@ -121,10 +121,7 @@ export function applyArgvOverrides(
     const updatedOutput: OutputConfig = {
       ...entry.output,
       // eslint-disable-next-line no-undefined
-      ...(parsed.output !== undefined
-        ? // eslint-disable-next-line no-undefined
-          { path: parsed.output }
-        : {}),
+      ...(parsed.output !== undefined ? { path: parsed.output } : {}),
       ...(parsed.force ? { force: true } : {}),
       ...(parsed.keepExisting ? { keepExisting: true } : {}),
       ...(parsed.noGitignore ? { gitignore: false } : {}),

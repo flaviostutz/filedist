@@ -84,7 +84,7 @@ describe('applyContentReplacements', () => {
     await applyContentReplacements(tmpDir, [{ files: '*.md', match: 'World', replace: 'done' }]);
 
     const stat = fs.statSync(filePath);
-    // eslint-disable-next-line no-bitwise
+
     const isReadOnly = (stat.mode & 0o200) === 0;
     expect(fs.readFileSync(filePath, 'utf8')).toBe('Hello done');
     expect(isReadOnly).toBe(true);

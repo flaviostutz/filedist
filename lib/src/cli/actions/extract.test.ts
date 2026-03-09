@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+
 import childProcess from 'node:child_process';
 
 import { actionExtract } from '../../package/action-extract';

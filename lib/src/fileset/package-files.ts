@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-continue */
 import fs from 'node:fs';
 import path from 'node:path';
 

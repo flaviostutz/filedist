@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+
 import path from 'node:path';
 
 import { actionInit } from '../../package/action-init';

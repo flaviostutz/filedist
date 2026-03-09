@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
 import path from 'node:path';
 
@@ -46,7 +45,6 @@ export async function actionList(options: ListOptions): Promise<ManagedFileMetad
   }
 
   for (const dir of outputDirs) {
-    // eslint-disable-next-line no-await-in-loop
     const files = await listManagedFiles(dir);
     results.push(...files);
   }

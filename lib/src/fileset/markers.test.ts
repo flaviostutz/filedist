@@ -71,7 +71,7 @@ describe('writeMarker', () => {
     expect(content).toContain('README.md,mypkg,1.2.3');
     const stat = fs.statSync(mPath);
     // read-only: owner write bit should be off
-    // eslint-disable-next-line no-bitwise
+
     expect(stat.mode & 0o200).toBe(0);
   });
 

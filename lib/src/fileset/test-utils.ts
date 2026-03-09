@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-extraneous-dependencies */
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';

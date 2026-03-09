@@ -1,5 +1,4 @@
-/* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+/* eslint-disable no-undefined */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

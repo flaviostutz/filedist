@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -53,7 +52,7 @@ export async function applyContentReplacements(
       if (transformed !== content) {
         // Make writable, write, restore writability status
         const stat = fs.statSync(filePath);
-        // eslint-disable-next-line no-bitwise
+
         const wasReadOnly = (stat.mode & 0o200) === 0;
         if (wasReadOnly) fs.chmodSync(filePath, 0o644);
         fs.writeFileSync(filePath, transformed, 'utf8');

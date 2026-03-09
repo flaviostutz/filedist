@@ -1,6 +1,5 @@
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
-/* eslint-disable functional/no-try-statements */
+
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -109,12 +108,11 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
 
       // Remove stale symlinks before diff
       if (outputConfig.symlinks && outputConfig.symlinks.length > 0) {
-        // eslint-disable-next-line no-await-in-loop
         await removeStaleSymlinks(outputDir, outputConfig.symlinks);
       }
 
       // Phase 2: Read existing marker (all packages combined)
-      // eslint-disable-next-line no-await-in-loop
+
       const existingMarker = await readOutputDirMarker(outputDir);
 
       // Filter to current package only so diff's toDelete logic doesn't purge
@@ -122,7 +120,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
       const pkgMarker = existingMarker.filter((m) => m.packageName === pkg.name);
 
       // Phase 3: Diff phase (pure, no disk writes)
-      // eslint-disable-next-line no-await-in-loop
+
       const extractionMap = await diff(
         pkgPath,
         outputDir,
@@ -142,7 +140,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
       }
 
       // Phase 5: Execute phase (disk writes)
-      // eslint-disable-next-line no-await-in-loop
+
       const executeResult = await execute(
         extractionMap,
         outputDir,
@@ -230,7 +228,6 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
             };
           });
 
-          // eslint-disable-next-line no-await-in-loop
           const subResult = await actionExtract({
             entries: inheritedEntries,
             config,
@@ -248,7 +245,6 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
 
       // Create symlinks
       if (outputConfig.symlinks && outputConfig.symlinks.length > 0 && !outputConfig.dryRun) {
-        // eslint-disable-next-line no-await-in-loop
         await createSymlinks(outputDir, outputConfig.symlinks);
       }
 

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+
 import { actionCheck } from '../../package/action-check';
 import { NpmdataConfig } from '../../types';
 import { printUsage } from '../usage';

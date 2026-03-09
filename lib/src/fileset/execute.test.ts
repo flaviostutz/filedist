@@ -78,7 +78,7 @@ describe('execute', () => {
     );
 
     const stat = fs.statSync(destPath);
-    // eslint-disable-next-line no-bitwise
+
     expect(stat.mode & 0o200).toBe(0); // no write bit
   });
 

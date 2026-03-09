@@ -1,6 +1,3 @@
-/* eslint-disable functional/no-try-statements */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-console */
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -115,12 +112,11 @@ export async function execute(
       });
     }
 
-    // eslint-disable-next-line no-await-in-loop
     await writeMarker(marker, updatedEntries);
 
     if (updateGitignore) {
       const managedPaths = updatedEntries.map((m) => m.path);
-      // eslint-disable-next-line no-await-in-loop
+
       await addToGitignore(outputDir, managedPaths);
     }
   }

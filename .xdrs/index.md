@@ -20,6 +20,12 @@ General engineering decisions covering cross-business standards and practices.
 
 ---
 
+### EDRs - agentkit
+
+[View agentkit EDRs Index](agentkit/edrs/index.md)
+
+---
+
 ### EDRs - _local
 
 Project-local engineering decisions specific to this repository. Always listed last so its decisions override or extend all scopes above.

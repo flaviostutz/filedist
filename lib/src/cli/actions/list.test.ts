@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+
 import { actionList } from '../../package/action-list';
 import { NpmdataConfig, ManagedFileMetadata } from '../../types';
 import { printUsage } from '../usage';

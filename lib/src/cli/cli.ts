@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { loadNpmdataConfig } from '../package/config';
 
 import { printUsage, printVersion } from './usage';

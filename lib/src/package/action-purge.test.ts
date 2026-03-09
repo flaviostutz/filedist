@@ -1,3 +1,4 @@
+/* eslint-disable no-undefined */
 /* eslint-disable unicorn/no-null */
 import fs from 'node:fs';
 import path from 'node:path';

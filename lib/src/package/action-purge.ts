@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
 import path from 'node:path';
 
@@ -56,13 +55,12 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
     });
 
     // Read managed files for this entry
-    // eslint-disable-next-line no-await-in-loop
+
     const managedFiles = await readOutputDirMarker(outputDir);
 
     // Purge only files belonging to this package
     const entryFiles = managedFiles.filter((m) => m.packageName === pkg.name);
 
-    // eslint-disable-next-line no-await-in-loop
     const result = await purgeFileset(outputDir, entryFiles, dryRun);
 
     for (const m of entryFiles) {

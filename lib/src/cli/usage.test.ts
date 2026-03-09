@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { printUsage, printVersion } from './usage';
 
 describe('printUsage', () => {

@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable no-console */
 
 import path from 'node:path';
@@ -61,7 +60,7 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
     const pkgPath = getInstalledPackagePath(pkg.name, cwd);
 
     // Read existing marker
-    // eslint-disable-next-line no-await-in-loop
+
     const existingMarker = await readOutputDirMarker(outputDir);
 
     if (!pkgPath) {
@@ -70,7 +69,6 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
       continue;
     }
 
-    // eslint-disable-next-line no-await-in-loop
     const result = await checkFileset(
       pkgPath,
       outputDir,

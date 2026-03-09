@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
-/* eslint-disable no-console */
+
 import { actionPurge } from '../../package/action-purge';
 import { NpmdataConfig, ProgressEvent } from '../../types';
 import { printUsage } from '../usage';

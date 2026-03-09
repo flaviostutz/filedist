@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -66,7 +65,7 @@ export async function checkFileset(
       const srcContent = fs.readFileSync(srcPath, 'utf8');
       const transformed = applyContentReplacementsToBuffer(srcContent, contentReplacements);
       const srcHash = hashBuffer(transformed);
-      // eslint-disable-next-line no-await-in-loop
+
       const destHash = await hashFile(destPath);
 
       if (srcHash !== destHash) {

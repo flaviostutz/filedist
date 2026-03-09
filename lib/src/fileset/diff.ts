@@ -1,5 +1,3 @@
-/* eslint-disable functional/no-try-statements */
-/* eslint-disable no-restricted-syntax */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -65,7 +63,7 @@ export async function diff(
         result.toSkip.push({ relPath, reason: 'unmanaged' });
       } else {
         // In unmanaged mode, new files are still added (without marker)
-        // eslint-disable-next-line no-await-in-loop
+
         const srcHash = await hashFile(srcPath);
         result.toAdd.push({ relPath, sourcePath: srcPath, destPath, hash: srcHash });
       }
@@ -78,7 +76,6 @@ export async function diff(
     }
 
     if (!destExists) {
-      // eslint-disable-next-line no-await-in-loop
       const srcHash = await hashFile(srcPath);
       result.toAdd.push({ relPath, sourcePath: srcPath, destPath, hash: srcHash });
       continue;
@@ -89,7 +86,7 @@ export async function diff(
       // File exists but not in marker — it's unmanaged/foreign
       if (outputConfig.force) {
         // Override: treat as toModify
-        // eslint-disable-next-line no-await-in-loop
+
         const srcHash = await hashSrcWithReplacements(srcPath, contentReplacements);
         result.toModify.push({ relPath, sourcePath: srcPath, destPath, hash: srcHash });
       } else {
@@ -105,7 +102,7 @@ export async function diff(
       contentReplacements,
     );
     const srcHash = hashBuffer(transformedContent);
-    // eslint-disable-next-line no-await-in-loop
+
     const destHash = await hashFile(destPath);
 
     if (srcHash === destHash) {
