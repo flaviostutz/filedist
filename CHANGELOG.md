@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.13.1 (2026-03-09)
+
+### Maintenance
+
+* release: 0.13.0 [[c6bcc7d](https://github.com/flaviostutz/npmdata/commit/c6bcc7de33009ae762ad9e2c5e388f9ff821f605)]
+* add changelog [[e405766](https://github.com/flaviostutz/npmdata/commit/e405766b049144352d15b05fef855f2dcd67f735)]
+* changelog removal from pre [[a5fdc82](https://github.com/flaviostutz/npmdata/commit/a5fdc82aeccb51ed1b4181e9efbc8979ef24f812)]
+* refactoring to agentkit edrs standards [[321a445](https://github.com/flaviostutz/npmdata/commit/321a445dcf62993109ef4b52c1cdcb7944057ef6)]
+* upgrade eslint to 9 [[1e2ca05](https://github.com/flaviostutz/npmdata/commit/1e2ca052a5f737cf85f03dffc9e2798fd78a3e8b)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.13.0 (2026-03-09)
 
 ### Features
