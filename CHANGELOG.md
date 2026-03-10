@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.0 (2026-03-10)
+
+### Features
+
+* automatic cleanup of temp package.json and node_modules [[4e4fa42](https://github.com/flaviostutz/npmdata/commit/4e4fa422b4dc8cec2671c6e6c3ab39c05a02b933)]
+
+### Maintenance
+
+* release: 0.13.4 [[4228767](https://github.com/flaviostutz/npmdata/commit/42287672fab4980614d6aab4289a84bcfa527463)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.13.4 (2026-03-10)
 
 ### Maintenance
