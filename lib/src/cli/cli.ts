@@ -17,19 +17,19 @@ const KNOWN_COMMANDS = new Set(['extract', 'check', 'list', 'purge', 'init']);
  * @param cwd       - Working directory for output path resolution (defaults to process.cwd()).
  * @param configCwd - Directory to search for npmdata config (defaults to cwd).
  */
-export async function cli(argv: string[], cwd?: string, configCwd?: string): Promise<void> {
+export async function cli(argv: string[], cwd?: string, configCwd?: string): Promise<number> {
   const args = argv.slice(2); // strip node + script
 
   // Handle global --help with no command
   if (args.includes('--help') && args.length === 1) {
     printUsage();
-    return;
+    return 0;
   }
 
   // Handle global --version
   if (args.includes('--version')) {
     printVersion();
-    return;
+    return 0;
   }
 
   // Detect action
@@ -53,23 +53,43 @@ export async function cli(argv: string[], cwd?: string, configCwd?: string): Pro
     ? null // eslint-disable-line unicorn/no-null
     : await loadNpmdataConfig(effectiveConfigCwd);
 
-  switch (action) {
-    case 'extract':
-      await runExtract(config, cmdArgs, effectiveCwd);
-      break;
-    case 'check':
-      await runCheck(config, cmdArgs, effectiveCwd);
-      break;
-    case 'list':
-      await runList(config, cmdArgs, effectiveCwd);
-      break;
-    case 'purge':
-      await runPurge(config, cmdArgs, effectiveCwd);
-      break;
-    case 'init':
-      await runInit(config, cmdArgs, effectiveCwd);
-      break;
-    default:
-      throw new Error(`Unknown command: ${action}`);
+  try {
+    switch (action) {
+      case 'extract':
+        await runExtract(config, cmdArgs, effectiveCwd);
+        break;
+      case 'check':
+        await runCheck(config, cmdArgs, effectiveCwd);
+        break;
+      case 'list':
+        await runList(config, cmdArgs, effectiveCwd);
+        break;
+      case 'purge':
+        await runPurge(config, cmdArgs, effectiveCwd);
+        break;
+      case 'init':
+        await runInit(config, cmdArgs, effectiveCwd);
+        break;
+      default:
+        throw new Error(`Unknown command: ${action}`);
+    }
+    return 0;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error((error as Error).message);
+    return 1;
   }
+}
+
+export function setupUncaughtExceptionHandler(): void {
+  process.on('uncaughtException', (err) => {
+    const errs = `${err}`;
+    let i = errs.indexOf('\n');
+    if (i === -1) i = errs.length;
+    if (process.argv.includes('--verbose')) {
+      // eslint-disable-next-line no-console
+      console.log(errs.slice(0, Math.max(0, i)));
+    }
+    process.exit(3);
+  });
 }
