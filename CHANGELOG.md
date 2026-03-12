@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.16.0 (2026-03-12)
+
+### Features
+
+* config file option [[0181566](https://github.com/flaviostutz/npmdata/commit/01815661a3dc187e9d2f0d1b3821cd71678bf750)]
+
+### Maintenance
+
+* release: 0.15.6 [[16b587a](https://github.com/flaviostutz/npmdata/commit/16b587abd872b6ef7bf04ebb58735fac6539cfbb)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.15.6 (2026-03-12)
 
 ### Maintenance
