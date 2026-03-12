@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.15.5 (2026-03-12)
+
+### Maintenance
+
+* release: 0.15.4 [[6df1170](https://github.com/flaviostutz/npmdata/commit/6df117050b0656442d40285ba1a200112fe5e8c5)]
+* improve tests [[5dfaa3d](https://github.com/flaviostutz/npmdata/commit/5dfaa3d371988e7ac8ff5d8896390041837b4ce1)]
+* improving verbose logs [[372e4c3](https://github.com/flaviostutz/npmdata/commit/372e4c3c8c8d1fe7cbe9516c392944d7b7adf7c1)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.15.4 (2026-03-12)
 
 ### Maintenance
