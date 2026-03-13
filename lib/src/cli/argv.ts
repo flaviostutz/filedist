@@ -115,7 +115,7 @@ export function buildEntriesFromArgv(parsed: ParsedArgv): NpmdataExtractEntry[] 
     ...(parsed.force !== undefined ? { force: parsed.force } : {}),
     ...(parsed.keepExisting !== undefined ? { keepExisting: parsed.keepExisting } : {}),
     ...(parsed.gitignore !== undefined ? { gitignore: parsed.gitignore } : {}),
-    ...(parsed.managed !== undefined ? { unmanaged: parsed.managed === false } : {}),
+    ...(parsed.managed !== undefined ? { managed: parsed.managed } : {}),
     ...(parsed.dryRun !== undefined ? { dryRun: parsed.dryRun } : {}),
   };
 
@@ -144,7 +144,7 @@ export function applyArgvOverrides(
       ...(parsed.force !== undefined ? { force: parsed.force } : {}),
       ...(parsed.keepExisting !== undefined ? { keepExisting: parsed.keepExisting } : {}),
       ...(parsed.gitignore !== undefined ? { gitignore: parsed.gitignore } : {}),
-      ...(parsed.managed !== undefined ? { unmanaged: parsed.managed === false } : {}),
+      ...(parsed.managed !== undefined ? { managed: parsed.managed } : {}),
       ...(parsed.dryRun !== undefined ? { dryRun: parsed.dryRun } : {}),
     };
 

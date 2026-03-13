@@ -80,7 +80,7 @@ Entries can be tagged with `presets` so that only a subset is processed when `--
 {
   "sets": [
     { "package": "example-files-package", "presets": ["basic"], "output": { "path": "output" } },
-    { "package": "eslint@8",              "presets": ["extra"],  "output": { "path": "output/eslint", "unmanaged": true } }
+    { "package": "eslint@8",              "presets": ["extra"],  "output": { "path": "output/eslint", "managed": false } }
   ]
 }
 ```
@@ -127,10 +127,10 @@ Each entry supports the same fields as a data-package `"npmdata.sets"` array ent
 | `outputDir` | `string` | Directory to extract files into (relative to cwd) |
 | `files` | `string[]` | Glob patterns to filter which files are extracted |
 | `tags` | `string[]` | Optional tags for filtering with `--tags` |
-| `force` | `boolean` | Overwrite existing unmanaged files |
+| `force` | `boolean` | Overwrite existing files |
 | `keepExisting` | `boolean` | Skip files that already exist |
 | `gitignore` | `boolean` | Manage `.gitignore` (default: `true`) |
-| `unmanaged` | `boolean` | Write without `.npmdata` marker |
+| `managed` | `boolean` | Write with `.npmdata` marker (default: `true`). Set to `false` to skip tracking |
 | `dryRun` | `boolean` | Simulate without writing |
 | `silent` | `boolean` | Suppress per-file output |
 | `verbose` | `boolean` | Print detailed progress |

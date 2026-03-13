@@ -25,7 +25,7 @@ For step 1:
 
 About merge process (5.1):
 - Merge files pattern and content regex with AND (should have both matches)
-- Merge output config (unmanaged, gitignore etc) by making the higher dependency (the one more near the user call) override lower (packages that current package his depends on)
+- Merge output config (managed, gitignore etc) by making the higher dependency (the one more near the user call) override lower (packages that current package his depends on)
 - "Presets" are not inherited as they are used only by one level to select the sets for the package
 - symlinks and contentReplacements should be appended
 - output path should be concatenated, not overriden, such as [path from cli]/[path from package 1]/[path from package 2]

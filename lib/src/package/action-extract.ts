@@ -141,8 +141,12 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
         contentReplacements,
       );
 
-      // Phase 4: Abort on conflicts (unless force or unmanaged)
-      if (extractionMap.conflicts.length > 0 && !outputConfig.force && !outputConfig.unmanaged) {
+      // Phase 4: Abort on conflicts (unless force or managed=false)
+      if (
+        extractionMap.conflicts.length > 0 &&
+        !outputConfig.force &&
+        outputConfig.managed !== false
+      ) {
         const conflictPaths = extractionMap.conflicts.map((c) => c.relPath).join('\n');
         if (verbose) {
           console.warn(
@@ -151,7 +155,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
         }
         throw new Error(
           `Conflict: the following files exist and are not managed by npmdata:\n${conflictPaths}\n` +
-            `Use --force to overwrite or --unmanaged to skip.`,
+            `Use --force to overwrite or --managed=false to skip.`,
         );
       }
 
@@ -246,7 +250,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
           const visitedSet = new Set(visitedPackages);
           visitedSet.add(pkg.name);
 
-          // Inherit caller overrides (force, dryRun, keepExisting, gitignore, unmanaged) from current entry.
+          // Inherit caller overrides (force, dryRun, keepExisting, gitignore, managed) from current entry.
           // Caller-defined (non-undefined) values always take precedence; undefined propagates as-is
           // so defaults are only resolved at the leaf execute() level, not during recursion.
           const inheritedEntries = filteredSets.map((depEntry) => {
@@ -258,7 +262,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
               dryRun: outputConfig.dryRun ?? restOutput.dryRun,
               keepExisting: outputConfig.keepExisting ?? restOutput.keepExisting,
               gitignore: outputConfig.gitignore ?? restOutput.gitignore,
-              unmanaged: outputConfig.unmanaged ?? restOutput.unmanaged,
+              managed: outputConfig.managed ?? restOutput.managed,
               // Append symlinks and contentReplacements
               symlinks: [...(outputConfig.symlinks ?? []), ...(restOutput.symlinks ?? [])],
               contentReplacements: [

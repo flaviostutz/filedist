@@ -71,12 +71,12 @@ describe('actionCheck', () => {
     expect(result.missing.length).toBeGreaterThan(0);
   });
 
-  it('skips unmanaged entries when skipUnmanaged=true', async () => {
+  it('skips entries with managed=false when skipUnmanaged=true', async () => {
     const entries: NpmdataExtractEntry[] = [
-      { package: 'some-pkg', output: { path: path.join(tmpDir, 'out'), unmanaged: true } },
+      { package: 'some-pkg', output: { path: path.join(tmpDir, 'out'), managed: false } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir, skipUnmanaged: true });
+    const result = await actionCheck({ entries, cwd: tmpDir });
     expect(result.missing).toHaveLength(0);
     expect(result.modified).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -385,12 +385,12 @@ describe('actionCheck', () => {
     }
   }, 60000);
 
-  it('skips unmanaged entries (output.unmanaged=true)', async () => {
-    // Without any package installed or marker, check should return empty for unmanaged
+  it('skips entries with managed=false (output.managed=false)', async () => {
+    // Without any package installed or marker, check should return empty for managed=false entries
     const entries: NpmdataExtractEntry[] = [
       {
         package: 'unmanaged-check-pkg',
-        output: { path: path.join(tmpDir, 'out'), unmanaged: true },
+        output: { path: path.join(tmpDir, 'out'), managed: false },
       },
     ];
 

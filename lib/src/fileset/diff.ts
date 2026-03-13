@@ -58,9 +58,9 @@ export async function diff(
     const destExists = fs.existsSync(destPath);
     const isManaged = managedByPath.has(relPath);
 
-    if (outputConfig.unmanaged) {
+    if (outputConfig.managed === false) {
       if (destExists) {
-        result.toSkip.push({ relPath, reason: 'unmanaged' });
+        result.toSkip.push({ relPath, reason: 'not-managed' });
       } else {
         // In unmanaged mode, new files are still added (without marker)
 
@@ -107,9 +107,9 @@ export async function diff(
   }
 
   // Find managed files that are no longer in the filtered package source.
-  // Skip for unmanaged sets: they must not delete files managed by other sets
-  // (unmanaged sets only add missing files and never take ownership of the marker).
-  if (!outputConfig.unmanaged) {
+  // Skip for managed=false sets: they must not delete files managed by other sets
+  // (managed=false sets only add missing files and never take ownership of the marker).
+  if (outputConfig.managed !== false) {
     for (const managed of existingMarker) {
       if (!pkgFileSet.has(managed.path)) {
         result.toDelete.push(managed.path);

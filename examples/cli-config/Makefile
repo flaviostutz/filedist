@@ -28,7 +28,7 @@ test:
 	pnpm exec npmdata purge
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
-#	eslint is unmanaged, so it should still be present after purge
+#	eslint is managed=false, so it should still be present after purge
 	test -e output/eslint/conf/globals.js
 
 	# --- Test 2: config from .npmdatarc ---
@@ -46,7 +46,7 @@ test:
 	test -e output/docs/README.md
 	pnpm exec npmdata purge
 	test ! -e output/docs/README.md
-# 	unmanaged should be left behind without purge
+# 	managed=false should be left behind without purge
 	test -e output/eslint/conf/globals.js
 
 	# restore original package.json

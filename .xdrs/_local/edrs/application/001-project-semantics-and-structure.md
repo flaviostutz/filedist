@@ -17,7 +17,7 @@ A single authoritative reference ensures consistent implementation decisions acr
 **Core concepts**
 
 - **Package** - An npm package containing data files intended to be published to an npm registry and later extracted into a consumer's directory. A package may include an `npmdata` configuration (in `package.json` or `.npmdatarc`) describing how its files should be extracted and which other data packages it depends on.
-- **Fileset** - A combination of a package spec (name + optional semver constraint) and instructions that control which files are selected (glob patterns, content regexes, presets) and how they are written to disk (output path, force, keepExisting, unmanaged, gitignore, symlinks, content replacements).
+- **Fileset** - A combination of a package spec (name + optional semver constraint) and instructions that control which files are selected (glob patterns, content regexes, presets) and how they are written to disk (output path, force, keepExisting, managed, gitignore, symlinks, content replacements).
 - **CLI** - The command-line interface (`npx npmdata`) that orchestrates extract, check, list, purge, and init operations. It can be configured via `.npmdatarc`, `package.json#npmdata`, or direct command-line arguments.
 
 **Usage modes**

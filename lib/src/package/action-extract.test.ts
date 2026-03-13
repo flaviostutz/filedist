@@ -406,7 +406,7 @@ describe('actionExtract', () => {
     expect(result.skipped).toBe(0);
   }, 30000);
 
-  it('unmanaged flag skips conflicting unmanaged files instead of throwing', async () => {
+  it('managed=false skips conflicting unmanaged files instead of throwing', async () => {
     await installMockPackage('unmanaged-pkg', '1.0.0', { 'guide.md': 'pkg content' }, tmpDir);
 
     const outputDir = path.join(tmpDir, 'output');
@@ -419,7 +419,7 @@ describe('actionExtract', () => {
         entries: [
           {
             package: 'unmanaged-pkg',
-            output: { path: outputDir, unmanaged: true, gitignore: false },
+            output: { path: outputDir, managed: false, gitignore: false },
           },
         ],
 
@@ -427,7 +427,7 @@ describe('actionExtract', () => {
       }),
     ).resolves.toBeDefined();
 
-    // Unmanaged file should remain untouched
+    // managed=false file should remain untouched
     expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('user content');
   }, 60000);
 
@@ -827,7 +827,7 @@ describe('actionExtract', () => {
     expect(fs.readFileSync(path.join(outputDir, 'dep-out', 'dep.md'), 'utf8')).toBe('pkg content');
   }, 90000);
 
-  it('parent unmanaged: true cascades to dep and dep files are writable', async () => {
+  it('parent managed=false cascades to dep and dep files are writable', async () => {
     await installMockPackage('unmngcasc-dep', '1.0.0', { 'dep.md': 'dep content' }, tmpDir);
     await installMockPackage('unmngcasc-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
@@ -848,7 +848,7 @@ describe('actionExtract', () => {
       entries: [
         {
           package: 'unmngcasc-main',
-          output: { path: outputDir, gitignore: false, unmanaged: true },
+          output: { path: outputDir, gitignore: false, managed: false },
         },
       ],
 
@@ -857,12 +857,12 @@ describe('actionExtract', () => {
 
     const depFile = path.join(outputDir, 'dep-out', 'dep.md');
     expect(fs.existsSync(depFile)).toBe(true);
-    // parent unmanaged: true must cascade: dep files should not be made read-only
+    // parent managed=false must cascade: dep files should not be made read-only
     const { mode } = fs.statSync(depFile);
     expect(mode & 0o200).toBeGreaterThan(0); // owner write bit must be set
   }, 90000);
 
-  it('dep-level unmanaged: true preserved when parent does not set unmanaged', async () => {
+  it('dep-level managed=false preserved when parent does not set managed', async () => {
     await installMockPackage('unmngdep-pkg', '1.0.0', { 'dep.md': 'dep content' }, tmpDir);
     await installMockPackage('unmngdep-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
@@ -876,8 +876,8 @@ describe('actionExtract', () => {
           sets: [
             {
               package: 'unmngdep-pkg',
-              // dep declares its own unmanaged: true; parent does not set unmanaged at all
-              output: { path: 'dep-out', gitignore: false, unmanaged: true },
+              // dep declares its own managed: false; parent does not set managed at all
+              output: { path: 'dep-out', gitignore: false, managed: false },
             },
           ],
         },
@@ -895,7 +895,7 @@ describe('actionExtract', () => {
     const depFile = path.join(outputDir, 'dep-out', 'dep.md');
     expect(fs.existsSync(depFile)).toBe(true);
     const { mode } = fs.statSync(depFile);
-    expect(mode & 0o200).toBeGreaterThan(0); // dep's unmanaged: true must be preserved
+    expect(mode & 0o200).toBeGreaterThan(0); // dep's managed=false must be preserved
   }, 90000);
 
   it('parent gitignore: false cascades to dep and suppresses .gitignore in dep output', async () => {

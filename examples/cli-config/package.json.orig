@@ -27,7 +27,7 @@
           "force": false,
           "keepExisting": true,
           "gitignore": true,
-          "unmanaged": false,
+          "managed": true,
           "dryRun": false,
           "symlinks": [
             {
@@ -56,7 +56,7 @@
         },
         "output": {
           "path": "output/eslint",
-          "unmanaged": true
+          "managed": false
         },
         "presets": [
           "extra"

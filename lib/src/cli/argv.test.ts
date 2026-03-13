@@ -201,16 +201,16 @@ describe('applyArgvOverrides', () => {
     expect(result[0].output!.gitignore).toBe(true);
   });
 
-  it('applies --managed=false override (sets unmanaged=true)', () => {
+  it('applies --managed=false override', () => {
     const parsed = parseArgv(['--managed=false', '--packages', 'test-pkg']);
     const result = applyArgvOverrides([baseEntry], parsed);
-    expect(result[0].output!.unmanaged).toBe(true);
+    expect(result[0].output!.managed).toBe(false);
   });
 
-  it('applies --managed=true override (sets unmanaged=false)', () => {
+  it('applies --managed=true override', () => {
     const parsed = parseArgv(['--managed=true', '--packages', 'test-pkg']);
     const result = applyArgvOverrides([baseEntry], parsed);
-    expect(result[0].output!.unmanaged).toBe(false);
+    expect(result[0].output!.managed).toBe(true);
   });
 
   it('applies --dry-run override', () => {

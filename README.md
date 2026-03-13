@@ -153,7 +153,7 @@ npx my-org-configs extract --output ./local-data --presets prod
 ```sh
 npx npmdata extract --packages my-pkg@^2.0.0 --output ./data   # specific version
 npx npmdata extract --packages "pkg-a,pkg-b@1.x" --output ./data  # multiple packages
-npx npmdata extract --packages my-pkg --output ./data --force   # overwrite unmanaged files
+npx npmdata extract --packages my-pkg --output ./data --force   # overwrite existing files
 npx npmdata extract --packages my-pkg --output ./data --managed=false  # skip tracking
 npx npmdata extract --packages my-pkg@latest --output ./data --upgrade  # force reinstall
 npx npmdata extract --packages my-pkg --output ./data --gitignore=false  # skip .gitignore
@@ -207,7 +207,7 @@ Each entry in `npmdata.sets` supports:
 | `output.force` | `boolean` | `false` | Overwrite unmanaged or foreign-owned files |
 | `output.keepExisting` | `boolean` | `false` | Skip files that already exist; create them when absent |
 | `output.gitignore` | `boolean` | `true` | Write `.gitignore` alongside managed files |
-| `output.unmanaged` | `boolean` | `false` | Write files without tracking (no marker, no read-only) |
+| `output.managed` | `boolean` | `true` | Write files with tracking (marker, read-only). Set to `false` to skip tracking |
 | `output.dryRun` | `boolean` | `false` | Simulate without writing |
 | `output.symlinks` | `SymlinkConfig[]` | none | Post-extract symlink operations |
 | `output.contentReplacements` | `ContentReplacementConfig[]` | none | Post-extract content replacements |
@@ -263,7 +263,7 @@ When `extract` recurses, the calling entry’s `output` flags are inherited by e
 | `dryRun: true` | No files are written anywhere in the hierarchy |
 | `keepExisting: true` | Existing files are skipped at every level |
 | `gitignore: false` | No `.gitignore` entries are created anywhere |
-| `unmanaged: true` | All transitive files are written without a marker or read-only flag |
+| `managed: false` | All transitive files are written without a marker or read-only flag |
 | `symlinks` / `contentReplacements` | Appended to each transitive entry’s own lists |
 
 Settings that are undefined on the caller are left as-is so the transitive package’s own defaults apply.
@@ -306,7 +306,7 @@ Extract:  --packages <specs>    Package specs (omit to read from config file)
           --output, -o <dir>    Output directory (default: cwd)
           --files <patterns>    Filter files by glob
           --content-regex <rx>  Filter files by content
-          --force               Overwrite unmanaged/foreign files
+          --force               Overwrite existing/foreign files
           --keep-existing       Skip existing files
           --gitignore [bool]    Disable .gitignore management when set to false
           --managed [bool]      Write without tracking when set to false

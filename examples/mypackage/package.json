@@ -10,7 +10,6 @@
   "files": [
     "docs/**",
     "data/**",
-    "conf/globals.js",
     ".configs/**",
     "package.json",
     "bin/npmdata.js"
@@ -20,30 +19,41 @@
     "sets": [
       {
         "package": "example-files-package",
-        "output": {
-          "path": "."
-        },
         "selector": {
           "files": [
             "docs/**",
             "data/**",
-            "conf/globals.js",
             ".configs/**"
           ]
+        },
+        "output": {
+          "path": "."
         }
       },
       {
         "package": "eslint@8",
+        "selector": {
+          "files": [
+            "conf/globals.js"
+          ]
+        },
         "output": {
           "path": "."
         },
+        "presets": [
+          "eslint"
+        ]
+      },
+      {
+        "package": "eslint@8",
         "selector": {
           "files": [
-            "docs/**",
-            "data/**",
-            "conf/globals.js",
-            ".configs/**"
+            "conf/config-schema.js"
           ]
+        },
+        "output": {
+          "path": ".",
+          "managed": false
         },
         "presets": [
           "eslint"

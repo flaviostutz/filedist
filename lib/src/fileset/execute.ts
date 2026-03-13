@@ -45,7 +45,7 @@ export async function execute(
   verbose?: boolean,
 ): Promise<ExecuteResult> {
   const dryRun = outputConfig.dryRun ?? false;
-  const unmanaged = outputConfig.unmanaged ?? false;
+  const unmanaged = outputConfig.managed === false;
   const updateGitignore = outputConfig.gitignore !== false;
 
   const result: ExecuteResult = {

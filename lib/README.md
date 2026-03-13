@@ -160,7 +160,7 @@ npx npmdata extract --packages my-shared-assets --files "**/*.md" --output ./doc
 # extract only files whose content matches a regex
 npx npmdata extract --packages my-shared-assets --content-regex "env: production" --output ./configs
 
-# overwrite files that are unmanaged or owned by a different package;
+# overwrite files that are not managed or owned by a different package;
 # the new package takes ownership in the marker file
 npx npmdata extract --packages my-shared-assets --output ./data --force
 
@@ -227,7 +227,7 @@ When calling the bin script bundled in a data package, the following options are
 | `--output, -o <dir>` | Base directory for resolving all `output.path` values (default: cwd). |
 | `--presets <preset1,preset2>` | Limit to entries whose `presets` overlap with the given list (comma-separated). |
 | `--gitignore [bool]` | Disable `.gitignore` management for every entry when set to `false`, overriding each entry's `gitignore` field. |
-| `--managed [bool]` | Run every entry in unmanaged mode when set to `false`, overriding each entry's `unmanaged` field. Files are written without a `.npmdata` marker, without `.gitignore` updates, and without being made read-only. |
+| `--managed [bool]` | Run every entry in unmanaged mode when set to `false`, overriding each entry's `managed` field. Files are written without a `.npmdata` marker, without `.gitignore` updates, and without being made read-only. |
 | `--dry-run` | Simulate changes without writing or deleting any files. |
 | `--verbose, -v` | Print detailed progress information for each step. |
 
@@ -235,7 +235,7 @@ When calling the bin script bundled in a data package, the following options are
 # disable gitignore management across all entries
 npx my-shared-assets --gitignore=false
 
-# write all files as unmanaged (editable, not tracked)
+# write all files as not-managed (editable, not tracked)
 npx my-shared-assets --managed=false
 
 # combine overrides
@@ -253,10 +253,10 @@ Each entry in the `npmdata.sets` array in `package.json` supports the following 
 | `selector.files` | `string[]` | all files | Glob patterns to filter which files are extracted (e.g. `["data/**", "*.json"]`). |
 | `selector.exclude` | `string[]` | `["package.json","bin/**","README.md","node_modules/**"]` (when `files` is unset), none otherwise | Glob patterns to exclude files even when they match `selector.files` (e.g. `["test/**", "**/*.test.*"]`). |
 | `selector.contentRegexes` | `string[]` | none | Regex patterns (as strings) to filter files by content. Only files matching at least one pattern are extracted. |
-| `output.force` | `boolean` | `false` | Allow overwriting existing unmanaged files or files owned by a different package. |
+| `output.force` | `boolean` | `false` | Allow overwriting existing files or files owned by a different package. |
 | `output.keepExisting` | `boolean` | `false` | Skip files that already exist but create them when absent. Cannot be combined with `force`. |
 | `output.gitignore` | `boolean` | `true` | Create/update a `.gitignore` file alongside each `.npmdata` marker file. Set to `false` to disable. |
-| `output.unmanaged` | `boolean` | `false` | Write files without a `.npmdata` marker, `.gitignore` update, or read-only flag. Existing files are skipped. |
+| `output.managed` | `boolean` | `true` | Write files with a `.npmdata` marker, `.gitignore` update, and read-only flag. Set to `false` to skip tracking. Existing files are skipped when set to `false`. |
 | `output.dryRun` | `boolean` | `false` | Simulate extraction without writing anything to disk. |
 | `selector.upgrade` | `boolean` | `false` | Force a fresh install of the package even when a satisfying version is already installed. |
 | `silent` | `boolean` | `false` | Suppress per-file output, printing only the final result line. |
@@ -396,7 +396,7 @@ When `extract` recurses, the caller's `output` flags are inherited by every tran
 | `dryRun: true` | No files are written anywhere in the hierarchy |
 | `keepExisting: true` | Existing files are skipped at every level |
 | `gitignore: false` | No `.gitignore` entries are created anywhere |
-| `unmanaged: true` | All transitive files are written without a marker or read-only flag |
+| `managed: false` | All transitive files are written without a marker or read-only flag |
 | `symlinks` / `contentReplacements` | Appended to each transitive entry's own lists |
 
 Settings that are undefined on the caller are left as-is so the transitive package's own defaults apply.
@@ -459,7 +459,7 @@ Extract options:
                            Each spec is "name" or "name@version", e.g.
                            "my-pkg@^1.0.0,other-pkg@2.x"
   --output, -o <dir>       Output directory (default: current directory)
-  --force                  Overwrite existing unmanaged files or files owned by a different package
+  --force                  Overwrite existing files or files owned by a different package
   --keep-existing          Skip files that already exist; create them when absent. Cannot be
                            combined with --force
   --gitignore [bool]       Disable .gitignore management when set to false (enabled by default)

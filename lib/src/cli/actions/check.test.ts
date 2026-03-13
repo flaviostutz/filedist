@@ -187,9 +187,13 @@ describe('runCheck — options forwarding', () => {
     expect(mockActionCheck.mock.calls[0][0].verbose).toBe(true);
   });
 
-  it('passes skipUnmanaged=true when --managed=false flag given', async () => {
+  it('--managed=false sets managed=false on all entries (filtering handled via entry.output.managed)', async () => {
     await runCheck(CONFIG, ['--managed=false'], '/cwd');
-    expect(mockActionCheck.mock.calls[0][0].skipUnmanaged).toBe(true);
+    const calledEntries = mockActionCheck.mock.calls[0][0].entries as Array<{
+      output?: { managed?: boolean };
+    }>;
+    // All entries should have managed=false applied
+    expect(calledEntries.every((e) => e.output?.managed === false)).toBe(true);
   });
 });
 

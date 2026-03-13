@@ -19,7 +19,6 @@ export type CheckOptions = {
   presets?: string[];
   verbose?: boolean;
   onProgress?: (event: ProgressEvent) => void;
-  skipUnmanaged?: boolean;
   visitedPackages?: Set<string>;
 };
 
@@ -30,7 +29,7 @@ export type CheckSummary = {
 };
 
 /**
- * Orchestrate check across all filesets, filtering out unmanaged entries.
+ * Orchestrate check across all filesets, filtering out entries with managed=false.
  * Returns a summary of all drift found across all entries.
  */
 // eslint-disable-next-line complexity
@@ -55,9 +54,9 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
   }
 
   for (const entry of filtered) {
-    // Skip unmanaged entries — they write no marker so there is nothing to check.
-    // The --unmanaged flag also suppresses checking for explicitly marked entries.
-    if (entry.output?.unmanaged) continue;
+    // Skip entries with managed=false — they write no marker so there is nothing to check.
+    // The --managed=false flag also suppresses checking for explicitly marked entries.
+    if (entry.output?.managed === false) continue;
 
     const pkg = parsePackageSpec(entry.package);
     const outputDir = path.resolve(cwd, entry.output?.path ?? '.');

@@ -38,7 +38,7 @@ Given the full diff produced in Phase 1:
 |---|---|
 | `selector.files` patterns | AND — both the incoming and entry patterns must match |
 | `selector.contentRegexes` | AND — file must match at least one regex from each level |
-| `output` flags (`force`, `unmanaged`, `gitignore`, etc.) | Higher caller overrides lower package |
+| `output` flags (`force`, `managed`, `gitignore`, etc.) | Higher caller overrides lower package |
 | `presets` | Not inherited — only used at the current level to select which entries to run |
 | `output.symlinks` | Appended — all levels' symlink configs are combined |
 | `output.contentReplacements` | Appended — all levels' replacement configs are combined |

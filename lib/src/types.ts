@@ -60,10 +60,10 @@ export type OutputConfig = {
    */
   gitignore?: boolean;
   /**
-   * Write without .npmdata marker, no gitignore update, no read-only. Existing files skipped.
-   * Takes precedence over force.
+   * When set to false: write without .npmdata marker, no gitignore update, no read-only. Existing files skipped.
+   * Takes precedence over force. Defaults to true (managed).
    */
-  unmanaged?: boolean;
+  managed?: boolean;
   /**
    * Report what would change; no disk writes.
    */
@@ -160,11 +160,11 @@ export type FileOperation = {
  */
 export type SkippedFile = {
   relPath: string;
-  reason: 'conflict' | 'keep-existing' | 'unmanaged';
+  reason: 'conflict' | 'keep-existing' | 'not-managed';
 };
 
 /**
- * An unmanaged file in outputDir that blocks extraction.
+ * A file in outputDir that is not tracked by npmdata and blocks extraction.
  */
 export type ConflictFile = {
   relPath: string;
@@ -184,7 +184,7 @@ export type ExtractionMap = {
   toDelete: string[];
   /** Files skipped with reason. */
   toSkip: SkippedFile[];
-  /** Unmanaged files in outputDir that block extraction. */
+  /** Files in outputDir not tracked by npmdata that block extraction. */
   conflicts: ConflictFile[];
 };
 

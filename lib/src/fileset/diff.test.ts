@@ -110,29 +110,29 @@ describe('diff', () => {
     expect(result.conflicts).toHaveLength(0);
   });
 
-  it('in unmanaged mode, skips existing files', async () => {
+  it('in managed=false mode, skips existing files', async () => {
     writeFile(pkgDir, 'guide.md', 'pkg content');
     writeFile(outputDir, 'guide.md', 'user content');
     const result = await diff(
       pkgDir,
       outputDir,
       { files: ['**'] },
-      { path: '.', unmanaged: true },
+      { path: '.', managed: false },
       [],
       [],
     );
     expect(result.toSkip).toHaveLength(1);
-    expect(result.toSkip[0].reason).toBe('unmanaged');
+    expect(result.toSkip[0].reason).toBe('not-managed');
     expect(result.toAdd).toHaveLength(0);
   });
 
-  it('in unmanaged mode, adds new files to toAdd', async () => {
+  it('in managed=false mode, adds new files to toAdd', async () => {
     writeFile(pkgDir, 'new.md', 'new content');
     const result = await diff(
       pkgDir,
       outputDir,
       { files: ['**'] },
-      { path: '.', unmanaged: true },
+      { path: '.', managed: false },
       [],
       [],
     );
@@ -167,12 +167,12 @@ describe('diff', () => {
       pkgDir,
       outputDir,
       { files: ['file-b.md'] },
-      { path: '.', unmanaged: true },
+      { path: '.', managed: false },
       marker,
       [],
     );
     expect(result.toDelete).toHaveLength(0);
-    expect(result.toSkip).toHaveLength(1); // file-b.md skipped (unmanaged, exists)
+    expect(result.toSkip).toHaveLength(1); // file-b.md skipped (managed=false, exists)
     expect(result.toAdd).toHaveLength(0);
   });
 });

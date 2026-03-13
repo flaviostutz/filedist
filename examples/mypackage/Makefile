@@ -4,9 +4,11 @@ SHELL := /bin/bash
 	@echo "Unknown target: $@. Ignoring"
 
 init-publisher: install
-	pnpm exec npmdata init --files "docs/**,data/**,conf/globals.js,.configs/**" --packages eslint@8
-	# add 'eslint' preset tag to the eslint@8 nested set so consumers can filter by preset
-	jq '.npmdata.sets |= map(if .package == "eslint@8" then . + {presets: ["eslint"]} else . end)' package.json > package.json.tmp && mv package.json.tmp package.json
+	# package.json already contains the full npmdata configuration (no init step needed)
+	# create the bin shim that allows consumers to run `npx example-files-package`
+	mkdir -p bin
+	printf '#!/usr/bin/env node\n'"'"'use strict'"'"';\nrequire('"'"'npmdata'"'"').binpkg(__dirname, process.argv.slice(2));\n' > bin/npmdata.js
+	chmod +x bin/npmdata.js
 
 build: install
 	rm -rf dist
@@ -20,15 +22,13 @@ clean:
 	@rm -rf dist
 	@rm -rf lib
 	@rm -rf bin
-	@rm package.json
-	@cp package.json.orig package.json
 	make clean -C ../mypackage-consumer
 	make clean -C ../cli-config
 	make clean -C ../split-set-config
 
 test:
 	echo "Running integration tests..."
-	# use lib to init this project from scratch and prepare a deployable package with data
+	# prepare a deployable package from the pre-configured package.json
 	make clean
 	make init-publisher
 	make build
