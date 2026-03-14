@@ -1,10 +1,8 @@
-/* eslint-disable unicorn/no-null */
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
 import { writeMarker, markerPath } from '../fileset/markers';
-import { NpmdataExtractEntry } from '../types';
 
 import { actionList } from './action-list';
 
@@ -23,8 +21,7 @@ describe('actionList', () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    const entries: NpmdataExtractEntry[] = [{ package: 'mypkg', output: { path: outputDir } }];
-    const result = await actionList({ entries, config: null, cwd: tmpDir });
+    const result = await actionList({ outputDir: outputDir });
     expect(result).toHaveLength(0);
   });
 
@@ -37,9 +34,7 @@ describe('actionList', () => {
       { path: 'README.md', packageName: 'mypkg', packageVersion: '1.0.0' },
       { path: 'docs/guide.md', packageName: 'mypkg', packageVersion: '1.0.0' },
     ]);
-
-    const entries: NpmdataExtractEntry[] = [{ package: 'mypkg', output: { path: outputDir } }];
-    const result = await actionList({ entries, config: null, cwd: tmpDir });
+    const result = await actionList({ outputDir: outputDir });
     expect(result).toHaveLength(2);
     expect(result.map((r) => r.path)).toContain('README.md');
     expect(result.map((r) => r.path)).toContain('docs/guide.md');
@@ -55,11 +50,7 @@ describe('actionList', () => {
     ]);
 
     // Two entries pointing to the same output dir
-    const entries: NpmdataExtractEntry[] = [
-      { package: 'mypkg', output: { path: outputDir } },
-      { package: 'other-pkg', output: { path: outputDir } },
-    ];
-    const result = await actionList({ entries, config: null, cwd: tmpDir });
+    const result = await actionList({ outputDir: outputDir });
     // Should only read the marker once
     expect(result).toHaveLength(1);
   });
@@ -74,12 +65,8 @@ describe('actionList', () => {
     const other = path.join(tmpDir, 'other');
     fs.mkdirSync(other, { recursive: true });
 
-    const entries: NpmdataExtractEntry[] = [
-      { package: 'mypkg', output: { path: other } }, // different dir
-    ];
-
     // override points to outputDir
-    const result = await actionList({ entries, config: null, cwd: tmpDir, output: outputDir });
+    const result = await actionList({ outputDir: outputDir });
     expect(result.map((r) => r.path)).toContain('a.md');
   });
 
@@ -96,48 +83,10 @@ describe('actionList', () => {
       { path: 'b.md', packageName: 'pkg2', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
-      { package: 'pkg1', output: { path: out1 } },
-      { package: 'pkg2', output: { path: out2 } },
-    ];
-    const result = await actionList({ entries, config: null, cwd: tmpDir });
+    const result = await actionList({ outputDir: out1 });
     expect(result.map((r) => r.path)).toContain('a.md');
-    expect(result.map((r) => r.path)).toContain('b.md');
-  });
 
-  it('logs verbose header with singular "entry" for one entry', async () => {
-    const outputDir = path.join(tmpDir, 'out');
-    fs.mkdirSync(outputDir, { recursive: true });
-
-    const entries: NpmdataExtractEntry[] = [{ package: 'mypkg', output: { path: outputDir } }];
-    const logs: string[] = [];
-    const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
-      logs.push(args.join(' '));
-    });
-    await actionList({ entries, config: null, cwd: tmpDir, verbose: true });
-    spy.mockRestore();
-    expect(logs.some((l) => l.includes('1 entry'))).toBe(true);
-    expect(logs.some((l) => l.includes(outputDir))).toBe(true);
-  });
-
-  it('logs verbose header with plural "entries" for multiple entries', async () => {
-    const out1 = path.join(tmpDir, 'out1');
-    const out2 = path.join(tmpDir, 'out2');
-    fs.mkdirSync(out1, { recursive: true });
-    fs.mkdirSync(out2, { recursive: true });
-
-    const entries: NpmdataExtractEntry[] = [
-      { package: 'pkg1', output: { path: out1 } },
-      { package: 'pkg2', output: { path: out2 } },
-    ];
-    const logs: string[] = [];
-    const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
-      logs.push(args.join(' '));
-    });
-    await actionList({ entries, config: null, cwd: tmpDir, verbose: true });
-    spy.mockRestore();
-    expect(logs.some((l) => l.includes('2 entries'))).toBe(true);
-    expect(logs.some((l) => l.includes(out1))).toBe(true);
-    expect(logs.some((l) => l.includes(out2))).toBe(true);
+    const result2 = await actionList({ outputDir: out2 });
+    expect(result2.map((r) => r.path)).toContain('b.md');
   });
 });

@@ -254,9 +254,9 @@ export function ensureDir(dir: string): void {
  */
 export function filterEntriesByPresets(
   entries: NpmdataExtractEntry[],
-  presets: string[],
+  presets: string[] | undefined,
 ): NpmdataExtractEntry[] {
-  if (presets.length === 0) return entries;
+  if (!presets || presets.length === 0) return entries;
   return entries.filter((entry) => {
     // entry.presets tags the set for consumer-side --presets filtering;
     // entry.selector.presets is forwarded to the target package's own nested sets filtering.

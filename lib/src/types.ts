@@ -8,6 +8,14 @@ export type PackageConfig = {
   version?: string;
 };
 
+export type BasicPackageOptions = {
+  entries: NpmdataExtractEntry[];
+  cwd: string;
+  dryRun?: boolean;
+  verbose?: boolean;
+  silent?: boolean;
+};
+
 /**
  * Controls which files are selected from a package and install behaviour.
  */

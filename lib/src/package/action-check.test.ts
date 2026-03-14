@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import { installMockPackage } from '../fileset/test-utils';
 import { NpmdataExtractEntry } from '../types';
 import { writeMarker, markerPath } from '../fileset/markers';
+import { filterEntriesByPresets } from '../utils';
 
 import { actionCheck } from './action-check';
 
@@ -204,26 +205,28 @@ describe('actionCheck', () => {
     ];
 
     // Check with presets=['docs'] — only the docs entry is checked
-    const resultDocs = await actionCheck({ entries, cwd: tmpDir, presets: ['docs'] });
+    const filteredEntries = filterEntriesByPresets(entries, ['docs']);
+
+    const resultDocs = await actionCheck({ entries: filteredEntries, cwd: tmpDir });
     expect(resultDocs.missing).toHaveLength(0);
     expect(resultDocs.modified).toHaveLength(0);
     expect(resultDocs.extra).toHaveLength(0);
 
     // Delete the data file — with presets=['docs'] it is ignored
     fs.rmSync(path.join(dataOutput, 'data/sample.csv'));
+    const filteredEntriesDocs = filterEntriesByPresets(entries, ['docs']);
     const resultDocsOnly = await actionCheck({
-      entries,
+      entries: filteredEntriesDocs,
       cwd: tmpDir,
-      presets: ['docs'],
     });
     // data entry was filtered out, so missing data file is not reported
     expect(resultDocsOnly.missing).toHaveLength(0);
 
     // Now check with presets=['data'] — the missing data file should be reported
+    const filteredEntriesData = filterEntriesByPresets(entries, ['data']);
     const resultData = await actionCheck({
-      entries,
+      entries: filteredEntriesData,
       cwd: tmpDir,
-      presets: ['data'],
     });
     expect(resultData.missing).toContain('data/sample.csv');
   }, 60000);
@@ -243,7 +246,7 @@ describe('actionCheck', () => {
     ];
 
     // presets=[] means no filtering — all entries pass through
-    const result = await actionCheck({ entries, cwd: tmpDir, presets: [] });
+    const result = await actionCheck({ entries, cwd: tmpDir });
     expect(result.missing).toHaveLength(0);
     expect(result.modified).toHaveLength(0);
   }, 60000);

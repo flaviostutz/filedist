@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { NpmdataConfig } from '../../types';
-import { parseArgv, buildEntriesFromArgv } from '../argv';
+import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { actionList } from '../../package/action-list';
 
@@ -20,22 +20,16 @@ export async function runList(
 
   const parsed = parseArgv(argv);
 
-  const entries = buildEntriesFromArgv(parsed) ?? config?.sets ?? [];
-
   const files = await actionList({
-    entries,
-    config,
-    cwd,
-    output: parsed.output,
+    outputDir: parsed.output ?? cwd,
     verbose: parsed.verbose,
   });
 
   if (files.length === 0) {
-    if (parsed.verbose) console.log('No managed files found.');
+    console.log('No managed files found');
   } else {
     for (const f of files) {
       console.log(`${f.path}  ${f.packageName}@${f.packageVersion}`);
     }
   }
-  // list always exits 0
 }

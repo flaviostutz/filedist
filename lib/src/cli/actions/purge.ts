@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-import { NpmdataConfig } from '../../types';
-import { parseArgv, buildEntriesFromArgv } from '../argv';
+import { NpmdataConfig, NpmdataExtractEntry } from '../../types';
+import { parseArgv, buildEntriesFromArgv, applyArgvOverrides } from '../argv';
 import { printUsage } from '../usage';
 import { actionPurge } from '../../package/action-purge';
 
@@ -19,12 +19,18 @@ export async function runPurge(
 
   const parsed = parseArgv(argv);
 
-  const entries = buildEntriesFromArgv(parsed) ?? config?.sets ?? [];
+  let entries: NpmdataExtractEntry[] = [];
+  const cliEntries = buildEntriesFromArgv(parsed);
+  if (cliEntries) {
+    entries = cliEntries;
+  } else if (config && config.sets.length > 0) {
+    entries = applyArgvOverrides(config.sets, parsed);
+  }
 
   const summary = await actionPurge({
     entries,
-    config,
     cwd,
+    ...(config ? { config } : {}),
     presets: parsed.presets ?? [],
     dryRun: parsed.dryRun,
     verbose: parsed.verbose,

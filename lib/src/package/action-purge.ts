@@ -2,20 +2,22 @@
 import fs, { existsSync } from 'node:fs';
 import path from 'node:path';
 
-import { NpmdataConfig, NpmdataExtractEntry, ManagedFileMetadata, ProgressEvent } from '../types';
+import {
+  NpmdataExtractEntry,
+  ManagedFileMetadata,
+  NpmdataConfig,
+  ProgressEvent,
+  BasicPackageOptions,
+} from '../types';
 import { parsePackageSpec, filterEntriesByPresets, getInstalledIfSatisfies } from '../utils';
 import { readOutputDirMarker } from '../fileset/markers';
 import { purgeFileset } from '../fileset/purge';
 
-export type PurgeOptions = {
-  entries: NpmdataExtractEntry[];
-  config: NpmdataConfig | null;
-  cwd: string;
-  presets?: string[];
-  dryRun?: boolean;
-  verbose?: boolean;
+export type PurgeOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
   visitedPackages?: Set<string>;
+  config?: NpmdataConfig;
+  presets?: string[];
 };
 
 export type PurgeSummary = {
@@ -35,7 +37,6 @@ type PurgePlan = Map<string, ManagedFileMetadata[]>;
 async function collectPurgePlan(
   entries: NpmdataExtractEntry[],
   cwd: string,
-  presets: string[],
   verbose: boolean,
   visitedPackages: Set<string>,
   plan: PurgePlan,
@@ -47,9 +48,7 @@ async function collectPurgePlan(
     );
   }
 
-  const filtered = filterEntriesByPresets(entries, presets);
-
-  for (const entry of filtered) {
+  for (const entry of entries) {
     const pkg = parsePackageSpec(entry.package);
     const outputDir = path.resolve(cwd, entry.output?.path ?? '.');
 
@@ -125,15 +124,7 @@ async function collectPurgePlan(
           );
         }
 
-        await collectPurgePlan(
-          inheritedEntries,
-          cwd,
-          presets,
-          verbose,
-          visitedSet,
-          plan,
-          onProgress,
-        );
+        await collectPurgePlan(inheritedEntries, cwd, verbose, visitedSet, plan, onProgress);
       }
     }
   }
@@ -141,7 +132,7 @@ async function collectPurgePlan(
 
 /**
  * Purge managed files from all matching filesets.
- * Supports --presets filtering and --dry-run.
+ * Supports --dry-run.
  *
  * Operates in two phases:
  *   1. Collect: recursively traverse all sets and accumulate the managed file
@@ -153,7 +144,6 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
   const {
     entries,
     cwd,
-    presets = [],
     dryRun = false,
     verbose = false,
     onProgress,
@@ -166,7 +156,7 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
   }
 
   const plan: PurgePlan = new Map();
-  await collectPurgePlan(entries, cwd, presets, verbose, visitedPackages, plan, onProgress);
+  await collectPurgePlan(entries, cwd, verbose, visitedPackages, plan, onProgress);
 
   const summary: PurgeSummary = { deleted: 0, symlinksRemoved: 0, dirsRemoved: 0 };
 

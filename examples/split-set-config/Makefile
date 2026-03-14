@@ -10,6 +10,9 @@ install:
 	pnpm install --no-frozen-lockfile
 
 test: clean install
+	@echo ""
+	@echo ">>>> split-set-config"
+
 	# --- Test 1: split-set extraction from myconfig.json (no 'npmdata' key in package.json) ---
 	# Set 1 extracts .configs/** and docs/** but EXCLUDES .configs/database.config.json
 	# Set 2 extracts ONLY .configs/database.config.json as managed=false with keepExisting

@@ -16,8 +16,14 @@ export async function runPresets(config: NpmdataConfig | null, argv: string[]): 
     throw new Error('No configuration found. Use a config file with sets to list presets.');
   }
 
+  const entries = config.sets;
+
+  if (entries.length === 0) {
+    throw new Error('No configuration found. Use a config file with sets to list presets.');
+  }
+
   const seen = new Set<string>();
-  for (const entry of config.sets) {
+  for (const entry of entries) {
     for (const preset of entry.presets ?? []) seen.add(preset);
   }
 

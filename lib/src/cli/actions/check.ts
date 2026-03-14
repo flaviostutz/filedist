@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { NpmdataConfig } from '../../types';
-import { parseArgv, applyArgvOverrides, buildEntriesFromArgv } from '../argv';
+import { parseArgv, resolveEntriesFromConfigAndArgs } from '../argv';
 import { printUsage } from '../usage';
 import { actionCheck } from '../../package/action-check';
 
@@ -18,22 +18,11 @@ export async function runCheck(
   }
 
   const parsed = parseArgv(argv);
-
-  // Build entries: --packages overrides config sets
-  let entries = buildEntriesFromArgv(parsed);
-  if (!entries) {
-    if (!config || config.sets.length === 0) {
-      throw new Error(
-        'No packages specified during check. Use --packages or a config file with sets.',
-      );
-    }
-    entries = applyArgvOverrides(config.sets, parsed);
-  }
+  const entries = resolveEntriesFromConfigAndArgs(config, argv);
 
   const summary = await actionCheck({
     entries,
     cwd,
-    presets: parsed.presets ?? [],
     verbose: parsed.verbose,
   });
 

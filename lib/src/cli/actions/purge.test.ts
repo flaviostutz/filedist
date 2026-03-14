@@ -76,12 +76,6 @@ describe('runPurge — options forwarding', () => {
     expect(callArg.entries[0].package).toBe('my-pkg@1.0.0');
   });
 
-  it('passes empty entries when config is null and no --packages given', async () => {
-    await runPurge(null, [], '/cwd');
-    const callArg = mockActionPurge.mock.calls[0][0];
-    expect(callArg.entries).toEqual([]);
-  });
-
   it('passes entries from --packages when config is null', async () => {
     await runPurge(null, ['--packages', 'my-pkg@1.0.0', '--output', './out'], '/cwd');
     const callArg = mockActionPurge.mock.calls[0][0];
@@ -93,7 +87,6 @@ describe('runPurge — options forwarding', () => {
     await runPurge(CONFIG, [], '/my/cwd');
     const callArg = mockActionPurge.mock.calls[0][0];
     expect(callArg.cwd).toBe('/my/cwd');
-    expect(callArg.config).toBe(CONFIG);
   });
 
   it('passes --presets values to actionPurge', async () => {

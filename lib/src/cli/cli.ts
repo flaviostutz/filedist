@@ -2,6 +2,7 @@
 import path from 'node:path';
 
 import { loadNpmdataConfig, loadNpmdataConfigFile } from '../package/config';
+import { NpmdataConfig } from '../types';
 
 import { printUsage, printVersion } from './usage';
 import { runExtract } from './actions/extract';
@@ -80,7 +81,7 @@ export async function cli(argv: string[], cwd?: string, configCwd?: string): Pro
 
 async function dispatch(
   action: string,
-  config: Awaited<ReturnType<typeof loadNpmdataConfig>>,
+  config: NpmdataConfig | null,
   cmdArgs: string[],
   cwd: string,
 ): Promise<void> {

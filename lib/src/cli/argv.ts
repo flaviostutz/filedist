@@ -1,6 +1,12 @@
 /* eslint-disable no-undefined */
-import { PackageConfig, NpmdataExtractEntry, SelectorConfig, OutputConfig } from '../types';
-import { parsePackageSpec } from '../utils';
+import {
+  PackageConfig,
+  NpmdataConfig,
+  NpmdataExtractEntry,
+  SelectorConfig,
+  OutputConfig,
+} from '../types';
+import { parsePackageSpec, filterEntriesByPresets } from '../utils';
 
 /**
  * Parsed CLI flags for all commands.
@@ -163,4 +169,33 @@ export function applyArgvOverrides(
       ...(parsed.verbose !== undefined ? { verbose: parsed.verbose } : {}),
     };
   });
+}
+
+/**
+ * Build and preset-filter extract entries from parsed CLI args and/or config.
+ * When --packages is provided, entries come from the CLI flags.
+ * Otherwise, entries come from the config sets with CLI overrides applied.
+ * Results are filtered by any requested --presets.
+ * Throws if no packages are configured.
+ */
+export function resolveEntriesFromConfigAndArgs(
+  config: NpmdataConfig | null,
+  argv: string[],
+): NpmdataExtractEntry[] {
+  const parsed = parseArgv(argv);
+  let entries = buildEntriesFromArgv(parsed);
+  if (!entries) {
+    if (!config || config.sets.length === 0) {
+      throw new Error(`No packages specified. Use --packages or a config file with sets.`);
+    }
+    entries = applyArgvOverrides(config.sets, parsed);
+  }
+
+  // filter by presets
+  const presets = parsed.presets ?? [];
+  const filtered = filterEntriesByPresets(entries, presets);
+  if (filtered.length === 0) {
+    throw new Error(`Presets (${presets.join(', ')}) not found in any configured package`);
+  }
+  return filtered;
 }

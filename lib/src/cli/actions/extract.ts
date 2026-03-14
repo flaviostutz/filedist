@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 
 import { NpmdataConfig, ProgressEvent } from '../../types';
-import { parseArgv, buildEntriesFromArgv, applyArgvOverrides } from '../argv';
+import { parseArgv, resolveEntriesFromConfigAndArgs } from '../argv';
 import { printUsage } from '../usage';
 import { actionExtract } from '../../package/action-extract';
-import { filterEntriesByPresets, spawnWithLog } from '../../utils';
+import { spawnWithLog } from '../../utils';
 
 /**
  * `extract` CLI action handler.
@@ -19,38 +19,15 @@ export async function runExtract(
     printUsage('extract');
     return;
   }
-
   const parsed = parseArgv(argv);
-
-  // Entries built from argv (when --packages is present)
-  let entries = buildEntriesFromArgv(parsed);
-  if (!entries) {
-    if (!config || config.sets.length === 0) {
-      throw new Error(
-        'No packages specified during extract. Use --packages or a config file with sets.',
-      );
-    }
-    // Entries built from config file. Then CLI flags overrides some config values (e.g. --dry-run, --verbose)
-    entries = applyArgvOverrides(config.sets, parsed);
-  }
-
-  // Apply preset filter
-  const presets = parsed.presets ?? [];
-  const filtered = filterEntriesByPresets(entries, presets);
-
-  if (filtered.length === 0) {
-    console.log(
-      `Presets (${presets.join(', ')}) not found in packages (${entries.map((e) => e.package).join(', ')})`,
-    );
-    return;
-  }
+  const entries = resolveEntriesFromConfigAndArgs(config, argv);
 
   const result = await actionExtract({
-    entries: filtered,
+    entries,
     cwd,
     verbose: parsed.verbose,
     onProgress: (event: ProgressEvent) => {
-      if (filtered[0]?.silent) return;
+      if (entries[0]?.silent) return;
       if (event.type === 'file-added') console.log(`  + ${event.file}`);
       else if (event.type === 'file-modified') console.log(`  ~ ${event.file}`);
       else if (event.type === 'file-deleted') console.log(`  - ${event.file}`);
@@ -58,7 +35,7 @@ export async function runExtract(
   });
 
   // Run postExtractScript if configured and not dry-run
-  const isDryRun = filtered.some((e) => e.output?.dryRun);
+  const isDryRun = entries.some((e) => e.output?.dryRun);
   if (!isDryRun && config?.postExtractScript) {
     const scriptCmd = `${config.postExtractScript} ${argv.join(' ')}`.trim();
     if (parsed.verbose) {

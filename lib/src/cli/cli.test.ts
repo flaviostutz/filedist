@@ -160,19 +160,11 @@ describe('cli', () => {
       ],
       tmpDir,
     );
-
-    fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
-      JSON.stringify({
-        sets: [{ package: PKG_NAME, output: { path: outputDir, gitignore: false } }],
-      }),
-    );
-
     const lines: string[] = [];
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    await cli(['node', 'npmdata', 'list'], tmpDir);
+    await cli(['node', 'npmdata', 'list'], outputDir);
     spy.mockRestore();
 
     expect(lines.some((l) => l.includes('docs/guide.md'))).toBe(true);

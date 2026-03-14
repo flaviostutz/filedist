@@ -8,9 +8,9 @@ install:
 	pnpm add npmdata@file:../lib/dist/npmdata-0.0.1.tgz
 	pnpm install --no-frozen-lockfile
 
-test:
-	make clean
-	make install
+test: clean install
+	@echo ""
+	@echo ">>>> cli-config"
 
 	# --- Test 1: config from package.json "npmdata" key ---
 	# extract without --packages: reads entries from the "npmdata" key in package.json
@@ -50,7 +50,7 @@ test:
 	test -e output/eslint/conf/globals.js
 
 	# restore original package.json
-	jq --slurpfile npmdata .npmdatarc '. + {npmdata: $$npmdata[0]}' package.json > package.json.tmp && mv package.json.tmp package.json
+	cp package.json.orig package.json
 	rm .npmdatarc
 
 	# --- Test 3: presets filtering via config ---
@@ -63,7 +63,7 @@ test:
 	test -e output/lastUpdated
 	# extra-tagged entry (eslint) should not be extracted
 	test ! -e output/eslint/conf/globals.js
-	pnpm exec npmdata check --presets "basic"
+	pnpm exec npmdata check --presets "basic" --verbose
 	pnpm exec npmdata purge --presets "basic"
 	test ! -e output/docs/adrs/adr-001-sample1.md
 	test ! -e output/data/users-dataset/user1.json

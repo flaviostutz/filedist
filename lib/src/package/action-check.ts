@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { NpmdataExtractEntry, ProgressEvent } from '../types';
+import { BasicPackageOptions, NpmdataExtractEntry, ProgressEvent } from '../types';
 import {
   parsePackageSpec,
   getInstalledPackagePath,
@@ -13,11 +13,7 @@ import {
 import { readOutputDirMarker } from '../fileset/markers';
 import { checkFileset } from '../fileset/check';
 
-export type CheckOptions = {
-  entries: NpmdataExtractEntry[];
-  cwd: string;
-  presets?: string[];
-  verbose?: boolean;
+export type CheckOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
   visitedPackages?: Set<string>;
 };
@@ -37,23 +33,19 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
   const {
     entries,
     cwd,
-    presets = [],
     verbose = false,
     onProgress,
     visitedPackages = new Set<string>(),
   } = options;
   const summary: CheckSummary = { missing: [], modified: [], extra: [] };
 
-  // Filter by presets (same behaviour as purge)
-  const filtered = filterEntriesByPresets(entries, presets);
-
   if (verbose) {
     console.log(
-      `[verbose] check: verifying ${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'} (cwd: ${cwd})`,
+      `[verbose] check: verifying ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} (cwd: ${cwd})`,
     );
   }
 
-  for (const entry of filtered) {
+  for (const entry of entries) {
     // Skip entries with managed=false — they write no marker so there is nothing to check.
     // The --managed=false flag also suppresses checking for explicitly marked entries.
     if (entry.output?.managed === false) continue;
@@ -126,10 +118,7 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
 
       if (pkgNpmdataSets && pkgNpmdataSets.length > 0) {
         const siblingNames = new Set(entries.map((e) => parsePackageSpec(e.package).name));
-        const presetFilteredSets = filterEntriesByPresets(
-          pkgNpmdataSets,
-          entry.selector?.presets ?? [],
-        );
+        const presetFilteredSets = filterEntriesByPresets(pkgNpmdataSets, entry.selector?.presets);
         const filteredSets = presetFilteredSets.filter(
           (e) =>
             !siblingNames.has(parsePackageSpec(e.package).name) &&
@@ -161,7 +150,6 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
           const subResult = await actionCheck({
             entries: inheritedEntries,
             cwd,
-            presets,
             verbose,
             onProgress,
             visitedPackages: visitedSet,

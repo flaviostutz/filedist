@@ -1,11 +1,12 @@
 /* eslint-disable no-undefined */
-/* eslint-disable unicorn/no-null */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
 import { writeMarker, markerPath } from '../fileset/markers';
 import { NpmdataExtractEntry } from '../types';
+import { filterEntriesByPresets } from '../utils';
 
 import { actionPurge } from './action-purge';
 
@@ -32,7 +33,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir });
+    const result = await actionPurge({ entries, cwd: tmpDir });
 
     expect(result.deleted).toBe(1);
     expect(fs.existsSync(path.join(outputDir, 'README.md'))).toBe(false);
@@ -50,7 +51,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir, dryRun: true });
+    const result = await actionPurge({ entries, cwd: tmpDir, dryRun: true });
 
     expect(result.deleted).toBe(1);
     expect(fs.existsSync(path.join(outputDir, 'README.md'))).toBe(true);
@@ -71,7 +72,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'pkg-a@1.0.0', output: { path: outputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir });
+    const result = await actionPurge({ entries, cwd: tmpDir });
 
     expect(result.deleted).toBe(1);
     expect(fs.existsSync(path.join(outputDir, 'a.md'))).toBe(false);
@@ -99,7 +100,8 @@ describe('actionPurge', () => {
     ];
 
     // Only process preset-a
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir, presets: ['preset-a'] });
+    const filteredEntries = filterEntriesByPresets(entries, ['preset-a']);
+    const result = await actionPurge({ entries: filteredEntries, cwd: tmpDir });
 
     expect(result.deleted).toBe(1);
     expect(fs.existsSync(path.join(outA, 'a.md'))).toBe(false);
@@ -116,7 +118,6 @@ describe('actionPurge', () => {
     ];
     await actionPurge({
       entries,
-      config: null,
       cwd: tmpDir,
       onProgress: (e) => events.push(e.type),
     });
@@ -140,7 +141,6 @@ describe('actionPurge', () => {
     ];
     await actionPurge({
       entries,
-      config: null,
       cwd: tmpDir,
       onProgress: (e) => events.push({ type: e.type, file: 'file' in e ? e.file : undefined }),
     });
@@ -161,7 +161,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'verbose-pkg@1.0.0', output: { path: outputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir, verbose: true });
+    const result = await actionPurge({ entries, cwd: tmpDir, verbose: true });
 
     expect(result.deleted).toBe(1);
   });
@@ -180,7 +180,6 @@ describe('actionPurge', () => {
     ];
     const result = await actionPurge({
       entries,
-      config: null,
       cwd: tmpDir,
       verbose: true,
       dryRun: true,
@@ -217,7 +216,7 @@ describe('actionPurge', () => {
       { package: 'parent-uninstalled-child@1.0.0', output: { path: parentOutputDir } },
     ];
     // Should not throw and should purge the parent file
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir });
+    const result = await actionPurge({ entries, cwd: tmpDir });
 
     expect(result.deleted).toBe(1);
     expect(fs.existsSync(path.join(parentOutputDir, 'parent.md'))).toBe(false);
@@ -261,7 +260,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'vp-parent@1.0.0', output: { path: parentOutputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir, verbose: true });
+    const result = await actionPurge({ entries, cwd: tmpDir, verbose: true });
 
     expect(result.deleted).toBe(2);
     expect(fs.existsSync(path.join(parentOutputDir, 'parent.md'))).toBe(false);
@@ -317,7 +316,7 @@ describe('actionPurge', () => {
     const entries: NpmdataExtractEntry[] = [
       { package: 'pkg-parent@1.0.0', output: { path: parentOutputDir } },
     ];
-    const result = await actionPurge({ entries, config: null, cwd: tmpDir });
+    const result = await actionPurge({ entries, cwd: tmpDir });
 
     // Both parent and child files should have been purged
     expect(result.deleted).toBe(2);

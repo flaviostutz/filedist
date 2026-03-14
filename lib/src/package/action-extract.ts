@@ -3,7 +3,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { NpmdataExtractEntry, ProgressEvent, SelectorConfig, OutputConfig } from '../types';
+import {
+  NpmdataExtractEntry,
+  ProgressEvent,
+  SelectorConfig,
+  OutputConfig,
+  BasicPackageOptions,
+} from '../types';
 import {
   parsePackageSpec,
   installOrUpgradePackage,
@@ -17,10 +23,7 @@ import { readOutputDirMarker } from '../fileset/markers';
 
 import { createSymlinks, removeStaleSymlinks } from './symlinks';
 
-export type ExtractOptions = {
-  entries: NpmdataExtractEntry[];
-  cwd: string;
-  verbose?: boolean;
+export type ExtractOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
   visitedPackages?: Set<string>;
 };
@@ -54,7 +57,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
     for (const entry of entries) {
       if (verbose) {
         // eslint-disable-next-line no-undefined
-        console.log(`[verbose] config: ${JSON.stringify(entry, undefined, 2)}`);
+        console.log(`[verbose] entry: ${JSON.stringify(entry, undefined, 2)}`);
       }
 
       if (!entry.package) {
@@ -232,13 +235,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
 
         // Apply selector.presets: filter the target package's own sets by the preset tags
         // requested by the consumer. When selector.presets is empty, all sets pass through.
-        const presetFilteredSets = filterEntriesByPresets(pkgNpmdataSets, selector.presets ?? []);
-
-        if ((selector.presets ?? []).length > 0 && presetFilteredSets.length === 0) {
-          throw new Error(
-            `Preset selector [${(selector.presets ?? []).join(', ')}] did not match any sets in package "${pkg.name}". Available presets: [${[...new Set(pkgNpmdataSets.flatMap((s) => s.presets ?? []))].sort().join(', ')}]`,
-          );
-        }
+        const presetFilteredSets = filterEntriesByPresets(pkgNpmdataSets, selector.presets);
 
         const filteredSets = presetFilteredSets.filter(
           (e) =>
