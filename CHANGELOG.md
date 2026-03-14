@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.4 (2026-03-14)
+
+### Maintenance
+
+* release: 0.18.3 [[f980b6c](https://github.com/flaviostutz/npmdata/commit/f980b6cb26ef816286dced3f7c6da69d0a743388)]
+* fix preset extraction bugs [[f6b608e](https://github.com/flaviostutz/npmdata/commit/f6b608ed8c80a95a6cea35721fdd8740133ae5fd)]
+* manual refactoring of recursivity filtering with presets [[9ab1401](https://github.com/flaviostutz/npmdata/commit/9ab1401a9743b983c1f6747a88ea9b70418fd4b8)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.18.3 (2026-03-13)
 
 ### Maintenance
