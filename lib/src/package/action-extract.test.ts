@@ -265,7 +265,8 @@ describe('actionExtract', () => {
 
     const outputDir = path.join(tmpDir, 'output');
 
-    // Extract with selector.presets: ['docs'] — only the docs nested set should be pulled
+    // Extract with selector.presets: ['docs'] — only the docs nested set should be pulled.
+    // preset-main has no self-referential set, so its own files (main.md) must NOT appear.
     await actionExtract({
       entries: [
         {
@@ -278,7 +279,7 @@ describe('actionExtract', () => {
       cwd: tmpDir,
     });
 
-    expect(fs.existsSync(path.join(outputDir, 'main.md'))).toBe(true);
+    expect(fs.existsSync(path.join(outputDir, 'main.md'))).toBe(false);
     expect(fs.existsSync(path.join(outputDir, 'nested', 'docs', 'guide.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'nested', 'data', 'sample.csv'))).toBe(false);
   }, 90000);

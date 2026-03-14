@@ -22,6 +22,19 @@ export async function runExtract(
   const parsed = parseArgv(argv);
   const entries = resolveEntriesFromConfigAndArgs(config, argv);
 
+  if (entries.length === 0) {
+    if (parsed.verbose) {
+      console.log('[verbose] No packages match the specified preset filter. Nothing to extract.');
+    }
+    return;
+  }
+
+  if (parsed.verbose) {
+    console.log(
+      `[verbose] Running CLI extract with entries: ${entries.map((e) => e.package + ' ' + JSON.stringify(e.selector)).join(', ')}`,
+    );
+  }
+
   const result = await actionExtract({
     entries,
     cwd,

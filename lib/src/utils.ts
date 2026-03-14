@@ -159,9 +159,7 @@ export async function installOrUpgradePackage(
     const cached = getInstalledIfSatisfies(name, version, workDir);
     if (cached) {
       if (verbose) {
-        console.log(
-          `[verbose] installOrUpgrade: cache hit for ${name}@${version ?? 'latest'} at ${cached}`,
-        );
+        console.log(`[verbose] installed package is already up to date`);
       }
       return cached;
     }
@@ -186,7 +184,7 @@ export async function installOrUpgradePackage(
     const selfSpec = `${selfPkg.name}@${selfPkg.version}`;
     if (verbose) {
       console.log(
-        `[verbose] installOrUpgrade: reinstalling self (${selfSpec}) in dir ${workDir} to ensure it's available for this extraction`,
+        `[verbose] reinstalling self (${selfSpec}) in dir ${workDir} to ensure it's upgraded`,
       );
     }
     await runPackageManagerCommand(selfSpec, 'add', workDir, verbose);
@@ -204,17 +202,13 @@ export async function installOrUpgradePackage(
     // Fall back to Node.js module resolution, which handles pnpm workspaces where the
     // package may be installed in the workspace root's node_modules rather than locally.
     if (verbose) {
-      console.warn(
-        `[verbose] installOrUpgrade: ${pkgPath} not found, trying require.resolve fallback`,
-      );
+      console.warn(`[verbose] ${pkgPath} not found, trying require.resolve fallback`);
     }
     try {
       const resolved = require.resolve(`${name}/package.json`, { paths: [workDir] });
       pkgPath = path.dirname(resolved);
       if (verbose) {
-        console.log(
-          `[verbose] installOrUpgrade: resolved ${name} via require.resolve to ${pkgPath}`,
-        );
+        console.log(`[verbose] resolved ${name} via require.resolve to ${pkgPath}`);
       }
     } catch {
       throw new Error(

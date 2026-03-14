@@ -194,8 +194,5 @@ export function resolveEntriesFromConfigAndArgs(
   // filter by presets
   const presets = parsed.presets ?? [];
   const filtered = filterEntriesByPresets(entries, presets);
-  if (filtered.length === 0) {
-    throw new Error(`Presets (${presets.join(', ')}) not found in any configured package`);
-  }
   return filtered;
 }

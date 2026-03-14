@@ -128,4 +128,20 @@ describe('enumeratePackageFiles', () => {
     });
     expect(files).toHaveLength(0);
   });
+
+  it('returns empty array when selector has only presets (no files)', async () => {
+    // presets is purely a set-level filter; without an explicit files pattern no
+    // direct files should be enumerated from the package.
+    const files = await enumeratePackageFiles(pkgPath, { presets: ['docs'] });
+    expect(files).toHaveLength(0);
+  });
+
+  it('enumerates files normally when both presets and files are specified', async () => {
+    const files = await enumeratePackageFiles(pkgPath, {
+      presets: ['docs'],
+      files: ['docs/**'],
+    });
+    expect(files).toContain('docs/guide.md');
+    expect(files).toContain('docs/api.md');
+  });
 });

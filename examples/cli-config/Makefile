@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+VERBOSE := --verbose
 
 install:
 	# copy local relative dependencies (required by local npmdata package)
@@ -14,7 +15,7 @@ test: clean install
 
 	# --- Test 1: config from package.json "npmdata" key ---
 	# extract without --packages: reads entries from the "npmdata" key in package.json
-	pnpm exec npmdata extract
+	pnpm exec npmdata extract $(VERBOSE)
 	test -e output/docs/README.md
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/data/users-dataset/user1.json
@@ -22,10 +23,10 @@ test: clean install
 	test -e output/lastUpdated
 
 	# check without --packages: reads entries from package.json
-	pnpm exec npmdata check
+	pnpm exec npmdata check $(VERBOSE)
 
 	# purge without --packages: reads entries from package.json
-	pnpm exec npmdata purge
+	pnpm exec npmdata purge $(VERBOSE)
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 #	eslint is managed=false, so it should still be present after purge
@@ -36,15 +37,15 @@ test: clean install
 	jq '.npmdata' package.json > .npmdatarc
 	jq 'del(.npmdata)' package.json > package.json.tmp && mv package.json.tmp package.json
 
-	pnpm exec npmdata extract
+	pnpm exec npmdata extract $(VERBOSE)
 	test -e output/docs/README.md
 	test -e output/data/users-dataset/user1.json
 	test -e output/eslint/conf/globals.js
 	test -e output/lastUpdated
 
-	pnpm exec npmdata check
+	pnpm exec npmdata check $(VERBOSE)
 	test -e output/docs/README.md
-	pnpm exec npmdata purge
+	pnpm exec npmdata purge $(VERBOSE)
 	test ! -e output/docs/README.md
 # 	managed=false should be left behind without purge
 	test -e output/eslint/conf/globals.js
@@ -55,7 +56,7 @@ test: clean install
 
 	# --- Test 3: presets filtering via config ---
 	rm -rf output
-	pnpm exec npmdata extract --presets "basic"
+	pnpm exec npmdata extract --presets "basic" $(VERBOSE)
 	# basic-tagged entry (example-files-package docs and data) should be extracted
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/data/users-dataset/user1.json
@@ -63,26 +64,26 @@ test: clean install
 	test -e output/lastUpdated
 	# extra-tagged entry (eslint) should not be extracted
 	test ! -e output/eslint/conf/globals.js
-	pnpm exec npmdata check --presets "basic" --verbose
-	pnpm exec npmdata purge --presets "basic"
+	pnpm exec npmdata check --presets "basic" $(VERBOSE)
+	pnpm exec npmdata purge --presets "basic" $(VERBOSE)
 	test ! -e output/docs/adrs/adr-001-sample1.md
 	test ! -e output/data/users-dataset/user1.json
 	test -e output/lastUpdated
 
 	# --- Test 4: presets command lists all preset tags ---
-	pnpm exec npmdata presets | grep -x "basic"
-	pnpm exec npmdata presets | grep -x "extra"
-	pnpm exec npmdata presets | grep -x "nested-eslint"
+	pnpm exec npmdata presets $(VERBOSE) | grep -x "basic"
+	pnpm exec npmdata presets $(VERBOSE) | grep -x "extra"
+	pnpm exec npmdata presets $(VERBOSE) | grep -x "nested-eslint"
 
 	# --- Test 5: selector presets - only extract eslint-related nested sets ---
 	rm -rf output
-	pnpm exec npmdata extract --presets "nested-eslint"
-	# nested eslint set (selector.presets=["eslint"]) should have extracted conf/globals.js only
+	pnpm exec npmdata extract --presets "nested-eslint" $(VERBOSE)
+	# nested eslint set (selector.presets=["eslint"]) should have extracted conf/globals.js because it's part of an entry with the "nested-eslint" preset tag
 	test -e output/nested-eslint/conf/globals.js
-	# docs and data should not be extracted (only 'nested-eslint' top-level set ran)
-	test ! -e output/docs/README.md
-	test ! -e output/data/users-dataset/user1.json
-	pnpm exec npmdata check --presets "nested-eslint"
+	# docs and data should not be extracted because they are not part of the nested "eslint" preset
+	test ! -e output/nested-eslint/data/users-dataset/user1.json
+	test ! -e output/nested-eslint/docs/README.md
+	pnpm exec npmdata check --presets "nested-eslint" $(VERBOSE)
 
 	@echo "All config-file mode tests passed"
 
