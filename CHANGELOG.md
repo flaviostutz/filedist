@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.18.6 (2026-03-15)
+
+### Maintenance
+
+* release: 0.18.5 [[710955d](https://github.com/flaviostutz/npmdata/commit/710955da4cd40ba0f8475fa308112e5244b1a7f5)]
+* fix lint [[e9cad74](https://github.com/flaviostutz/npmdata/commit/e9cad742d9cbd2282259c4f3b93daa2e9c4cfe57)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.18.5 (2026-03-14)
 
 ### Maintenance
