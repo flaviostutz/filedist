@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.9 (2026-03-16)
+
+### Maintenance
+
+* release: 0.18.8 [[758bbc3](https://github.com/flaviostutz/npmdata/commit/758bbc32f592f203c45da7642c5a3ce097121f42)]
+* make self package cli use synthetic config instead of package config [[e26ca47](https://github.com/flaviostutz/npmdata/commit/e26ca477a16cac41daaf213553918fa8b704de46)]
+* self package references fix [[44e0333](https://github.com/flaviostutz/npmdata/commit/44e03339df8e4fd78106d6d363802e281fc0f203)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.18.8 (2026-03-16)
 
 ### Maintenance
