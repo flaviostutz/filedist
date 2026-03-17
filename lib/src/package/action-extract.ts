@@ -275,7 +275,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
         // we pass installedPkgPaths with the current pkgPath so the recursive call reuses it
         // without reinstalling and without tripping the circular-dependency guard.
         const selfRefSets =
-          selector.presets && selector.presets.length > 0
+          selector.presets && selector.presets.length > 0 && !visitedPackages.has(pkg.name)
             ? presetFilteredSets.filter(
                 (e) =>
                   parsePackageSpec(e.package).name === pkg.name &&
