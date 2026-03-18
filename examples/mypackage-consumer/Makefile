@@ -20,6 +20,8 @@ test: clean install
 	test -e output/.configs/app.config.json
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
+	test -e output/conf/config-schema.js
+	! grep -e "conf/config-schema.js" output/.npmdata
 
 	pnpm exec example-files-package check --output output
 

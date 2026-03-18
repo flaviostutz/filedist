@@ -124,7 +124,9 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
         // package's own files belong to each preset. Include them alongside external sets so
         // that --presets filtering works correctly for self-installable packages.
         const selfRefSets =
-          entry.selector?.presets && entry.selector.presets.length > 0
+          entry.selector?.presets &&
+          entry.selector?.presets.length > 0 &&
+          !visitedPackages.has(pkg.name)
             ? presetFilteredSets.filter(
                 (e) =>
                   parsePackageSpec(e.package).name === pkg.name &&
