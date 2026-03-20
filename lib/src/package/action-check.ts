@@ -36,42 +36,41 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
   const managedEntries = entries.filter((e) => e.output?.managed !== false);
   if (managedEntries.length === 0) return summary;
 
-  let resolvedFiles: Awaited<ReturnType<typeof resolveFiles>>;
   try {
-    resolvedFiles = await resolveFiles(managedEntries, {
+    const resolvedFiles = await resolveFiles(managedEntries, {
       cwd,
       verbose,
       onProgress: (e) => {
         if (e.type === 'package-start' || e.type === 'package-end') onProgress?.(e);
       },
     });
+
+    if (verbose) {
+      console.log(`[verbose] actionCheck: resolved ${resolvedFiles.length} desired file(s)`);
+    }
+
+    const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
+    const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
+
+    summary.missing.push(...diff.missing.map((e) => e.relPath));
+    summary.extra.push(...diff.extra.map((e) => e.relPath));
+    // Only report conflicts where content or managed-state differ; gitignore-only
+    // mismatches are not a data integrity issue.
+    summary.conflict.push(
+      ...diff.conflict
+        .filter((e) => (e.conflictReasons ?? []).some((r) => r !== 'gitignore'))
+        .map((e) => e.relPath),
+    );
+
+    if (verbose) {
+      console.log(
+        `[verbose] actionCheck: missing=${summary.missing.length}` +
+          ` conflict=${summary.conflict.length} extra=${summary.extra.length}`,
+      );
+    }
+
+    return summary;
   } finally {
     cleanupTempPackageJson(cwd, verbose);
   }
-
-  if (verbose) {
-    console.log(`[verbose] actionCheck: resolved ${resolvedFiles.length} desired file(s)`);
-  }
-
-  const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
-  const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
-
-  summary.missing.push(...diff.missing.map((e) => e.relPath));
-  summary.extra.push(...diff.extra.map((e) => e.relPath));
-  // Only report conflicts where content or managed-state differ; gitignore-only
-  // mismatches are not a data integrity issue.
-  summary.conflict.push(
-    ...diff.conflict
-      .filter((e) => (e.conflictReasons ?? []).some((r) => r !== 'gitignore'))
-      .map((e) => e.relPath),
-  );
-
-  if (verbose) {
-    console.log(
-      `[verbose] actionCheck: missing=${summary.missing.length}` +
-        ` conflict=${summary.conflict.length} extra=${summary.extra.length}`,
-    );
-  }
-
-  return summary;
 }

@@ -769,6 +769,15 @@ describe('initTempPackageJson', () => {
 
 describe('cleanupTempPackageJson', () => {
   let tmpDir: string;
+  const packageManagerLockFiles = [
+    'package-lock.json',
+    'npm-shrinkwrap.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'bun.lock',
+    'bun.lockb',
+    'deno.lock',
+  ];
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'v2-cleanup-'));
@@ -794,8 +803,10 @@ describe('cleanupTempPackageJson', () => {
       path.join(tmpDir, 'package.json'),
       JSON.stringify({ name: 'my-real-project', version: '99.99.99', private: true }),
     );
+    fs.writeFileSync(path.join(tmpDir, 'pnpm-lock.yaml'), 'lockfile');
     cleanupTempPackageJson(tmpDir);
     expect(fs.existsSync(path.join(tmpDir, 'package.json'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'pnpm-lock.yaml'))).toBe(true);
   });
 
   it('does nothing when package.json was not created by npmdata (wrong version)', () => {
@@ -819,6 +830,19 @@ describe('cleanupTempPackageJson', () => {
     fs.mkdirSync(nodeModulesPath, { recursive: true });
     cleanupTempPackageJson(tmpDir);
     expect(fs.existsSync(path.join(tmpDir, 'node_modules'))).toBe(false);
+  });
+
+  it('removes package-manager lockfiles when present', () => {
+    writeTempPkgJson(tmpDir);
+    for (const lockFileName of packageManagerLockFiles) {
+      fs.writeFileSync(path.join(tmpDir, lockFileName), 'lockfile');
+    }
+
+    cleanupTempPackageJson(tmpDir);
+
+    for (const lockFileName of packageManagerLockFiles) {
+      expect(fs.existsSync(path.join(tmpDir, lockFileName))).toBe(false);
+    }
   });
 
   it('does not throw when node_modules does not exist', () => {

@@ -21,3 +21,9 @@ publish:
 
 prepare:
 	@echo "Run 'nvm use; corepack enable'"
+
+bump:
+# 	pnpm add -D npmdata@latest
+# 	pnpm exec npmdata --packages xdrs-core@latest
+	npx -y xdrs-core@latest
+

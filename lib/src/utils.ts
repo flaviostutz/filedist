@@ -11,6 +11,16 @@ import { resolveCommand } from 'package-manager-detector/commands';
 
 import { NpmdataExtractEntry, PackageConfig } from './types';
 
+const PACKAGE_MANAGER_LOCK_FILES = [
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lock',
+  'bun.lockb',
+  'deno.lock',
+] as const;
+
 /**
  * Parse a package spec like "my-pkg@^1.2.3" or "@scope/pkg@2.x" into name and version.
  * The version separator is the LAST "@" so that scoped packages ("@scope/name") are handled.
@@ -334,6 +344,12 @@ export function cleanupTempPackageJson(cwd: string, verbose?: boolean): void {
   const tempNodeModulesPath = path.join(cwd, 'node_modules');
   if (fs.existsSync(tempNodeModulesPath)) {
     fs.rmSync(tempNodeModulesPath, { recursive: true, force: true });
+  }
+  for (const lockFileName of PACKAGE_MANAGER_LOCK_FILES) {
+    const lockFilePath = path.join(cwd, lockFileName);
+    if (fs.existsSync(lockFilePath)) {
+      fs.rmSync(lockFilePath, { force: true });
+    }
   }
   // cleanup .gitignore if it only contains node_modules (optional, can be left as is)
   const gitignorePath = path.join(cwd, '.gitignore');

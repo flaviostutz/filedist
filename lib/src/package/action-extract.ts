@@ -37,124 +37,106 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
   const isDryRun = dryRun ?? entries.some((e) => e.output?.dryRun === true);
 
   const result: ExtractResult = { added: 0, modified: 0, deleted: 0, skipped: 0 };
-
-  // ── Phase 1: Resolve desired files ──────────────────────────────────────
-  let resolvedFiles: ResolvedFile[];
   try {
+    // ── Phase 1: Resolve desired files ──────────────────────────────────────
+    let resolvedFiles: ResolvedFile[];
     resolvedFiles = await resolveFiles(entries, { cwd, verbose, onProgress });
-  } finally {
-    cleanupTempPackageJson(cwd, verbose);
-  }
 
-  if (verbose) {
-    console.log(`[verbose] actionExtract: resolved ${resolvedFiles.length} desired file(s)`);
-  }
+    if (verbose) {
+      console.log(`[verbose] actionExtract: resolved ${resolvedFiles.length} desired file(s)`);
+    }
 
-  // ── Phase 2: Calculate diff ──────────────────────────────────────────────
-  const diff = await calculateDiff(resolvedFiles, verbose, cwd);
+    // ── Phase 2: Calculate diff ──────────────────────────────────────────────
+    const diff = await calculateDiff(resolvedFiles, verbose, cwd);
 
-  if (verbose) {
-    console.log(
-      `[verbose] actionExtract: diff ok=${diff.ok.length} missing=${diff.missing.length}` +
-        ` conflict=${diff.conflict.length} extra=${diff.extra.length}`,
-    );
-  }
+    if (verbose) {
+      console.log(
+        `[verbose] actionExtract: diff ok=${diff.ok.length} missing=${diff.missing.length}` +
+          ` conflict=${diff.conflict.length} extra=${diff.extra.length}`,
+      );
+    }
 
-  // ── Pre-flight conflict check ──────────────────────────────────────────
-  // Detect unmanaged-file conflicts before any disk writes.
-  if (!isDryRun) {
-    for (const entry of diff.conflict) {
-      const desired = entry.desired!;
-      const isUnmanagedConflict = !entry.existing && desired.managed;
-      if (!desired.ignoreIfExisting && !desired.force && isUnmanagedConflict) {
-        throw new Error(
-          `Conflict: file "${entry.relPath}" in "${entry.outputDir}" exists and is not managed` +
-            ` by npmdata.\nUse --force to overwrite or --managed=false to skip.`,
-        );
+    // ── Pre-flight conflict check ──────────────────────────────────────────
+    // Detect unmanaged-file conflicts before any disk writes.
+    if (!isDryRun) {
+      for (const entry of diff.conflict) {
+        const desired = entry.desired!;
+        const isUnmanagedConflict = !entry.existing && desired.managed;
+        if (!desired.ignoreIfExisting && !desired.force && isUnmanagedConflict) {
+          throw new Error(
+            `Conflict: file "${entry.relPath}" in "${entry.outputDir}" exists and is not managed` +
+              ` by npmdata.\nUse --force to overwrite or --managed=false to skip.`,
+          );
+        }
       }
     }
-  }
 
-  // ── Count expected changes ─────────────────────────────────────────────
-  result.added = diff.missing.length;
-  result.deleted = diff.extra.length;
-  for (const entry of diff.conflict) {
-    const desired = entry.desired!;
-    if (desired.ignoreIfExisting || !desired.managed) {
-      result.skipped++;
-    } else {
-      result.modified++;
+    // ── Count expected changes ─────────────────────────────────────────────
+    result.added = diff.missing.length;
+    result.deleted = diff.extra.length;
+    for (const entry of diff.conflict) {
+      const desired = entry.desired!;
+      if (desired.ignoreIfExisting || !desired.managed) {
+        result.skipped++;
+      } else {
+        result.modified++;
+      }
     }
-  }
-  result.skipped += diff.ok.length;
+    result.skipped += diff.ok.length;
 
-  if (isDryRun) return result;
+    if (isDryRun) return result;
 
-  // ── Phase 3: Apply disk changes ──────────────────────────────────────────
+    // ── Phase 3: Apply disk changes ──────────────────────────────────────────
 
-  // Collect unique output directories
-  const outputDirs = new Set(resolvedFiles.map((f) => f.outputDir));
+    // Collect unique output directories
+    const outputDirs = new Set(resolvedFiles.map((f) => f.outputDir));
 
-  // Remove stale symlinks before writing new files
-  for (const outputDir of outputDirs) {
-    const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
-    const symlinks = dirFiles.flatMap((f) => f.symlinks);
-    if (symlinks.length > 0) {
-      await removeStaleSymlinks(outputDir, symlinks);
+    // Remove stale symlinks before writing new files
+    for (const outputDir of outputDirs) {
+      const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
+      const symlinks = dirFiles.flatMap((f) => f.symlinks);
+      if (symlinks.length > 0) {
+        await removeStaleSymlinks(outputDir, symlinks);
+      }
     }
-  }
 
-  // Delete extra managed files
-  for (const entry of diff.extra) {
-    const fullPath = path.join(entry.outputDir, entry.relPath);
-    const gitignorePaths = readManagedGitignoreEntries(entry.outputDir);
-    if (fs.existsSync(fullPath)) {
-      fs.chmodSync(fullPath, 0o644);
-      fs.unlinkSync(fullPath);
+    // Delete extra managed files
+    for (const entry of diff.extra) {
+      const fullPath = path.join(entry.outputDir, entry.relPath);
+      const gitignorePaths = readManagedGitignoreEntries(entry.outputDir);
+      if (fs.existsSync(fullPath)) {
+        fs.chmodSync(fullPath, 0o644);
+        fs.unlinkSync(fullPath);
+      }
+      onProgress?.({
+        type: 'file-deleted',
+        packageName: entry.existing?.packageName ?? '',
+        file: entry.relPath,
+        managed: true,
+        gitignore: gitignorePaths.has(entry.relPath),
+      });
     }
-    onProgress?.({
-      type: 'file-deleted',
-      packageName: entry.existing?.packageName ?? '',
-      file: entry.relPath,
-      managed: true,
-      gitignore: gitignorePaths.has(entry.relPath),
-    });
-  }
 
-  // Add missing files
-  for (const entry of diff.missing) {
-    const desired = entry.desired!;
-    writeFileToOutput(
-      desired.sourcePath,
-      path.join(entry.outputDir, desired.relPath),
-      desired.managed,
-    );
-    onProgress?.({
-      type: 'file-added',
-      packageName: desired.packageName,
-      file: desired.relPath,
-      managed: desired.managed,
-      gitignore: desired.gitignore,
-    });
-  }
+    // Add missing files
+    for (const entry of diff.missing) {
+      const desired = entry.desired!;
+      writeFileToOutput(
+        desired.sourcePath,
+        path.join(entry.outputDir, desired.relPath),
+        desired.managed,
+      );
+      onProgress?.({
+        type: 'file-added',
+        packageName: desired.packageName,
+        file: desired.relPath,
+        managed: desired.managed,
+        gitignore: desired.gitignore,
+      });
+    }
 
-  // Emit file-skipped for unchanged files (diff.ok)
-  for (const entry of diff.ok) {
-    const desired = entry.desired!;
-    onProgress?.({
-      type: 'file-skipped',
-      packageName: desired.packageName,
-      file: desired.relPath,
-      managed: desired.managed,
-      gitignore: desired.gitignore,
-    });
-  }
-
-  // Resolve conflicts
-  for (const entry of diff.conflict) {
-    const desired = entry.desired!;
-    // managed=false: existing file is user-owned, leave it untouched
-    if (desired.ignoreIfExisting || !desired.managed) {
+    // Emit file-skipped for unchanged files (diff.ok)
+    for (const entry of diff.ok) {
+      const desired = entry.desired!;
       onProgress?.({
         type: 'file-skipped',
         packageName: desired.packageName,
@@ -162,48 +144,65 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
         managed: desired.managed,
         gitignore: desired.gitignore,
       });
-      continue;
     }
-    writeFileToOutput(
-      desired.sourcePath,
-      path.join(entry.outputDir, desired.relPath),
-      desired.managed,
-    );
-    onProgress?.({
-      type: 'file-modified',
-      packageName: desired.packageName,
-      file: desired.relPath,
-      managed: desired.managed,
-      gitignore: desired.gitignore,
-    });
-  }
 
-  // Update marker and gitignore per output directory
-  for (const outputDir of outputDirs) {
-    await updateOutputDirMetadata(outputDir, diff, resolvedFiles, cwd, verbose);
-  }
-
-  // Apply symlinks and content replacements per output directory
-  for (const outputDir of outputDirs) {
-    const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
-    const symlinkConfigs = uniqueSymlinkConfigs(dirFiles);
-    if (symlinkConfigs.length > 0) {
-      await createSymlinks(outputDir, symlinkConfigs);
+    // Resolve conflicts
+    for (const entry of diff.conflict) {
+      const desired = entry.desired!;
+      // managed=false: existing file is user-owned, leave it untouched
+      if (desired.ignoreIfExisting || !desired.managed) {
+        onProgress?.({
+          type: 'file-skipped',
+          packageName: desired.packageName,
+          file: desired.relPath,
+          managed: desired.managed,
+          gitignore: desired.gitignore,
+        });
+        continue;
+      }
+      writeFileToOutput(
+        desired.sourcePath,
+        path.join(entry.outputDir, desired.relPath),
+        desired.managed,
+      );
+      onProgress?.({
+        type: 'file-modified',
+        packageName: desired.packageName,
+        file: desired.relPath,
+        managed: desired.managed,
+        gitignore: desired.gitignore,
+      });
     }
-    const contentReplacements = dirFiles.flatMap((f) => f.contentReplacements);
-    if (contentReplacements.length > 0) {
-      await applyContentReplacements(outputDir, contentReplacements);
+
+    // Update marker and gitignore per output directory
+    for (const outputDir of outputDirs) {
+      await updateOutputDirMetadata(outputDir, diff, resolvedFiles, cwd, verbose);
     }
-  }
 
-  if (verbose) {
-    console.log(
-      `[verbose] actionExtract: complete — added=${result.added} modified=${result.modified}` +
-        ` deleted=${result.deleted} skipped=${result.skipped}`,
-    );
-  }
+    // Apply symlinks and content replacements per output directory
+    for (const outputDir of outputDirs) {
+      const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
+      const symlinkConfigs = uniqueSymlinkConfigs(dirFiles);
+      if (symlinkConfigs.length > 0) {
+        await createSymlinks(outputDir, symlinkConfigs);
+      }
+      const contentReplacements = dirFiles.flatMap((f) => f.contentReplacements);
+      if (contentReplacements.length > 0) {
+        await applyContentReplacements(outputDir, contentReplacements);
+      }
+    }
 
-  return result;
+    if (verbose) {
+      console.log(
+        `[verbose] actionExtract: complete — added=${result.added} modified=${result.modified}` +
+          ` deleted=${result.deleted} skipped=${result.skipped}`,
+      );
+    }
+
+    return result;
+  } finally {
+    cleanupTempPackageJson(cwd, verbose);
+  }
 }
 
 /** Copy a source file to dest, creating parent dirs if needed, and set permissions. */

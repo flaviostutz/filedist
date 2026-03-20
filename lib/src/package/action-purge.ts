@@ -37,49 +37,48 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
     console.log(`[verbose] actionPurge: resolving files (cwd: ${formatDisplayPath(cwd, cwd)})`);
   }
 
-  let resolvedFiles: Awaited<ReturnType<typeof resolveFiles>>;
   try {
-    resolvedFiles = await resolveFiles(entries, {
+    const resolvedFiles = await resolveFiles(entries, {
       cwd,
       verbose,
       onProgress: (e) => {
         if (e.type === 'package-start' || e.type === 'package-end') onProgress?.(e);
       },
     });
+
+    if (verbose) {
+      console.log(`[verbose] actionPurge: resolved ${resolvedFiles.length} desired file(s)`);
+    }
+
+    const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
+    const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
+
+    // Purge: ok (present+matching), conflict (present+mismatched), extra (stale managed)
+    const filesToDelete = [...diff.ok, ...diff.conflict, ...diff.extra];
+
+    if (verbose) {
+      console.log(
+        `[verbose] actionPurge: ${filesToDelete.length} file(s) to delete` +
+          ` (ok=${diff.ok.length} conflict=${diff.conflict.length} extra=${diff.extra.length})`,
+      );
+    }
+
+    // Group by outputDir
+    const byOutputDir = new Map<string, typeof filesToDelete>();
+    for (const entry of filesToDelete) {
+      const arr = byOutputDir.get(entry.outputDir) ?? [];
+      arr.push(entry);
+      byOutputDir.set(entry.outputDir, arr);
+    }
+
+    for (const [outputDir, dirEntries] of byOutputDir) {
+      await purgeOutputDir(outputDir, dirEntries, dryRun, summary, cwd, onProgress, verbose);
+    }
+
+    return summary;
   } finally {
     cleanupTempPackageJson(cwd, verbose);
   }
-
-  if (verbose) {
-    console.log(`[verbose] actionPurge: resolved ${resolvedFiles.length} desired file(s)`);
-  }
-
-  const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
-  const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
-
-  // Purge: ok (present+matching), conflict (present+mismatched), extra (stale managed)
-  const filesToDelete = [...diff.ok, ...diff.conflict, ...diff.extra];
-
-  if (verbose) {
-    console.log(
-      `[verbose] actionPurge: ${filesToDelete.length} file(s) to delete` +
-        ` (ok=${diff.ok.length} conflict=${diff.conflict.length} extra=${diff.extra.length})`,
-    );
-  }
-
-  // Group by outputDir
-  const byOutputDir = new Map<string, typeof filesToDelete>();
-  for (const entry of filesToDelete) {
-    const arr = byOutputDir.get(entry.outputDir) ?? [];
-    arr.push(entry);
-    byOutputDir.set(entry.outputDir, arr);
-  }
-
-  for (const [outputDir, dirEntries] of byOutputDir) {
-    await purgeOutputDir(outputDir, dirEntries, dryRun, summary, cwd, onProgress, verbose);
-  }
-
-  return summary;
 }
 
 async function purgeOutputDir(
