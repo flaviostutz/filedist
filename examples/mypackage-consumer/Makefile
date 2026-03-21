@@ -75,6 +75,17 @@ test: clean install
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
+	# Test 5 - existing managed files that are not part of a profile are removed
+	pnpm exec example-files-package extract --output output
+	pnpm exec example-files-package extract --output output --presets special --verbose
+	# part of the special profile
+	test -e output/data/users-dataset/user2.json
+	test ! -e output/docs/adrs/adr-001-sample1.md
+	test ! -e output/data/users-dataset/user1.json
+	test ! -e output/conf/globals.js
+	# not managed, so shouldn't be deleted
+	test -e output/conf/config-schema.js
+
 
 clean:
 	@rm -rf node_modules

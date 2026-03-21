@@ -25,6 +25,21 @@ export type ResolveOptions = {
   onProgress?: (event: ProgressEvent) => void;
 };
 
+export type ResolveFilesDetailedResult = {
+  files: ResolvedFile[];
+  relevantPackagesByOutputDir: Map<string, Set<string>>;
+};
+
+function addRelevantPackage(
+  relevantPackagesByOutputDir: Map<string, Set<string>>,
+  outputDir: string,
+  packageName: string,
+): void {
+  const relevantPackages = relevantPackagesByOutputDir.get(outputDir) ?? new Set<string>();
+  relevantPackages.add(packageName);
+  relevantPackagesByOutputDir.set(outputDir, relevantPackages);
+}
+
 /** Unique key for an entry used for recursion-cycle detection. */
 function entryKey(
   entry: NpmdataExtractEntry,
@@ -53,7 +68,16 @@ export async function resolveFiles(
   entries: NpmdataExtractEntry[],
   options: ResolveOptions,
 ): Promise<ResolvedFile[]> {
+  const result = await resolveFilesDetailed(entries, options);
+  return result.files;
+}
+
+export async function resolveFilesDetailed(
+  entries: NpmdataExtractEntry[],
+  options: ResolveOptions,
+): Promise<ResolveFilesDetailedResult> {
   const visited = new Set<string>();
+  const relevantPackagesByOutputDir = new Map<string, Set<string>>();
   const raw = await resolveFilesInternal(
     entries,
     { path: '.' },
@@ -65,9 +89,13 @@ export async function resolveFiles(
     // eslint-disable-next-line no-undefined
     undefined,
     options,
+    relevantPackagesByOutputDir,
     visited,
   );
-  return deduplicateAndCheckConflicts(raw);
+  return {
+    files: deduplicateAndCheckConflicts(raw),
+    relevantPackagesByOutputDir,
+  };
 }
 
 // eslint-disable-next-line complexity
@@ -79,6 +107,7 @@ async function resolveFilesInternal(
   currentPkgName: string | undefined,
   currentPkgVersion: string | undefined,
   options: ResolveOptions,
+  relevantPackagesByOutputDir: Map<string, Set<string>>,
   visited: Set<string>,
 ): Promise<ResolvedFile[]> {
   const { cwd, verbose, onProgress } = options;
@@ -117,6 +146,7 @@ async function resolveFilesInternal(
       }
 
       const outputDir = path.resolve(cwd, mergedOutput.path ?? '.');
+      addRelevantPackage(relevantPackagesByOutputDir, outputDir, currentPkgName);
       const files = await enumeratePackageFiles(currentPkgPath, mergedSelector);
 
       if (verbose) {
@@ -178,6 +208,7 @@ async function resolveFilesInternal(
       }
 
       const outputDir = path.resolve(cwd, mergedOutput.path ?? '.');
+      addRelevantPackage(relevantPackagesByOutputDir, outputDir, pkg.name);
       const hasSelfSet = (pkgNpmdataSets ?? []).some((setEntry) => !setEntry.package);
 
       // When a package declares self sets, those sets define how its own files are split
@@ -197,6 +228,20 @@ async function resolveFilesInternal(
       }
 
       if (pkgNpmdataSets && pkgNpmdataSets.length > 0) {
+        for (const pkgSet of pkgNpmdataSets) {
+          const setOutput = mergeOutputConfig(mergedOutput, pkgSet.output ?? {});
+          const setOutputDir = path.resolve(cwd, setOutput.path ?? '.');
+          if (pkgSet.package) {
+            addRelevantPackage(
+              relevantPackagesByOutputDir,
+              setOutputDir,
+              parsePackageSpec(pkgSet.package).name,
+            );
+          } else {
+            addRelevantPackage(relevantPackagesByOutputDir, setOutputDir, pkg.name);
+          }
+        }
+
         // Apply preset filter
         const presetFilteredSets = filterEntriesByPresets(pkgNpmdataSets, mergedSelector.presets);
 
@@ -244,6 +289,7 @@ async function resolveFilesInternal(
             pkg.name,
             installedVersion,
             options,
+            relevantPackagesByOutputDir,
             visited,
           );
           results.push(...subResults);

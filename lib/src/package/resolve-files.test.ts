@@ -5,7 +5,7 @@ import path from 'node:path';
 import { installMockPackage } from '../fileset/test-utils';
 import { NpmdataExtractEntry } from '../types';
 
-import { resolveFiles } from './resolve-files';
+import { resolveFiles, resolveFilesDetailed } from './resolve-files';
 
 describe('resolveFiles', () => {
   let tmpDir: string;
@@ -461,6 +461,49 @@ describe('resolveFiles', () => {
     const relPaths = files.map((f) => f.relPath);
     expect(relPaths).toContain('docs.md');
     expect(relPaths).not.toContain('data.json');
+  }, 60000);
+
+  it('tracks preset-filtered transitive packages as relevant for stale cleanup', async () => {
+    await installMockPackage('preset-cleanup-pkg', '1.0.0', { 'data.json': '{"ok":true}' }, tmpDir);
+
+    const pkgPath = path.join(tmpDir, 'node_modules', 'preset-cleanup-pkg');
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
+    ) as object;
+    fs.writeFileSync(
+      path.join(pkgPath, 'package.json'),
+      JSON.stringify({
+        ...pkgJson,
+        npmdata: {
+          sets: [
+            { presets: ['special'], output: { path: '.' }, selector: { files: ['data.json'] } },
+            {
+              package: 'eslint@8',
+              presets: ['eslint'],
+              output: { path: '.' },
+              selector: { files: ['conf/globals.js'] },
+            },
+          ],
+        },
+      }),
+    );
+
+    const outputDir = path.join(tmpDir, 'output');
+    const result = await resolveFilesDetailed(
+      [
+        {
+          package: 'preset-cleanup-pkg',
+          output: { path: outputDir, gitignore: false },
+          selector: { presets: ['special'] },
+        },
+      ],
+      { cwd: tmpDir },
+    );
+
+    expect(result.files.map((f) => f.relPath)).toEqual(['data.json']);
+    expect(result.relevantPackagesByOutputDir.get(outputDir)).toEqual(
+      new Set(['preset-cleanup-pkg', 'eslint']),
+    );
   }, 60000);
 
   it('emits package-start and package-end progress events', async () => {

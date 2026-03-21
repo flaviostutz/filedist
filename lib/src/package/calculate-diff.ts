@@ -22,10 +22,16 @@ export async function calculateDiff(
   resolvedFiles: ResolvedFile[],
   verbose?: boolean,
   cwd?: string,
+  relevantPackagesByOutputDir?: Map<string, Set<string>>,
 ): Promise<DiffResult> {
   const result: DiffResult = { ok: [], missing: [], extra: [], conflict: [] };
 
-  if (resolvedFiles.length === 0) return result;
+  if (
+    resolvedFiles.length === 0 &&
+    (!relevantPackagesByOutputDir || relevantPackagesByOutputDir.size === 0)
+  ) {
+    return result;
+  }
 
   // Group resolved files by output directory
   const byOutputDir = new Map<string, ResolvedFile[]>();
@@ -35,30 +41,18 @@ export async function calculateDiff(
     byOutputDir.set(f.outputDir, arr);
   }
 
-  // Only consider marker entries from packages that appear in the resolved list
-  const relevantPackages = new Set(resolvedFiles.map((f) => f.packageName));
+  const outputDirs = new Set<string>([
+    ...byOutputDir.keys(),
+    ...(relevantPackagesByOutputDir?.keys() ?? []),
+  ]);
 
-  for (const [outputDir, desiredFiles] of byOutputDir) {
-    const existingMarker = await readOutputDirMarker(outputDir);
-    const managedByPath = new Map<string, ManagedFileMetadata>(
-      existingMarker.map((m) => [m.path, m]),
+  for (const outputDir of outputDirs) {
+    await appendOutputDirDiff(
+      outputDir,
+      byOutputDir.get(outputDir) ?? [],
+      result,
+      relevantPackagesByOutputDir?.get(outputDir),
     );
-    const desiredByPath = new Map<string, ResolvedFile>(desiredFiles.map((f) => [f.relPath, f]));
-    const gitignorePaths = readManagedGitignoreEntries(outputDir);
-
-    // ── Classify desired files ──────────────────────────────────────────────
-    for (const desired of desiredFiles) {
-      await classifyDesiredFile(desired, outputDir, managedByPath, gitignorePaths, result);
-    }
-
-    // ── Extra managed files ─────────────────────────────────────────────────
-    // Files that are managed (in the marker) under a relevant package but are
-    // no longer in the desired file list.
-    for (const m of existingMarker) {
-      if (relevantPackages.has(m.packageName) && !desiredByPath.has(m.path)) {
-        result.extra.push({ status: 'extra', relPath: m.path, outputDir, existing: m });
-      }
-    }
 
     if (verbose) {
       console.log(
@@ -70,6 +64,40 @@ export async function calculateDiff(
   }
 
   return result;
+}
+
+async function appendOutputDirDiff(
+  outputDir: string,
+  desiredFiles: ResolvedFile[],
+  result: DiffResult,
+  relevantPackages?: Set<string>,
+): Promise<void> {
+  const existingMarker = await readOutputDirMarker(outputDir);
+  const managedByPath = new Map<string, ManagedFileMetadata>(
+    existingMarker.map((m) => [m.path, m]),
+  );
+  const desiredByPath = new Map<string, ResolvedFile>(desiredFiles.map((f) => [f.relPath, f]));
+  const gitignorePaths = readManagedGitignoreEntries(outputDir);
+  const outputRelevantPackages =
+    relevantPackages ?? new Set(desiredFiles.map((f) => f.packageName));
+
+  for (const desired of desiredFiles) {
+    await classifyDesiredFile(desired, outputDir, managedByPath, gitignorePaths, result);
+  }
+
+  for (const markerEntry of existingMarker) {
+    if (
+      outputRelevantPackages.has(markerEntry.packageName) &&
+      !desiredByPath.has(markerEntry.path)
+    ) {
+      result.extra.push({
+        status: 'extra',
+        relPath: markerEntry.path,
+        outputDir,
+        existing: markerEntry,
+      });
+    }
+  }
 }
 
 /**

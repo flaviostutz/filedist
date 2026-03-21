@@ -188,6 +188,20 @@ describe('calculateDiff', () => {
     expect(extraPaths).not.toContain('pkg-b.md');
   });
 
+  it('classifies extra for relevant packages even when desired managed files are empty', async () => {
+    writeFile(outputDir, 'stale-eslint.js', 'module.exports = {};');
+    await writeMarker(markerPath(outputDir), [
+      { path: 'stale-eslint.js', packageName: 'eslint', packageVersion: '8.0.0' },
+    ]);
+
+    const relevantPackagesByOutputDir = new Map([[outputDir, new Set(['eslint'])]]);
+
+    const result = await calculateDiff([], false, '', relevantPackagesByOutputDir);
+
+    expect(result.extra).toHaveLength(1);
+    expect(result.extra[0].relPath).toBe('stale-eslint.js');
+  });
+
   it('handles multiple output directories independently', async () => {
     const outputDir2 = path.join(tmpDir, 'output2');
     fs.mkdirSync(outputDir2, { recursive: true });

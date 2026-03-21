@@ -2,7 +2,7 @@
 import { ProgressEvent, BasicPackageOptions } from '../types';
 import { cleanupTempPackageJson, formatDisplayPath } from '../utils';
 
-import { resolveFiles } from './resolve-files';
+import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 
 export type CheckOptions = BasicPackageOptions & {
@@ -37,20 +37,26 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
   if (managedEntries.length === 0) return summary;
 
   try {
-    const resolvedFiles = await resolveFiles(managedEntries, {
+    const resolved = await resolveFilesDetailed(managedEntries, {
       cwd,
       verbose,
       onProgress: (e) => {
         if (e.type === 'package-start' || e.type === 'package-end') onProgress?.(e);
       },
     });
+    const resolvedFiles = resolved.files;
 
     if (verbose) {
       console.log(`[verbose] actionCheck: resolved ${resolvedFiles.length} desired file(s)`);
     }
 
     const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
-    const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
+    const diff = await calculateDiff(
+      managedResolvedFiles,
+      verbose,
+      cwd,
+      resolved.relevantPackagesByOutputDir,
+    );
 
     summary.missing.push(...diff.missing.map((e) => e.relPath));
     summary.extra.push(...diff.extra.map((e) => e.relPath));

@@ -8,7 +8,7 @@ import { writeMarker, readOutputDirMarker, markerPath } from '../fileset/markers
 import { removeFromGitignore, readManagedGitignoreEntries } from '../fileset/gitignore';
 
 import { removeAllSymlinks } from './symlinks';
-import { resolveFiles } from './resolve-files';
+import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 
 export type PurgeOptions = BasicPackageOptions & {
@@ -38,20 +38,26 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
   }
 
   try {
-    const resolvedFiles = await resolveFiles(entries, {
+    const resolved = await resolveFilesDetailed(entries, {
       cwd,
       verbose,
       onProgress: (e) => {
         if (e.type === 'package-start' || e.type === 'package-end') onProgress?.(e);
       },
     });
+    const resolvedFiles = resolved.files;
 
     if (verbose) {
       console.log(`[verbose] actionPurge: resolved ${resolvedFiles.length} desired file(s)`);
     }
 
     const managedResolvedFiles = resolvedFiles.filter((f) => f.managed);
-    const diff = await calculateDiff(managedResolvedFiles, verbose, cwd);
+    const diff = await calculateDiff(
+      managedResolvedFiles,
+      verbose,
+      cwd,
+      resolved.relevantPackagesByOutputDir,
+    );
 
     // Purge: ok (present+matching), conflict (present+mismatched), extra (stale managed)
     const filesToDelete = [...diff.ok, ...diff.conflict, ...diff.extra];

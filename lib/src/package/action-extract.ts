@@ -9,7 +9,7 @@ import { addToGitignore, readManagedGitignoreEntries } from '../fileset/gitignor
 
 import { createSymlinks, removeStaleSymlinks } from './symlinks';
 import { applyContentReplacements } from './content-replacements';
-import { resolveFiles } from './resolve-files';
+import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 
 export type ExtractOptions = BasicPackageOptions & {
@@ -39,15 +39,20 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
   const result: ExtractResult = { added: 0, modified: 0, deleted: 0, skipped: 0 };
   try {
     // ── Phase 1: Resolve desired files ──────────────────────────────────────
-    let resolvedFiles: ResolvedFile[];
-    resolvedFiles = await resolveFiles(entries, { cwd, verbose, onProgress });
+    const resolved = await resolveFilesDetailed(entries, { cwd, verbose, onProgress });
+    const resolvedFiles = resolved.files;
 
     if (verbose) {
       console.log(`[verbose] actionExtract: resolved ${resolvedFiles.length} desired file(s)`);
     }
 
     // ── Phase 2: Calculate diff ──────────────────────────────────────────────
-    const diff = await calculateDiff(resolvedFiles, verbose, cwd);
+    const diff = await calculateDiff(
+      resolvedFiles,
+      verbose,
+      cwd,
+      resolved.relevantPackagesByOutputDir,
+    );
 
     if (verbose) {
       console.log(
