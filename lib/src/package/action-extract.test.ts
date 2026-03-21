@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { installMockPackage } from '../fileset/test-utils';
-import { readMarker } from '../fileset/markers';
+import { readMarker, writeMarker } from '../fileset/markers';
 import { MARKER_FILE } from '../fileset/constants';
 import { ProgressEvent } from '../types';
 
@@ -73,6 +73,74 @@ describe('actionExtract', () => {
     const marker = await readMarker(path.join(outputDir, MARKER_FILE));
     expect(marker.length).toBeGreaterThan(0);
     expect(marker[0].packageName).toBe('marker-pkg');
+  }, 60000);
+
+  it('tracks created symlinks in the marker file', async () => {
+    await installMockPackage('symlink-pkg', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'output');
+    await actionExtract({
+      entries: [
+        {
+          package: 'symlink-pkg',
+          output: {
+            path: outputDir,
+            gitignore: false,
+            symlinks: [{ source: 'docs/*.md', target: 'links' }],
+          },
+        },
+      ],
+      cwd: tmpDir,
+    });
+
+    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    expect(marker).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'docs/guide.md', kind: 'file' }),
+        expect.objectContaining({ path: 'links/guide.md', kind: 'symlink' }),
+      ]),
+    );
+  }, 60000);
+
+  it('removes only managed stale symlinks during extract', async () => {
+    await installMockPackage('symlink-stale-pkg', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'output');
+    const linksDir = path.join(outputDir, 'links');
+    fs.mkdirSync(linksDir, { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'docs-guide-placeholder.txt'), 'placeholder');
+    fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-managed.md'));
+    fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-unmanaged.md'));
+    await writeMarker(path.join(outputDir, MARKER_FILE), [
+      {
+        path: 'links/stale-managed.md',
+        packageName: 'symlink-stale-pkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+      },
+    ]);
+
+    await actionExtract({
+      entries: [
+        {
+          package: 'symlink-stale-pkg',
+          output: {
+            path: outputDir,
+            gitignore: false,
+            symlinks: [{ source: 'docs/*.md', target: 'links' }],
+          },
+        },
+      ],
+      cwd: tmpDir,
+    });
+
+    expect(fs.existsSync(path.join(linksDir, 'stale-managed.md'))).toBe(false);
+    expect(fs.existsSync(path.join(linksDir, 'stale-unmanaged.md'))).toBe(true);
+    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    expect(marker.some((entry) => entry.path === 'links/stale-managed.md')).toBe(false);
+    expect(
+      marker.some((entry) => entry.path === 'links/guide.md' && entry.kind === 'symlink'),
+    ).toBe(true);
   }, 60000);
 
   it('dry-run reports without writing', async () => {

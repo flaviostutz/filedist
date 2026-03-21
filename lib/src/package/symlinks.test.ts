@@ -2,7 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-import { createSymlinks, removeStaleSymlinks, removeAllSymlinks } from './symlinks';
+import {
+  collectManagedSymlinkEntries,
+  createSymlinks,
+  removeAllSymlinks,
+  removeStaleSymlinks,
+} from './symlinks';
 
 let tmpDir: string;
 
@@ -50,7 +55,7 @@ describe('createSymlinks', () => {
 });
 
 describe('removeStaleSymlinks', () => {
-  it('removes symlinks that no longer match their source glob', async () => {
+  it('removes only managed symlinks that are no longer desired', async () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
 
@@ -60,15 +65,22 @@ describe('removeStaleSymlinks', () => {
     // Create a stale symlink (source file no longer matches)
     const staleLink = path.join(targetDir, 'old.md');
     fs.symlinkSync('/dev/null', staleLink);
+    const unmanagedLink = path.join(targetDir, 'keep-unmanaged.md');
+    fs.symlinkSync('/dev/null', unmanagedLink);
 
-    // Source glob matches nothing in outputDir
-    await removeStaleSymlinks(outputDir, [{ source: 'does-not-match/**', target: 'links' }]);
+    const removed = await removeStaleSymlinks(
+      outputDir,
+      [{ path: 'links/old.md', packageName: 'pkg', packageVersion: '1.0.0', kind: 'symlink' }],
+      new Set(),
+    );
 
     // Stale symlink should be removed
     expect(fs.existsSync(staleLink)).toBe(false);
+    expect(fs.existsSync(unmanagedLink)).toBe(true);
+    expect(removed).toEqual(['links/old.md']);
   });
 
-  it('keeps symlinks that still match their source', async () => {
+  it('keeps managed symlinks that are still desired', async () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'docs', 'keep.md'), '# keep');
@@ -80,9 +92,60 @@ describe('removeStaleSymlinks', () => {
     const relTarget = path.relative(targetDir, path.join(outputDir, 'docs', 'keep.md'));
     fs.symlinkSync(relTarget, keepLink);
 
-    await removeStaleSymlinks(outputDir, [{ source: 'docs/*.md', target: 'links' }]);
+    const removed = await removeStaleSymlinks(
+      outputDir,
+      [{ path: 'links/keep.md', packageName: 'pkg', packageVersion: '1.0.0', kind: 'symlink' }],
+      new Set(['links/keep.md']),
+    );
 
     expect(fs.existsSync(keepLink) || fs.lstatSync(keepLink).isSymbolicLink()).toBe(true);
+    expect(removed).toEqual([]);
+  });
+});
+
+describe('collectManagedSymlinkEntries', () => {
+  it('returns marker entries for managed symlinks only', () => {
+    const outputDir = path.join(tmpDir, 'out');
+    fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'docs', 'guide.md'), '# guide');
+
+    const entries = collectManagedSymlinkEntries(outputDir, [
+      {
+        relPath: 'docs/guide.md',
+        sourcePath: path.join(tmpDir, 'pkg', 'docs', 'guide.md'),
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        outputDir,
+        managed: true,
+        gitignore: false,
+        force: false,
+        ignoreIfExisting: false,
+        contentReplacements: [],
+        symlinks: [{ source: 'docs/*.md', target: 'links' }],
+      },
+      {
+        relPath: 'docs/guide.md',
+        sourcePath: path.join(tmpDir, 'pkg', 'docs', 'guide.md'),
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        outputDir,
+        managed: false,
+        gitignore: false,
+        force: false,
+        ignoreIfExisting: false,
+        contentReplacements: [],
+        symlinks: [{ source: 'docs/*.md', target: 'other-links' }],
+      },
+    ]);
+
+    expect(entries).toEqual([
+      {
+        path: 'links/guide.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+      },
+    ]);
   });
 });
 

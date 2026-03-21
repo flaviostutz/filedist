@@ -2,12 +2,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { ResolvedFile, DiffResult, ProgressEvent, BasicPackageOptions } from '../types';
+import {
+  ResolvedFile,
+  DiffResult,
+  ProgressEvent,
+  BasicPackageOptions,
+  ManagedFileMetadata,
+} from '../types';
 import { cleanupTempPackageJson, ensureDir, formatDisplayPath } from '../utils';
 import { writeMarker, readOutputDirMarker, markerPath } from '../fileset/markers';
 import { addToGitignore, readManagedGitignoreEntries } from '../fileset/gitignore';
 
-import { createSymlinks, removeStaleSymlinks } from './symlinks';
+import {
+  collectManagedSymlinkEntries,
+  createSymlinks,
+  findManagedSymlinkEntries,
+  isManagedFileEntry,
+  removeStaleSymlinks,
+  uniqueSymlinkConfigs,
+} from './symlinks';
 import { applyContentReplacements } from './content-replacements';
 import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
@@ -81,7 +94,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
 
     // ── Count expected changes ─────────────────────────────────────────────
     result.added = diff.missing.length;
-    result.deleted = diff.extra.length;
+    result.deleted = diff.extra.filter((entry) => isManagedFileEntry(entry.existing!)).length;
     for (const entry of diff.conflict) {
       const desired = entry.desired!;
       if (desired.ignoreIfExisting || !desired.managed) {
@@ -99,23 +112,11 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
     // Collect unique output directories
     const outputDirs = new Set(resolvedFiles.map((f) => f.outputDir));
 
-    // Remove stale symlinks before writing new files
-    if (verbose) {
-      console.log(`[verbose] actionExtract: removing stale symlinks...`);
-    }
-    for (const outputDir of outputDirs) {
-      const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
-      const symlinks = dirFiles.flatMap((f) => f.symlinks);
-      if (symlinks.length > 0) {
-        await removeStaleSymlinks(outputDir, symlinks);
-      }
-    }
-
     // Delete extra managed files
     if (verbose) {
       console.log(`[verbose] actionExtract: removing extra managed files...`);
     }
-    for (const entry of diff.extra) {
+    for (const entry of diff.extra.filter((diffEntry) => isManagedFileEntry(diffEntry.existing!))) {
       const fullPath = path.join(entry.outputDir, entry.relPath);
       const gitignorePaths = readManagedGitignoreEntries(entry.outputDir);
       if (fs.existsSync(fullPath)) {
@@ -194,20 +195,36 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
       });
     }
 
-    // Update marker and gitignore per output directory
-    if (verbose) {
-      console.log(`[verbose] actionExtract: updating marker and gitignore...`);
-    }
-    for (const outputDir of outputDirs) {
-      await updateOutputDirMetadata(outputDir, diff, resolvedFiles, cwd, verbose);
-    }
-
     // Apply symlinks and content replacements per output directory
     if (verbose) {
       console.log(`[verbose] actionExtract: applying symlinks and content replacements...`);
     }
     for (const outputDir of outputDirs) {
       const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
+      const relevantPackages = resolved.relevantPackagesByOutputDir.get(outputDir);
+      const existingMarker = await readOutputDirMarker(outputDir);
+      const desiredSymlinkEntries = collectManagedSymlinkEntries(outputDir, dirFiles);
+      const desiredSymlinkPaths = new Set(desiredSymlinkEntries.map((entry) => entry.path));
+      const managedSymlinks = findManagedSymlinkEntries(existingMarker, relevantPackages);
+
+      if (managedSymlinks.length > 0) {
+        const removedSymlinkPaths = await removeStaleSymlinks(
+          outputDir,
+          managedSymlinks,
+          desiredSymlinkPaths,
+        );
+        result.deleted += removedSymlinkPaths.length;
+        for (const relPath of removedSymlinkPaths) {
+          onProgress?.({
+            type: 'file-deleted',
+            packageName: managedSymlinks.find((entry) => entry.path === relPath)?.packageName ?? '',
+            file: relPath,
+            managed: true,
+            gitignore: false,
+          });
+        }
+      }
+
       const symlinkConfigs = uniqueSymlinkConfigs(dirFiles);
       if (symlinkConfigs.length > 0) {
         await createSymlinks(outputDir, symlinkConfigs);
@@ -216,6 +233,16 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
       if (contentReplacements.length > 0) {
         await applyContentReplacements(outputDir, contentReplacements);
       }
+
+      await updateOutputDirMetadata(
+        outputDir,
+        diff,
+        dirFiles,
+        desiredSymlinkEntries,
+        relevantPackages,
+        cwd,
+        verbose,
+      );
     }
 
     if (verbose) {
@@ -247,6 +274,8 @@ async function updateOutputDirMetadata(
   outputDir: string,
   diff: DiffResult,
   resolvedFiles: ResolvedFile[],
+  desiredSymlinkEntries: ManagedFileMetadata[],
+  relevantPackages: Set<string> | undefined,
   cwd: string,
   verbose?: boolean,
 ): Promise<void> {
@@ -254,7 +283,9 @@ async function updateOutputDirMetadata(
 
   // Paths removed by this run (extra files that were deleted)
   const deletedPaths = new Set(
-    diff.extra.filter((e) => e.outputDir === outputDir).map((e) => e.relPath),
+    diff.extra
+      .filter((e) => e.outputDir === outputDir && isManagedFileEntry(e.existing!))
+      .map((e) => e.relPath),
   );
 
   // New or updated managed entries produced by this run
@@ -265,6 +296,7 @@ async function updateOutputDirMetadata(
         path: e.relPath,
         packageName: e.desired!.packageName,
         packageVersion: e.desired!.packageVersion,
+        kind: 'file' as const,
       })),
     ...diff.conflict
       .filter((e) => e.outputDir === outputDir && e.desired?.managed && !e.desired.ignoreIfExisting)
@@ -272,16 +304,26 @@ async function updateOutputDirMetadata(
         path: e.relPath,
         packageName: e.desired!.packageName,
         packageVersion: e.desired!.packageVersion,
+        kind: 'file' as const,
       })),
   ];
+
+  const currentRelevantPackages =
+    relevantPackages ?? new Set(resolvedFiles.map((file) => file.packageName));
 
   // Merge: keep existing (minus deleted + newly updated), then add new entries
   const updatedByPath = new Map(
     existingMarker
-      .filter((m) => !deletedPaths.has(m.path) && !addedEntries.some((e) => e.path === m.path))
+      .filter(
+        (m) =>
+          !deletedPaths.has(m.path) &&
+          !addedEntries.some((e) => e.path === m.path) &&
+          !((m.kind ?? 'file') === 'symlink' && currentRelevantPackages.has(m.packageName)),
+      )
       .map((m) => [m.path, m]),
   );
   for (const e of addedEntries) updatedByPath.set(e.path, e);
+  for (const entry of desiredSymlinkEntries) updatedByPath.set(entry.path, entry);
 
   const updatedEntries = [...updatedByPath.values()];
   await writeMarker(markerPath(outputDir), updatedEntries);
@@ -297,6 +339,7 @@ async function updateOutputDirMetadata(
     resolvedFiles.filter((f) => f.outputDir === outputDir).map((f) => [f.relPath, f]),
   );
   const gitignorePaths = updatedEntries
+    .filter((e) => (e.kind ?? 'file') !== 'symlink')
     .filter((e) => {
       const resolved = resolvedByPath.get(e.path);
       // For files resolved in this run, honour their gitignore setting.
@@ -306,20 +349,4 @@ async function updateOutputDirMetadata(
     .map((e) => e.path);
 
   await addToGitignore(outputDir, gitignorePaths);
-}
-
-/** Deduplicate SymlinkConfig objects by JSON representation. */
-function uniqueSymlinkConfigs(files: ResolvedFile[]): import('../types').SymlinkConfig[] {
-  const seen = new Set<string>();
-  const result: import('../types').SymlinkConfig[] = [];
-  for (const f of files) {
-    for (const s of f.symlinks) {
-      const key = JSON.stringify(s);
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(s);
-      }
-    }
-  }
-  return result;
 }

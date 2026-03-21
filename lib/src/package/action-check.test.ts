@@ -197,6 +197,72 @@ describe('actionCheck', () => {
     expect(result.conflict).toHaveLength(0);
   }, 60000);
 
+  it('does not report managed symlink marker entries as extra drift', async () => {
+    await installMockPackage(
+      'check-symlink-pkg',
+      '1.0.0',
+      { 'data/users-dataset/user1.json': '{"id":1}' },
+      tmpDir,
+    );
+
+    const outputDir = path.join(tmpDir, 'out-symlink');
+    fs.mkdirSync(path.join(outputDir, 'data', 'users-dataset'), { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'data', 'users-dataset', 'user1.json'), '{"id":1}');
+    fs.mkdirSync(path.join(outputDir, 'data-symlink'), { recursive: true });
+    fs.symlinkSync(
+      path.relative(
+        path.join(outputDir, 'data-symlink'),
+        path.join(outputDir, 'data', 'users-dataset'),
+      ),
+      path.join(outputDir, 'data-symlink', 'users-dataset'),
+    );
+    fs.symlinkSync(
+      path.relative(
+        path.join(outputDir, 'data-symlink'),
+        path.join(outputDir, 'data', 'users-dataset', 'user1.json'),
+      ),
+      path.join(outputDir, 'data-symlink', 'user1.json'),
+    );
+
+    await writeMarker(markerPath(outputDir), [
+      {
+        path: 'data/users-dataset/user1.json',
+        packageName: 'check-symlink-pkg',
+        packageVersion: '1.0.0',
+      },
+      {
+        path: 'data-symlink/users-dataset',
+        packageName: 'check-symlink-pkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+      },
+      {
+        path: 'data-symlink/user1.json',
+        packageName: 'check-symlink-pkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+      },
+    ]);
+
+    const result = await actionCheck({
+      entries: [
+        {
+          package: 'check-symlink-pkg@1.0.0',
+          selector: { files: ['data/**'] },
+          output: {
+            path: outputDir,
+            symlinks: [{ source: 'data/**', target: 'data-symlink' }],
+          },
+        },
+      ],
+      cwd: tmpDir,
+    });
+
+    expect(result.missing).toHaveLength(0);
+    expect(result.conflict).toHaveLength(0);
+    expect(result.extra).toHaveLength(0);
+  }, 60000);
+
   it('presets option filters which entries are checked', async () => {
     await installMockPackage('presets-docs-pkg', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
     await installMockPackage('presets-data-pkg', '1.0.0', { 'data/sample.csv': 'a,b' }, tmpDir);

@@ -220,6 +220,8 @@ export type ManagedFileMetadata = {
   packageName: string;
   /** Installed version at extraction time. */
   packageVersion: string;
+  /** Managed path type. Omitted in marker files for regular files. */
+  kind?: 'file' | 'symlink';
 };
 
 /**

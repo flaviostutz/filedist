@@ -4,6 +4,7 @@ import { cleanupTempPackageJson, formatDisplayPath } from '../utils';
 
 import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
+import { isManagedSymlinkEntry } from './symlinks';
 
 export type CheckOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
@@ -59,7 +60,11 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
     );
 
     summary.missing.push(...diff.missing.map((e) => e.relPath));
-    summary.extra.push(...diff.extra.map((e) => e.relPath));
+    summary.extra.push(
+      ...diff.extra
+        .filter((e) => !e.existing || !isManagedSymlinkEntry(e.existing))
+        .map((e) => e.relPath),
+    );
     // Only report conflicts where content or managed-state differ; gitignore-only
     // mismatches are not a data integrity issue.
     summary.conflict.push(

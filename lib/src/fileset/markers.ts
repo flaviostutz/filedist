@@ -23,6 +23,7 @@ export async function readMarker(markerFilePath: string): Promise<ManagedFileMet
       path: fields[0] ?? '',
       packageName: fields[1] ?? '',
       packageVersion: fields[2] ?? '',
+      kind: fields[3] === 'symlink' ? 'symlink' : 'file',
     };
   });
 }
@@ -48,7 +49,12 @@ export async function writeMarker(
     }
     return;
   }
-  const rows = entries.map((e) => `${e.path}|${e.packageName}|${e.packageVersion}`);
+  const rows = entries.map((e) => {
+    if (e.kind === 'symlink') {
+      return `${e.path}|${e.packageName}|${e.packageVersion}|symlink`;
+    }
+    return `${e.path}|${e.packageName}|${e.packageVersion}`;
+  });
   fs.writeFileSync(markerFilePath, `${rows.join('\n')}\n`, 'utf8');
   fs.chmodSync(markerFilePath, 0o444);
 }

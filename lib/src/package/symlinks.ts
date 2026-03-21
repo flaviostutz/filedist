@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { minimatch } from 'minimatch';
 
-import { SymlinkConfig } from '../types';
+import { ManagedFileMetadata, ResolvedFile, SymlinkConfig } from '../types';
 import { ensureDir } from '../utils';
 
 /**
@@ -35,34 +35,118 @@ export async function createSymlinks(outputDir: string, configs: SymlinkConfig[]
 }
 
 /**
- * Remove stale symlinks in outputDir that no longer match their source globs.
- * (Called at the start of each extract run before diffing.)
+ * Collect marker entries for managed symlinks created in an output directory.
+ *
+ * Symlink ownership is attributed to the package/config combination that declared
+ * the symlink operation. Duplicate output paths keep the first discovered owner.
  */
-export async function removeStaleSymlinks(
+export function collectManagedSymlinkEntries(
   outputDir: string,
-  configs: SymlinkConfig[],
-): Promise<void> {
-  for (const config of configs) {
-    const targetDir = path.resolve(outputDir, config.target);
-    if (!fs.existsSync(targetDir)) continue;
+  files: ResolvedFile[],
+): ManagedFileMetadata[] {
+  const uniqueConfigs = new Map<
+    string,
+    { packageName: string; packageVersion: string; config: SymlinkConfig }
+  >();
 
-    const currentMatches = new Set(
-      findMatchingPaths(outputDir, config.source).map((p) => path.basename(p)),
-    );
-
-    for (const entry of fs.readdirSync(targetDir)) {
-      const linkPath = path.join(targetDir, entry);
-      if (!isSymlink(linkPath)) continue;
-
-      if (!currentMatches.has(entry)) {
-        try {
-          fs.unlinkSync(linkPath);
-        } catch {
-          // ignore
-        }
+  for (const file of files) {
+    if (!file.managed) continue;
+    for (const config of file.symlinks) {
+      const key = `${file.packageName}|${file.packageVersion}|${JSON.stringify(config)}`;
+      if (!uniqueConfigs.has(key)) {
+        uniqueConfigs.set(key, {
+          packageName: file.packageName,
+          packageVersion: file.packageVersion,
+          config,
+        });
       }
     }
   }
+
+  const byPath = new Map<string, ManagedFileMetadata>();
+  for (const { packageName, packageVersion, config } of uniqueConfigs.values()) {
+    const targetDir = path.resolve(outputDir, config.target);
+    const matches = findMatchingPaths(outputDir, config.source);
+    for (const relPath of matches) {
+      const linkPath = path.join(targetDir, path.basename(relPath));
+      const linkRelPath = path.relative(outputDir, linkPath);
+      if (!byPath.has(linkRelPath)) {
+        byPath.set(linkRelPath, {
+          path: linkRelPath,
+          packageName,
+          packageVersion,
+          kind: 'symlink',
+        });
+      }
+    }
+  }
+
+  return [...byPath.values()];
+}
+
+/** Remove only marker-managed symlinks that are no longer desired for this run. */
+export async function removeStaleSymlinks(
+  outputDir: string,
+  managedEntries: ManagedFileMetadata[],
+  desiredPaths: Set<string>,
+): Promise<string[]> {
+  const removed: string[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of managedEntries) {
+    if ((entry.kind ?? 'file') !== 'symlink' || seen.has(entry.path)) continue;
+    seen.add(entry.path);
+    if (desiredPaths.has(entry.path)) continue;
+
+    const linkPath = path.join(outputDir, entry.path);
+    if (!isSymlink(linkPath)) continue;
+
+    try {
+      fs.unlinkSync(linkPath);
+      removed.push(entry.path);
+    } catch {
+      // eslint-disable-next-line no-console
+      console.log(`Failed to remove stale symlink at ${linkPath}`);
+      // ignore
+    }
+  }
+
+  return removed;
+}
+
+export function isManagedSymlinkEntry(entry: ManagedFileMetadata): boolean {
+  return (entry.kind ?? 'file') === 'symlink';
+}
+
+export function isManagedFileEntry(entry: ManagedFileMetadata): boolean {
+  return (entry.kind ?? 'file') !== 'symlink';
+}
+
+export function findManagedSymlinkEntries(
+  entries: ManagedFileMetadata[],
+  relevantPackages?: Set<string>,
+): ManagedFileMetadata[] {
+  return entries.filter(
+    (entry) =>
+      isManagedSymlinkEntry(entry) &&
+      (!relevantPackages || relevantPackages.has(entry.packageName)),
+  );
+}
+
+export function uniqueSymlinkConfigs(files: ResolvedFile[]): SymlinkConfig[] {
+  const seen = new Set<string>();
+  const result: SymlinkConfig[] = [];
+  for (const f of files) {
+    for (const s of f.symlinks) {
+      const key = JSON.stringify(s);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(s);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**

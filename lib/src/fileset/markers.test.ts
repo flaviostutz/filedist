@@ -33,11 +33,17 @@ describe('readMarker', () => {
     fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0\ndocs/guide.md|mypkg|1.0.0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ path: 'README.md', packageName: 'mypkg', packageVersion: '1.0.0' });
+    expect(result[0]).toEqual({
+      path: 'README.md',
+      packageName: 'mypkg',
+      packageVersion: '1.0.0',
+      kind: 'file',
+    });
     expect(result[1]).toEqual({
       path: 'docs/guide.md',
       packageName: 'mypkg',
       packageVersion: '1.0.0',
+      kind: 'file',
     });
   });
 
@@ -57,6 +63,7 @@ describe('readMarker', () => {
     expect(result[0].path).toBe('only-path');
     expect(result[0].packageName).toBe('');
     expect(result[0].packageVersion).toBe('');
+    expect(result[0].kind).toBe('file');
   });
 
   it('correctly parses file paths that contain commas', async () => {
@@ -68,6 +75,21 @@ describe('readMarker', () => {
     expect(result[0].path).toBe('src/my,util.ts');
     expect(result[0].packageName).toBe('mypkg');
     expect(result[0].packageVersion).toBe('1.0.0');
+    expect(result[0].kind).toBe('file');
+  });
+
+  it('parses symlink entries with a kind field', async () => {
+    const mPath = path.join(tmpDir, '.npmdata');
+    fs.writeFileSync(mPath, 'links/guide.md|mypkg|1.0.0|symlink\n');
+    const result = await readMarker(mPath);
+    expect(result).toEqual([
+      {
+        path: 'links/guide.md',
+        packageName: 'mypkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+      },
+    ]);
   });
 });
 
@@ -84,6 +106,16 @@ describe('writeMarker', () => {
     // read-only: owner write bit should be off
 
     expect(stat.mode & 0o200).toBe(0);
+  });
+
+  it('writes symlink entries with an explicit kind field', async () => {
+    const mPath = path.join(tmpDir, '.npmdata');
+    await writeMarker(mPath, [
+      { path: 'links/README.md', packageName: 'mypkg', packageVersion: '1.2.3', kind: 'symlink' },
+    ]);
+
+    const content = fs.readFileSync(mPath, 'utf8');
+    expect(content).toContain('links/README.md|mypkg|1.2.3|symlink');
   });
 
   it('removes existing marker file when writing empty entries', async () => {
