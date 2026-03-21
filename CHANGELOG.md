@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.15 (2026-03-21)
+
+### Maintenance
+
+* release: 0.18.14 [[a61e185](https://github.com/flaviostutz/npmdata/commit/a61e1850eceaa7da882be46c209d6b76c53cbaa2)]
+* adding only ts files to package [[5aa2369](https://github.com/flaviostutz/npmdata/commit/5aa23694014d636ae6f232ddd3de569141a1057e)]
+* increase verbosity in extract [[b2fe8a0](https://github.com/flaviostutz/npmdata/commit/b2fe8a0b57b8ebc5205aec38e2d5065095e92b31)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.18.14 (2026-03-21)
 
 ### Maintenance
