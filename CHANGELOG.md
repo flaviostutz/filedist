@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.18.14 (2026-03-21)
+
+### Maintenance
+
+* release: 0.18.13 [[2c50a14](https://github.com/flaviostutz/npmdata/commit/2c50a1405177e9ddbb3fd79aee2d3602af0e2449)]
+* fix left overs on extract sync [[87069ce](https://github.com/flaviostutz/npmdata/commit/87069cebd2a17e0b79f872c6c2fa7269182e77a3)]
+
+### Misc
+
+
+### Info
+
+* Authors: Flavio Stutz <flaviostutz@gmail.com>
+
+
 ## 0.18.13 (2026-03-20)
 
 ### Maintenance
