@@ -1,10 +1,15 @@
 /**
  * Internal parsed representation of an npm package specifier.
  */
+export type SourceKind = 'auto' | 'npm' | 'git';
+
+/**
+ * Internal parsed representation of a package specifier.
+ */
 export type PackageConfig = {
-  /** npm package name (e.g. "my-pkg" or "@scope/my-pkg") */
+  /** Package name or repository URL. */
   name: string;
-  /** Semver range constraint. Absent means "latest". */
+  /** Version/range for npm packages, or git ref for git sources. */
   version?: string;
 };
 
@@ -137,6 +142,8 @@ export type NpmdataExtractEntry = {
    * self-package entry — files are drawn from the package that owns this sets array.
    */
   package?: string;
+  /** Resolve package from npm, git, or auto-detect from the package spec. */
+  source?: SourceKind;
   /** Where/how to write files. Defaults to current directory with no special flags. */
   output?: OutputConfig;
   /** Which files to select and install options. */

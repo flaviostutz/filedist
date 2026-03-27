@@ -31,6 +31,16 @@ describe('parseArgv', () => {
     ]);
   });
 
+  it('parses --source', () => {
+    expect(parseArgv(['--source', 'git']).source).toBe('git');
+    expect(parseArgv(['--source', 'npm']).source).toBe('npm');
+    expect(parseArgv(['--source', 'auto']).source).toBe('auto');
+  });
+
+  it('throws on invalid --source', () => {
+    expect(() => parseArgv(['--source', 'svn'])).toThrow('--source must be one of: auto, npm, git');
+  });
+
   it('parses --output / -o', () => {
     expect(parseArgv(['--output', './out']).output).toBe('./out');
     expect(parseArgv(['-o', './out']).output).toBe('./out');
@@ -115,6 +125,13 @@ describe('buildEntriesFromArgv', () => {
     expect(entries).toHaveLength(1);
     expect(entries![0].package).toBe('my-pkg@1.0.0');
     expect(entries![0].output!.path).toBe('./out');
+  });
+
+  it('builds entries with an explicit source', () => {
+    const parsed = parseArgv(['--packages', 'https://example.com/repo@main', '--source', 'git']);
+    const entries = buildEntriesFromArgv(parsed);
+    expect(entries![0].package).toBe('https://example.com/repo@main');
+    expect(entries![0].source).toBe('git');
   });
 
   it('leaves output path undefined when --output is not set', () => {
@@ -247,5 +264,11 @@ describe('applyArgvOverrides', () => {
     const parsed = parseArgv(['--verbose', '--packages', 'test-pkg']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].verbose).toBe(true);
+  });
+
+  it('applies --source override', () => {
+    const parsed = parseArgv(['--source', 'git', '--packages', 'test-pkg']);
+    const result = applyArgvOverrides([baseEntry], parsed);
+    expect(result[0].source).toBe('git');
   });
 });

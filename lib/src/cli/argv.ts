@@ -5,6 +5,7 @@ import {
   NpmdataExtractEntry,
   SelectorConfig,
   OutputConfig,
+  SourceKind,
 } from '../types';
 import { parsePackageSpec, filterEntriesByPresets } from '../utils';
 
@@ -15,6 +16,7 @@ import { parsePackageSpec, filterEntriesByPresets } from '../utils';
  */
 export type ParsedArgv = {
   packages?: PackageConfig[];
+  source?: SourceKind;
   output?: string;
   files?: string[];
   exclude?: string[];
@@ -77,9 +79,19 @@ export function parseArgv(argv: string[]): ParsedArgv {
   const packages = packagesRaw?.map((s) => parsePackageSpec(s));
 
   const verboseFlag = getBoolFlag('--verbose');
+  const sourceValue = getValue('--source');
+  if (
+    sourceValue !== undefined &&
+    sourceValue !== 'auto' &&
+    sourceValue !== 'npm' &&
+    sourceValue !== 'git'
+  ) {
+    throw new Error('--source must be one of: auto, npm, git');
+  }
 
   return {
     packages,
+    source: sourceValue as SourceKind | undefined,
     output: getValue('--output', '-o'),
     files: getCommaSplit('--files'),
     exclude: getCommaSplit('--exclude'),
@@ -130,6 +142,7 @@ export function buildEntriesFromArgv(parsed: ParsedArgv): NpmdataExtractEntry[] 
 
   return parsed.packages.map((pkg) => ({
     package: pkg.version ? `${pkg.name}@${pkg.version}` : pkg.name,
+    ...(parsed.source !== undefined ? { source: parsed.source } : {}),
     output,
     selector,
     ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),
@@ -167,6 +180,7 @@ export function applyArgvOverrides(
 
     return {
       ...entry,
+      ...(parsed.source !== undefined ? { source: parsed.source } : {}),
       output: updatedOutput,
       selector: updatedSelector,
       ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),

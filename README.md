@@ -1,12 +1,15 @@
 # npmdata
 
-Publish folders as npm packages and extract them in any workspace. Distribute shared assets — ML datasets, documentation, ADRs, configuration files — across multiple projects through any npm-compatible registry.
+Publish folders as npm packages or git repositories and extract them in any workspace. Distribute shared assets — ML datasets, documentation, ADRs, configuration files — across multiple projects through any npm-compatible registry or directly from git.
 
 ## Getting Started
 
 ```sh
 # extract files from any npm package into a local directory
 npx npmdata extract --packages my-shared-assets@^2.0.0 --output ./data
+
+# extract directly from git (auto-detected from the URL-like spec)
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 ```typescript
@@ -15,10 +18,16 @@ import type { NpmdataExtractEntry } from 'npmdata';
 
 const entries: NpmdataExtractEntry[] = [
   { package: 'my-shared-assets@^2.0.0', output: { path: './data' } },
+  {
+    package: 'https://github.com/flaviostutz/xdrs-core@1.3.0',
+    output: { path: './xdrs' },
+  },
 ];
 const result = await actionExtract({ entries, cwd: process.cwd() });
 console.log(result.added, result.modified, result.deleted);
 ```
+
+Git sources are detected automatically when `package` uses a URL-like git spec (`https://`, `ssh://`, `git://`, `file://`, or `git@...`). Set `source: "git"` only when you want to force git resolution explicitly.
 
 ---
 
@@ -34,16 +43,17 @@ console.log(result.added, result.modified, result.deleted);
 Pull files directly without any setup:
 
 ```sh
+# npm package examples
 npx npmdata extract --packages my-shared-assets@^2.0.0 --output ./data
-
-# filter by glob pattern
 npx npmdata extract --packages my-shared-assets --files "**/*.md" --output ./docs
-
-# filter by file content
 npx npmdata extract --packages my-shared-assets --content-regex "env: production" --output ./configs
-
-# preview without writing
 npx npmdata extract --packages my-shared-assets --output ./data --dry-run
+
+# git source examples
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
 ```
 
 ---
@@ -59,6 +69,21 @@ Declare sources in `.npmdatarc` (or `package.json`) and run `extract` without `-
       "package": "base-datasets@^3.0.0",
       "selector": { "files": ["datasets/**"] },
       "output": { "path": "./data" }
+    },
+    {
+      "package": "org-templates@^1.2.0",
+      "selector": { "files": ["templates/**"] },
+      "output": { "path": "./templates" }
+    },
+    {
+      "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+      "selector": { "files": ["docs/**"] },
+      "output": { "path": "./xdrs" }
+    },
+    {
+      "package": "file:///absolute/path/to/local-repo@v2.0.0",
+      "selector": { "files": ["conf/**"] },
+      "output": { "path": "./local-conf" }
     }
   ]
 }
@@ -82,6 +107,8 @@ After `extract`, the output directory will contain the selected files alongside 
 
 Config is resolved looking at files: `package.json` (`"npmdata"` key), `.npmdatarc`, `.npmdatarc.json`, `.npmdatarc.yaml`, or `npmdata.config.js`. Pass `--config <file>` to point to an explicit config file and skip auto-discovery.
 
+The same config file can mix npm packages and git repositories. Git entries can omit `source` when the package spec is URL-like; npmdata auto-detects them as git.
+
 ---
 
 ## Scenario 3 — Data package (curated bundle for consumers)
@@ -94,8 +121,8 @@ A data package bundles, filters, and versions content from multiple upstream sou
 # in the data package directory
 pnpm dlx npmdata init --files "docs/**,data/**"
 
-# also pull from upstream packages
-pnpm dlx npmdata init --files "docs/**" --packages "shared-configs@^1.0.0,base-templates@2.x"
+# also pull from upstream npm packages and git repositories
+pnpm dlx npmdata init --files "docs/**" --packages "shared-configs@^1.0.0,https://github.com/flaviostutz/xdrs-core@1.3.0"
 ```
 
 `init` updates `package.json` with the right `files`, `bin`, and `dependencies` and writes a `bin/npmdata.js` entry point. Then:
@@ -131,6 +158,12 @@ npm publish
         },
         "output": { "path": "./configs" },
         "presets": ["prod", "staging"]
+      },
+      {
+        "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+        "selector": { "files": ["docs/**"] },
+        "output": { "path": "./xdrs" },
+        "presets": ["prod"]
       }
     ]
   }
@@ -163,8 +196,15 @@ npx npmdata extract --packages "pkg-a,pkg-b@1.x" --output ./data  # multiple pac
 npx npmdata extract --packages my-pkg --output ./data --force   # overwrite existing files
 npx npmdata extract --packages my-pkg --output ./data --managed=false  # skip tracking
 npx npmdata extract --packages my-pkg@latest --output ./data --upgrade  # force reinstall
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs   # git source, auto-detected
+npx npmdata extract --packages "https://github.com/org/repo-a@v1.0.0,file:///tmp/repo-b@main" --output ./git-data  # multiple git sources
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force   # overwrite existing files
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false  # skip tracking
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade  # force a fresh clone/check-out
 npx npmdata extract --packages my-pkg --output ./data --gitignore=false  # skip .gitignore
 npx npmdata extract --packages my-pkg --output ./data --dry-run  # preview only
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
+npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run  # preview only
 ```
 
 `extract` logs every file change:
@@ -203,7 +243,8 @@ Each entry in `npmdata.sets` supports:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `package` | `string` | none | Package spec for external entries: `my-pkg` or `my-pkg@^1.2.3`. Omit it inside a package's own `npmdata.sets` to refer to that package's own files |
+| `package` | `string` | none | Source spec for external entries: npm (`my-pkg`, `my-pkg@^1.2.3`) or git (`https://host/org/repo@ref`) |
+| `source` | `auto \| npm \| git` | `auto` | Force the source type. `auto` detects git from URL-like specs and otherwise uses npm |
 | `presets` | `string[]` | none | Tags this entry so it is included only when the matching `--presets <tag>` flag is used. Listed by `npmdata presets` |
 | `output.path` | `string` | `.` (cwd) | Extraction directory, relative to where the command runs |
 | `selector.files` | `string[]` | all files | Glob patterns to filter extracted files |
@@ -242,7 +283,7 @@ Applies regex replacements to workspace files after extraction.
 
 ## Hierarchical package resolution
 
-`extract`, `check`, and `purge` are all hierarchy-aware: when a target package carries its own `npmdata.sets` block in its `package.json`, the command automatically recurses into those transitive dependencies.
+`extract`, `check`, and `purge` are all hierarchy-aware: when a target package or git repository carries its own `npmdata.sets` block in its `package.json` or `.npmdatarc*`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -255,6 +296,8 @@ consumer project
 ```
 
 Running `npx npmdata extract --packages my-org-configs --output ./data` extracts files from every package in the chain, not just `my-org-configs` itself. Running `check` or `purge` with the same arguments mirrors what `extract` originally covered.
+
+For git sources, npmdata clones each repository into `.npmdata-tmp` under the working directory, adds that path to `.gitignore` if needed, reads nested `npmdata` config from the cloned repository, and removes `.npmdata-tmp` after the command finishes.
 
 ### Output path resolution
 
@@ -310,6 +353,7 @@ Init:     --files <patterns>    Glob patterns of files to publish
           --output, -o <dir>    Directory to scaffold into (default: cwd)
 
 Extract:  --packages <specs>    Package specs (omit to read from config file)
+          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Output directory (default: cwd)
           --files <patterns>    Filter files by glob
           --content-regex <rx>  Filter files by content
@@ -325,11 +369,13 @@ Extract:  --packages <specs>    Package specs (omit to read from config file)
           --silent              Final result line only
 
 Check:    --packages <specs>    Same format as extract
+          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Directory to check
           --presets <tags>      Only check entries matching these preset tags
           --config <file>       Explicit config file path (overrides auto-discovery)
 
 Purge:    --packages <specs>    Package names to purge
+          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Directory to purge from
           --dry-run             Preview without deleting
           --presets <tags>      Only purge entries matching these preset tags

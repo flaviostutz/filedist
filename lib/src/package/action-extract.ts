@@ -24,6 +24,7 @@ import {
 import { applyContentReplacements } from './content-replacements';
 import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
+import { createSourceRuntime } from './source';
 
 export type ExtractOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
@@ -48,11 +49,17 @@ export type ExtractResult = {
 export async function actionExtract(options: ExtractOptions): Promise<ExtractResult> {
   const { entries, cwd, verbose = false, onProgress, dryRun } = options;
   const isDryRun = dryRun ?? entries.some((e) => e.output?.dryRun === true);
+  const sourceRuntime = createSourceRuntime(cwd, verbose);
 
   const result: ExtractResult = { added: 0, modified: 0, deleted: 0, skipped: 0 };
   try {
     // ── Phase 1: Resolve desired files ──────────────────────────────────────
-    const resolved = await resolveFilesDetailed(entries, { cwd, verbose, onProgress });
+    const resolved = await resolveFilesDetailed(entries, {
+      cwd,
+      verbose,
+      onProgress,
+      sourceRuntime,
+    });
     const resolvedFiles = resolved.files;
 
     if (verbose) {
@@ -254,6 +261,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
 
     return result;
   } finally {
+    sourceRuntime.cleanup();
     cleanupTempPackageJson(cwd, verbose);
   }
 }
