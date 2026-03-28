@@ -2,7 +2,7 @@
 import path from 'node:path';
 
 import {
-  NpmdataExtractEntry,
+  FiledistExtractEntry,
   OutputConfig,
   SelectorConfig,
   ResolvedFile,
@@ -11,7 +11,7 @@ import {
 import { filterEntriesByPresets, formatDisplayPath } from '../utils';
 import { enumeratePackageFiles } from '../fileset/package-files';
 
-import { loadNpmdataConfigFromDirectory } from './config';
+import { loadFiledistConfigFromDirectory } from './config';
 import { mergeOutputConfig, mergeSelectorConfig } from './config-merge';
 import { createSourceRuntime, parsePackageTarget, SourceRuntime } from './source';
 
@@ -46,7 +46,7 @@ function markNoSyncOutput(noSyncOutputDirs: Set<string>, outputDir: string, noSy
 
 /** Unique key for an entry used for recursion-cycle detection. */
 function entryKey(
-  entry: NpmdataExtractEntry,
+  entry: FiledistExtractEntry,
   output: OutputConfig,
   selector: SelectorConfig,
   currentPkgPath?: string,
@@ -62,14 +62,14 @@ function entryKey(
  *  - Self-package entry (no `package` field): enumerates files directly from the
  *    package context provided by the parent recursion level.
  *  - External-package entry (`package` field set): installs the package, reads its
- *    npmdata.sets, and recurses; when the package has no sets, files are enumerated
+ *    filedist.sets, and recurses; when the package has no sets, files are enumerated
  *    directly (leaf behaviour).
  *
  * Duplicate (outputDir, relPath) pairs are deduplicated; conflicting managed/gitignore
  * settings for the same destination path throw an error.
  */
 export async function resolveFiles(
-  entries: NpmdataExtractEntry[],
+  entries: FiledistExtractEntry[],
   options: ResolveOptions,
 ): Promise<ResolvedFile[]> {
   const result = await resolveFilesDetailed(entries, options);
@@ -77,7 +77,7 @@ export async function resolveFiles(
 }
 
 export async function resolveFilesDetailed(
-  entries: NpmdataExtractEntry[],
+  entries: FiledistExtractEntry[],
   options: ResolveOptions,
 ): Promise<ResolveFilesDetailedResult> {
   const visited = new Set<string>();
@@ -108,7 +108,7 @@ export async function resolveFilesDetailed(
 
 // eslint-disable-next-line complexity
 async function resolveFilesInternal(
-  entries: NpmdataExtractEntry[],
+  entries: FiledistExtractEntry[],
   inheritedOutput: OutputConfig,
   inheritedSelector: SelectorConfig,
   currentPkgPath: string | undefined,
@@ -150,7 +150,7 @@ async function resolveFilesInternal(
       if (!currentPkgPath || !currentPkgName) {
         throw new Error(
           'A self-package entry (no "package" field) can only appear inside a ' +
-            "package's own npmdata.sets.",
+            "package's own filedist.sets.",
         );
       }
 
@@ -198,14 +198,14 @@ async function resolveFilesInternal(
         );
       }
 
-      // Check whether this package declares its own npmdata.sets
-      const depConfig = await loadNpmdataConfigFromDirectory(pkgPath);
-      const pkgNpmdataSets = depConfig?.sets;
+      // Check whether this package declares its own filedist.sets
+      const depConfig = await loadFiledistConfigFromDirectory(pkgPath);
+      const pkgFiledistSets = depConfig?.sets;
 
       const outputDir = path.resolve(cwd, mergedOutput.path ?? '.');
       addRelevantPackage(relevantPackagesByOutputDir, outputDir, resolvedPackage.packageName);
       markNoSyncOutput(noSyncOutputDirs, outputDir, mergedOutput.noSync === true);
-      const hasSelfSet = (pkgNpmdataSets ?? []).some((setEntry) => !setEntry.package);
+      const hasSelfSet = (pkgFiledistSets ?? []).some((setEntry) => !setEntry.package);
 
       // When a package declares self sets, those sets define how its own files are split
       // across outputs and managed flags. In that case, skip the blanket own-file pass.
@@ -230,8 +230,8 @@ async function resolveFilesInternal(
         );
       }
 
-      if (pkgNpmdataSets && pkgNpmdataSets.length > 0) {
-        for (const pkgSet of pkgNpmdataSets) {
+      if (pkgFiledistSets && pkgFiledistSets.length > 0) {
+        for (const pkgSet of pkgFiledistSets) {
           const setOutput = mergeOutputConfig(mergedOutput, pkgSet.output ?? {});
           const setOutputDir = path.resolve(cwd, setOutput.path ?? '.');
           markNoSyncOutput(noSyncOutputDirs, setOutputDir, setOutput.noSync === true);
@@ -251,12 +251,12 @@ async function resolveFilesInternal(
         }
 
         // Apply preset filter
-        const presetFilteredSets = filterEntriesByPresets(pkgNpmdataSets, mergedSelector.presets);
+        const presetFilteredSets = filterEntriesByPresets(pkgFiledistSets, mergedSelector.presets);
 
         if (
           mergedSelector.presets &&
           mergedSelector.presets.length > 0 &&
-          pkgNpmdataSets.length > 0 &&
+          pkgFiledistSets.length > 0 &&
           presetFilteredSets.length === 0
         ) {
           throw new Error(
@@ -265,7 +265,7 @@ async function resolveFilesInternal(
         }
 
         // Preemptively mark preset-excluded sets as visited
-        for (const e of pkgNpmdataSets) {
+        for (const e of pkgFiledistSets) {
           if (!presetFilteredSets.includes(e)) {
             const presetMergedOutput = mergeOutputConfig(mergedOutput, e.output ?? {});
             const presetMergedSelector = mergeSelectorConfig(mergedSelector, e.selector ?? {});
@@ -283,7 +283,7 @@ async function resolveFilesInternal(
 
         if (verbose && setsToFollow.length > 0) {
           console.log(
-            `[verbose] resolveFiles: "${resolvedPackage.packageName}" has ${pkgNpmdataSets.length} set(s)` +
+            `[verbose] resolveFiles: "${resolvedPackage.packageName}" has ${pkgFiledistSets.length} set(s)` +
               `, ${setsToFollow.length} to follow after preset/self-ref filter`,
           );
         }

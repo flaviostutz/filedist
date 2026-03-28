@@ -38,7 +38,7 @@ export async function enumeratePackageFiles(
     return [];
   }
 
-  // `selector.presets` is purely for filtering recursive npmdata.sets; it has no effect on
+  // `selector.presets` is purely for filtering recursive filedist.sets; it has no effect on
   // which files are selected from the package itself.  When presets is specified without an
   // explicit `files` pattern the caller intends only set-level recursion, so we return an
   // empty list to avoid accidentally pulling in every file via DEFAULT_FILE_PATTERNS.

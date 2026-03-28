@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 
 import { actionList } from '../../package/action-list';
-import { NpmdataConfig, ManagedFileMetadata } from '../../types';
+import { FiledistConfig, ManagedFileMetadata } from '../../types';
 import { printUsage } from '../usage';
 
 import { runList } from './list';
@@ -14,7 +14,7 @@ jest.mock('../../package/action-list', () => ({
 const mockPrintUsage = printUsage as jest.MockedFunction<typeof printUsage>;
 const mockActionList = actionList as jest.MockedFunction<typeof actionList>;
 
-const CONFIG: NpmdataConfig = {
+const CONFIG: FiledistConfig = {
   sets: [{ package: 'my-pkg@1.0.0', output: { path: './out', gitignore: false } }],
 };
 

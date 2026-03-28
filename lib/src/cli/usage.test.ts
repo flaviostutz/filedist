@@ -17,13 +17,13 @@ describe('printUsage', () => {
 
   it('prints extract usage when no command is given (default)', () => {
     printUsage();
-    expect(lines.join('\n')).toMatch(/npmdata.*extract/i);
+    expect(lines.join('\n')).toMatch(/filedist.*extract/i);
     expect(lines.join('\n')).toMatch(/--packages/);
   });
 
   it('prints extract usage when command is "extract"', () => {
     printUsage('extract');
-    expect(lines.join('\n')).toMatch(/npmdata.*extract/i);
+    expect(lines.join('\n')).toMatch(/filedist.*extract/i);
     expect(lines.join('\n')).toMatch(/--output/);
     expect(lines.join('\n')).toMatch(/--nosync/);
     expect(lines.join('\n')).toMatch(/--source/);
@@ -31,31 +31,31 @@ describe('printUsage', () => {
 
   it('prints check usage when command is "check"', () => {
     printUsage('check');
-    expect(lines.join('\n')).toMatch(/npmdata check/i);
+    expect(lines.join('\n')).toMatch(/filedist check/i);
     expect(lines.join('\n')).toMatch(/drift detected/i);
   });
 
   it('prints list usage when command is "list"', () => {
     printUsage('list');
-    expect(lines.join('\n')).toMatch(/npmdata list/i);
+    expect(lines.join('\n')).toMatch(/filedist list/i);
     expect(lines.join('\n')).toMatch(/currently managed/i);
   });
 
   it('prints purge usage when command is "purge"', () => {
     printUsage('purge');
-    expect(lines.join('\n')).toMatch(/npmdata purge/i);
+    expect(lines.join('\n')).toMatch(/filedist purge/i);
     expect(lines.join('\n')).toMatch(/remove/i);
   });
 
   it('prints init usage when command is "init"', () => {
     printUsage('init');
-    expect(lines.join('\n')).toMatch(/npmdata init/i);
+    expect(lines.join('\n')).toMatch(/filedist init/i);
     expect(lines.join('\n')).toMatch(/package\.json/i);
   });
 
   it('prints general usage for an unknown command', () => {
     printUsage('unknown');
-    expect(lines.join('\n')).toMatch(/npmdata.*command/i);
+    expect(lines.join('\n')).toMatch(/filedist.*command/i);
     expect(lines.join('\n')).toMatch(/extract.*default/i);
   });
 });

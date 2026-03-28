@@ -11,7 +11,7 @@ import { installMockPackage } from './test-utils';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-check-test-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-check-test-'));
 });
 
 afterEach(() => {

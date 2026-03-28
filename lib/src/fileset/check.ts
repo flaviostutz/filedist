@@ -22,7 +22,7 @@ import { enumeratePackageFiles } from './package-files';
  * @param outputDir     Absolute path to the output directory.
  * @param selector      SelectorConfig controlling which package files are in scope.
  * @param outputConfig  OutputConfig (used for contentReplacements).
- * @param marker        Managed file entries from the .npmdata marker.
+ * @param marker        Managed file entries from the .filedist marker.
  * @returns CheckResult with missing, modified, and extra arrays.
  */
 export async function checkFileset(

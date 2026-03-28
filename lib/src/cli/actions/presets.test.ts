@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/no-null */
 
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { printUsage } from '../usage';
 
 import { runPresets } from './presets';
@@ -9,7 +9,7 @@ jest.mock('../usage', () => ({ printUsage: jest.fn() }));
 
 const mockPrintUsage = printUsage as jest.MockedFunction<typeof printUsage>;
 
-const CONFIG: NpmdataConfig = {
+const CONFIG: FiledistConfig = {
   sets: [
     {
       package: 'pkg-a@1.0.0',
@@ -65,7 +65,7 @@ describe('runPresets — preset listing', () => {
   });
 
   it('deduplicates presets across multiple entries', async () => {
-    const cfg: NpmdataConfig = {
+    const cfg: FiledistConfig = {
       sets: [
         { package: 'a', presets: ['foo', 'bar'] },
         { package: 'b', presets: ['foo'] },
@@ -81,7 +81,7 @@ describe('runPresets — preset listing', () => {
   });
 
   it('does not list selector-level presets (those are internal CLI-args convention)', async () => {
-    const cfg: NpmdataConfig = {
+    const cfg: FiledistConfig = {
       sets: [{ package: 'a', selector: { presets: ['internal-only'] } }],
     };
     const lines: string[] = [];
@@ -94,7 +94,7 @@ describe('runPresets — preset listing', () => {
   });
 
   it('prints message when no presets are defined', async () => {
-    const cfg: NpmdataConfig = { sets: [{ package: 'a' }] };
+    const cfg: FiledistConfig = { sets: [{ package: 'a' }] };
     const lines: string[] = [];
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));

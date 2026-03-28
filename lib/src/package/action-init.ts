@@ -6,19 +6,19 @@ import { execSync } from 'node:child_process';
 import { detect } from 'package-manager-detector/detect';
 import { resolveCommand } from 'package-manager-detector/commands';
 
-import { NpmdataExtractEntry } from '../types';
+import { FiledistExtractEntry } from '../types';
 
 export type InitConfig = {
   /** File glob patterns to include in the package and use as selector for filesets. */
   files?: string[];
-  /** External package specs (e.g. "eslint@8") to add as npmdata sets and dependencies. */
+  /** External package specs (e.g. "eslint@8") to add as filedist sets and dependencies. */
   packages?: string[];
 };
 
 /**
  * Scaffold or update a publishable npm data package.
  * If package.json already exists, updates it in place.
- * Creates bin/npmdata.js if it does not already exist.
+ * Creates bin/filedist.js if it does not already exist.
  */
 export async function actionInit(
   outputDir: string,
@@ -27,9 +27,9 @@ export async function actionInit(
 ): Promise<void> {
   const pkgJsonPath = path.join(outputDir, 'package.json');
   const binDir = path.join(outputDir, 'bin');
-  const binPath = path.join(binDir, 'npmdata.js');
+  const binPath = path.join(binDir, 'filedist.js');
 
-  const binShim = `#!/usr/bin/env node\n'use strict';\nrequire('npmdata').binpkg(__dirname, process.argv.slice(2));\n`;
+  const binShim = `#!/usr/bin/env node\n'use strict';\nrequire('filedist').binpkg(__dirname, process.argv.slice(2));\n`;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -51,40 +51,40 @@ export async function actionInit(
   const externalPackages = config?.packages ?? [];
 
   // Set bin entry
-  pkgJson.bin = 'bin/npmdata.js';
+  pkgJson.bin = 'bin/filedist.js';
 
   // Update npm files list to include data patterns and the bin shim
-  const npmFiles = new Set<string>([...filePatterns, 'package.json', 'bin/npmdata.js']);
+  const npmFiles = new Set<string>([...filePatterns, 'package.json', 'bin/filedist.js']);
   pkgJson.files = Array.from(npmFiles);
 
-  // Build npmdata sets: self entry first (no package field), then external packages
-  const selfEntry: NpmdataExtractEntry = {
+  // Build filedist sets: self entry first (no package field), then external packages
+  const selfEntry: FiledistExtractEntry = {
     output: { path: '.' },
     ...(filePatterns.length > 0 ? { selector: { files: filePatterns } } : {}),
   };
-  const externalEntries: NpmdataExtractEntry[] = externalPackages.map((pkg) => ({
+  const externalEntries: FiledistExtractEntry[] = externalPackages.map((pkg) => ({
     package: pkg,
     output: { path: '.' },
     ...(filePatterns.length > 0 ? { selector: { files: filePatterns } } : {}),
   }));
-  pkgJson.npmdata = { sets: [selfEntry, ...externalEntries] };
+  pkgJson.filedist = { sets: [selfEntry, ...externalEntries] };
 
   // Write updated package.json (dependencies are managed by the `add` command below)
   // eslint-disable-next-line unicorn/no-null
   fs.writeFileSync(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`, 'utf8');
 
-  // Create bin/npmdata.js only if it does not already exist
+  // Create bin/filedist.js only if it does not already exist
   if (!fs.existsSync(binPath)) {
     fs.mkdirSync(binDir, { recursive: true });
     fs.writeFileSync(binPath, binShim, 'utf8');
     fs.chmodSync(binPath, 0o755);
   }
 
-  // Add npmdata + any external packages via the package manager so the lockfile
+  // Add filedist + any external packages via the package manager so the lockfile
   // and package.json dependencies are updated with the correct resolved versions.
   const detected = await detect({ cwd: outputDir });
   const agent = detected?.agent ?? 'npm';
-  const packagesToAdd = ['npmdata', ...externalPackages];
+  const packagesToAdd = ['filedist', ...externalPackages];
   const addResolved = resolveCommand(agent, 'add', packagesToAdd);
   if (addResolved) {
     const cmd = `${addResolved.command} ${addResolved.args.join(' ')}`;

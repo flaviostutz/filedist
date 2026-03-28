@@ -1,40 +1,40 @@
-# npmdata
+# filedist
 
 Publish folders as npm packages or git repositories and extract them in any workspace. Use it to distribute shared assets — ML datasets, documentation, ADRs, configuration files — across multiple projects through any npm-compatible registry or directly from git.
 
 ## How it works
 
 - **Publisher**: a project that has folders to share. Running `init` prepares its `package.json` so those folders are included when the package is published.
-- **Consumer**: any project that installs that package and runs `extract` to download the files locally. A `.npmdata` marker file is written alongside the managed files to track ownership and enable safe updates.
+- **Consumer**: any project that installs that package and runs `extract` to download the files locally. A `.filedist` marker file is written alongside the managed files to track ownership and enable safe updates.
 
 ## Extraction patterns
 
-There are three ways to extract data with `npmdata`. Choose the one that fits your situation:
+There are three ways to extract data with `filedist`. Choose the one that fits your situation:
 
 ### Pattern 1 — Ad-hoc CLI extraction
 
-Use `npx npmdata extract` directly from the command line whenever you need to pull files from a package without any prior setup.
+Use `npx filedist extract` directly from the command line whenever you need to pull files from a package without any prior setup.
 
 ```sh
-npx npmdata extract --packages my-shared-assets@^2.0.0 --output ./data
+npx filedist extract --packages my-shared-assets@^2.0.0 --output ./data
 
 # or use a git repository as the source (auto-detected from the URL-like spec)
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Git sources are detected automatically when `package` uses a URL-like git spec (`https://`, `ssh://`, `git://`, `file://`, or `git@...`). Set `source: "git"` only when you want to force git resolution explicitly.
 
 ### Pattern 2 — Data packages with embedded configuration
 
-Create a dedicated npm package whose `package.json` declares an `npmdata` config block. That config encodes the extraction sources, output directories, filtering rules, and any combination of upstream packages. Consumers install the data package and run its bundled script — they don't need to know the internals.
+Create a dedicated npm package whose `package.json` declares an `filedist` config block. That config encodes the extraction sources, output directories, filtering rules, and any combination of upstream packages. Consumers install the data package and run its bundled script — they don't need to know the internals.
 
-**Publisher** — add an `npmdata` block to the data package's `package.json`:
+**Publisher** — add an `filedist` block to the data package's `package.json`:
 
 ```json
 {
   "name": "my-org-configs",
   "version": "1.0.0",
-  "npmdata": {
+  "filedist": {
     "sets": [
       {
         "package": "base-datasets@^3.0.0",
@@ -56,7 +56,7 @@ Create a dedicated npm package whose `package.json` declares an `npmdata` config
 }
 ```
 
-Run `pnpm dlx npmdata init` in that package and then `npm publish` to release it.
+Run `pnpm dlx filedist init` in that package and then `npm publish` to release it.
 
 **Consumer** — just install and run:
 
@@ -70,14 +70,14 @@ No knowledge of the upstream packages or transformation rules is required.
 
 ### Pattern 3 — Config file mode
 
-Add an `npmdata` configuration directly to a project's own `package.json` (or a `.npmdatarc` file) and then run `npmdata extract` without `--packages`. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
+Add an `filedist` configuration directly to a project's own `package.json` (or a `.filedistrc` file) and then run `filedist extract` without `--packages`. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
 
 **Consumer** — declare the config inline in `package.json`:
 
 ```json
 {
   "name": "my-project",
-  "npmdata": {
+  "filedist": {
     "sets": [
       {
         "package": "base-datasets@^3.0.0",
@@ -94,7 +94,7 @@ Add an `npmdata` configuration directly to a project's own `package.json` (or a 
 }
 ```
 
-Or write a standalone `.npmdatarc` (JSON object at the top level):
+Or write a standalone `.filedistrc` (JSON object at the top level):
 
 ```json
 {
@@ -116,25 +116,25 @@ Or write a standalone `.npmdatarc` (JSON object at the top level):
 Then run any command without `--packages`:
 
 ```sh
-npx npmdata           # same as 'npx npmdata extract'
-npx npmdata extract   # reads config, extracts all entries
-npx npmdata check     # checks all entries
-npx npmdata purge     # purges all entries
+npx filedist           # same as 'npx filedist extract'
+npx filedist extract   # reads config, extracts all entries
+npx filedist check     # checks all entries
+npx filedist purge     # purges all entries
 ```
 
 Config is resolved using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig). Sources searched in order from the current directory:
 
 | Source | Key / format |
 |---|---|
-| `package.json` | `"npmdata"` key — object with `"sets"` array |
-| `.npmdatarc` | JSON or YAML object with `"sets"` array |
-| `.npmdatarc.json` | JSON object with `"sets"` array |
-| `.npmdatarc.yaml` / `.npmdatarc.yml` | YAML object with `"sets"` array |
-| `npmdata.config.js` | CommonJS module exporting object with `sets` array |
+| `package.json` | `"filedist"` key — object with `"sets"` array |
+| `.filedistrc` | JSON or YAML object with `"sets"` array |
+| `.filedistrc.json` | JSON object with `"sets"` array |
+| `.filedistrc.yaml` / `.filedistrc.yml` | YAML object with `"sets"` array |
+| `filedist.config.js` | CommonJS module exporting object with `sets` array |
 
 All runner flags (`--dry-run`, `--silent`, `--verbose`, `--gitignore=false`, `--managed=false`, `--presets`, `--output`) work as usual.
 
-Config-file mode can mix npm packages and git repositories in the same `sets` array. Git entries can omit `source` when the package spec is URL-like; npmdata auto-detects them as git.
+Config-file mode can mix npm packages and git repositories in the same `sets` array. Git entries can omit `source` when the package spec is URL-like; filedist auto-detects them as git.
 
 **When to use:** When a consuming project wants to pin and automate a set of data extractions locally without publishing a separate data package. This is the lightest-weight approach — no extra package, no `init` step, just a config block and a single CLI call.
 
@@ -148,17 +148,17 @@ In the project whose folders you want to share:
 
 ```sh
 # share specific folders by glob pattern (required)
-pnpm dlx npmdata init --files "docs/**,data/**,configs/**"
+pnpm dlx filedist init --files "docs/**,data/**,configs/**"
 
 # also bundle an additional package so consumers get data from both sources
-pnpm dlx npmdata init --files "docs/**" --packages shared-configs@^1.0.0
+pnpm dlx filedist init --files "docs/**" --packages shared-configs@^1.0.0
 
 # share multiple upstream sources, including git
-pnpm dlx npmdata init --files "docs/**" --packages "shared-configs@^1.0.0,https://github.com/flaviostutz/xdrs-core@1.3.0"
+pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,https://github.com/flaviostutz/xdrs-core@1.3.0"
 
 ```
 
-`init` updates `package.json` with the right `files`, `bin`, and `dependencies` fields so those folders are included when the package is published, and writes a thin `bin/npmdata.js` entry point. Then publish normally:
+`init` updates `package.json` with the right `files`, `bin`, and `dependencies` fields so those folders are included when the package is published, and writes a thin `bin/filedist.js` entry point. Then publish normally:
 
 ```sh
 npm publish
@@ -168,28 +168,28 @@ npm publish
 
 ```sh
 # npm package examples
-npx npmdata extract --packages my-shared-assets --output ./data
-npx npmdata extract --packages my-shared-assets@^2.0.0 --output ./data
-npx npmdata extract --packages "my-shared-assets@^2.0.0,another-pkg@1.x" --output ./data
-npx npmdata extract --packages my-shared-assets --files "**/*.md" --output ./docs
-npx npmdata extract --packages my-shared-assets --content-regex "env: production" --output ./configs
-npx npmdata extract --packages my-shared-assets --output ./data --force
-npx npmdata extract --packages my-shared-assets --output ./data --gitignore=false
-npx npmdata extract --packages my-shared-assets --output ./data --managed=false
-npx npmdata extract --packages my-shared-assets --output ./data --dry-run
-npx npmdata extract --packages my-shared-assets@latest --output ./data --upgrade
+npx filedist extract --packages my-shared-assets --output ./data
+npx filedist extract --packages my-shared-assets@^2.0.0 --output ./data
+npx filedist extract --packages "my-shared-assets@^2.0.0,another-pkg@1.x" --output ./data
+npx filedist extract --packages my-shared-assets --files "**/*.md" --output ./docs
+npx filedist extract --packages my-shared-assets --content-regex "env: production" --output ./configs
+npx filedist extract --packages my-shared-assets --output ./data --force
+npx filedist extract --packages my-shared-assets --output ./data --gitignore=false
+npx filedist extract --packages my-shared-assets --output ./data --managed=false
+npx filedist extract --packages my-shared-assets --output ./data --dry-run
+npx filedist extract --packages my-shared-assets@latest --output ./data --upgrade
 
 # git source examples
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs
-npx npmdata extract --packages "https://github.com/org/repo-a@v1.0.0,file:///tmp/repo-b@main" --output ./git-data
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs
+npx filedist extract --packages "https://github.com/org/repo-a@v1.0.0,file:///tmp/repo-b@main" --output ./git-data
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade
 ```
 
 `extract` logs every file change as it happens:
@@ -207,7 +207,7 @@ npx my-shared-assets extract --output ./data
 npx my-shared-assets check  --output ./data
 ```
 
-When the data package defines multiple `npmdata` entries in its `package.json`, you can limit which entries are processed using the `--presets` option. Only entries whose `presets` list includes at least one of the requested presets will be extracted; entries with no presets are skipped when a preset filter is active.
+When the data package defines multiple `filedist` entries in its `package.json`, you can limit which entries are processed using the `--presets` option. Only entries whose `presets` list includes at least one of the requested presets will be extracted; entries with no presets are skipped when a preset filter is active.
 
 ```sh
 # run only entries tagged with "prod"
@@ -217,11 +217,11 @@ npx my-shared-assets --presets prod
 npx my-shared-assets --presets prod,staging
 ```
 
-To use presets, add a `presets` array to each `npmdata` entry in the data package's `package.json`:
+To use presets, add a `presets` array to each `filedist` entry in the data package's `package.json`:
 
 ```json
 {
-  "npmdata": {
+  "filedist": {
     "sets": [
       { "package": "my-shared-assets", "output": { "path": "./data" }, "presets": ["prod"] },
       { "package": "my-dev-assets",    "output": { "path": "./dev-data" }, "presets": ["dev", "staging"] }
@@ -242,7 +242,7 @@ When calling the bin script bundled in a data package, the following options are
 | `--presets <preset1,preset2>` | Limit to entries whose `presets` overlap with the given list (comma-separated). |
 | `--nosync [bool]` | Keep stale managed files on disk during extract instead of deleting them. `check` still reports them as extra drift. |
 | `--gitignore [bool]` | Disable `.gitignore` management for every entry when set to `false`, overriding each entry's `gitignore` field. |
-| `--managed [bool]` | Run every entry in unmanaged mode when set to `false`, overriding each entry's `managed` field. Files are written without a `.npmdata` marker, without `.gitignore` updates, and without being made read-only. |
+| `--managed [bool]` | Run every entry in unmanaged mode when set to `false`, overriding each entry's `managed` field. Files are written without a `.filedist` marker, without `.gitignore` updates, and without being made read-only. |
 | `--dry-run` | Simulate changes without writing or deleting any files. |
 | `--verbose, -v` | Print detailed progress information for each step. |
 
@@ -260,9 +260,9 @@ npx my-shared-assets --managed=false
 npx my-shared-assets --gitignore=false --managed=false --dry-run
 ```
 
-### npmdata entry options reference
+### filedist entry options reference
 
-Each entry in the `npmdata.sets` array in `package.json` supports the following options:
+Each entry in the `filedist.sets` array in `package.json` supports the following options:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -275,8 +275,8 @@ Each entry in the `npmdata.sets` array in `package.json` supports the following 
 | `output.force` | `boolean` | `false` | Allow overwriting existing files or files owned by a different package. |
 | `output.keepExisting` | `boolean` | `false` | Skip files that already exist but create them when absent. Cannot be combined with `force`. |
 | `output.noSync` | `boolean` | `false` | Keep stale managed files on disk during extract instead of deleting them. `check` still reports them as extra drift until they are removed or synced. |
-| `output.gitignore` | `boolean` | `true` | Create/update a `.gitignore` file alongside each `.npmdata` marker file. Set to `false` to disable. |
-| `output.managed` | `boolean` | `true` | Write files with a `.npmdata` marker, `.gitignore` update, and read-only flag. Set to `false` to skip tracking. Existing files are skipped when set to `false`. |
+| `output.gitignore` | `boolean` | `true` | Create/update a `.gitignore` file alongside each `.filedist` marker file. Set to `false` to disable. |
+| `output.managed` | `boolean` | `true` | Write files with a `.filedist` marker, `.gitignore` update, and read-only flag. Set to `false` to skip tracking. Existing files are skipped when set to `false`. |
 | `output.dryRun` | `boolean` | `false` | Simulate extraction without writing anything to disk. |
 | `selector.upgrade` | `boolean` | `false` | Force a fresh install of the package even when a satisfying version is already installed. |
 | `silent` | `boolean` | `false` | Suppress per-file output, printing only the final result line. |
@@ -307,7 +307,7 @@ Example with multiple options:
 
 ```json
 {
-  "npmdata": {
+  "filedist": {
     "sets": [
       {
         "package": "my-shared-assets@^2.0.0",
@@ -346,14 +346,14 @@ Example with multiple options:
 
 ### 3. Check files are in sync
 
-Verifies that every file in the output directory matches what is currently in the published package. When the target package itself declares `npmdata.sets`, check recurses into those transitive dependencies — reporting drift at every level of the hierarchy without downloading anything new beyond what is already installed. Use `selector.presets` on an entry to restrict which of the target's sets are checked.
+Verifies that every file in the output directory matches what is currently in the published package. When the target package itself declares `filedist.sets`, check recurses into those transitive dependencies — reporting drift at every level of the hierarchy without downloading anything new beyond what is already installed. Use `selector.presets` on an entry to restrict which of the target's sets are checked.
 
 ```sh
-npx npmdata check --packages my-shared-assets --output ./data
+npx filedist check --packages my-shared-assets --output ./data
 # exit 0 = in sync, exit 1 = drift or error
 
 # check multiple packages
-npx npmdata check --packages "my-shared-assets,another-pkg" --output ./data
+npx filedist check --packages "my-shared-assets,another-pkg" --output ./data
 ```
 
 The check command reports differences per package:
@@ -368,8 +368,8 @@ The check command reports differences per package:
 ### 4. List managed files
 
 ```sh
-# list all files managed by npmdata in an output directory
-npx npmdata list --output ./data
+# list all files managed by filedist in an output directory
+npx filedist list --output ./data
 ```
 
 Output is grouped by package:
@@ -385,38 +385,38 @@ another-pkg@1.0.0
 
 ### 5. Purge managed files
 
-Remove all files previously extracted by one or more packages without touching any other files in the output directory. No network access or package installation is required — only the local `.npmdata` marker state is used. When the target package itself declares `npmdata.sets`, purge recurses into those transitive dependencies and removes their managed files too, mirroring what extract originally created.
+Remove all files previously extracted by one or more packages without touching any other files in the output directory. No network access or package installation is required — only the local `.filedist` marker state is used. When the target package itself declares `filedist.sets`, purge recurses into those transitive dependencies and removes their managed files too, mirroring what extract originally created.
 
 ```sh
 # remove all files managed by a package
-npx npmdata purge --packages my-shared-assets --output ./data
+npx filedist purge --packages my-shared-assets --output ./data
 
 # purge multiple packages at once
-npx npmdata purge --packages "my-shared-assets,another-pkg" --output ./data
+npx filedist purge --packages "my-shared-assets,another-pkg" --output ./data
 
 # preview what would be deleted without removing anything
-npx npmdata purge --packages my-shared-assets --output ./data --dry-run
+npx filedist purge --packages my-shared-assets --output ./data --dry-run
 ```
 
-After a purge, the corresponding entries are removed from the `.npmdata` marker file and any empty directories are cleaned up. `.gitignore` sections written by `extract` are also removed.
+After a purge, the corresponding entries are removed from the `.filedist` marker file and any empty directories are cleaned up. `.gitignore` sections written by `extract` are also removed.
 
 ## Hierarchical package resolution
 
-`extract`, `check`, and `purge` are all hierarchy-aware: when a target package or git repository carries its own `npmdata.sets` block in its `package.json` or `.npmdatarc*`, the command automatically recurses into those transitive dependencies.
+`extract`, `check`, and `purge` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
 ```
 consumer project
-  └─ my-org-configs          (npm package with npmdata.sets)
+  └─ my-org-configs          (npm package with filedist.sets)
        ├─ base-datasets       (another npm package with its own files)
        └─ org-templates       (another npm package with its own files)
             └─ raw-assets     (leaf package)
 ```
 
-Running `npx npmdata extract --packages my-org-configs --output ./data` will extract files from every package in the chain, not just `my-org-configs` itself.
+Running `npx filedist extract --packages my-org-configs --output ./data` will extract files from every package in the chain, not just `my-org-configs` itself.
 
-When the source is git, npmdata clones repositories into `.npmdata-tmp` inside the working directory, adds that folder to `.gitignore` if needed, resolves nested config from the cloned repository, and removes `.npmdata-tmp` when the command ends.
+When the source is git, filedist clones repositories into `.filedist-tmp` inside the working directory, adds that folder to `.gitignore` if needed, resolves nested config from the cloned repository, and removes `.filedist-tmp` when the command ends.
 
 ### Output path resolution
 
@@ -443,7 +443,7 @@ Set `selector.presets` on an entry to control which sets inside the target packa
 
 ```json
 {
-  "npmdata": {
+  "filedist": {
     "sets": [
       {
         "package": "my-org-configs@^2.0.0",
@@ -465,13 +465,13 @@ If a package chain references itself (directly or transitively), the command sto
 
 ```
 Usage:
-  npx npmdata [init|extract|check|list|purge] [options]
+  npx filedist [init|extract|check|list|purge] [options]
 
 Commands:
   init      Set up publishing configuration in a package
   extract   Extract files from a published package into a local directory
   check     Verify local files are in sync with the published package
-  list      List all files managed by npmdata in an output directory
+  list      List all files managed by filedist in an output directory
   purge     Remove all managed files previously extracted by given packages
 
 Global options:
@@ -490,8 +490,8 @@ Init options:
 Extract options:
   --packages <specs>       Comma-separated package specs.
   --source <kind>         Source kind: auto, npm, or git.
-                           When omitted, npmdata searches for a configuration file
-                           (package.json "npmdata" key, .npmdatarc, etc.) and runs all
+                           When omitted, filedist searches for a configuration file
+                           (package.json "filedist" key, .filedistrc, etc.) and runs all
                            entries defined there.
                            Each spec is "name" or "name@version", e.g.
                            "my-pkg@^1.0.0,other-pkg@2.x"
@@ -500,9 +500,9 @@ Extract options:
   --keep-existing          Skip files that already exist; create them when absent. Cannot be
                            combined with --force
   --gitignore [bool]       Disable .gitignore management when set to false (enabled by default)
-  --managed [bool]         Set to false to write files without a .npmdata marker, .gitignore
+  --managed [bool]         Set to false to write files without a .filedist marker, .gitignore
                            update, or read-only flag. Existing files are skipped. Files can be
-                           freely edited afterwards and are not tracked by npmdata.
+                           freely edited afterwards and are not tracked by filedist.
   --files <patterns>       Comma-separated glob patterns to filter files
   --content-regex <regex>  Regex to filter files by content
   --dry-run                Preview changes without writing any files
@@ -528,13 +528,13 @@ List options:
 
 ## Library usage
 
-`npmdata` also exports a programmatic API:
+`filedist` also exports a programmatic API:
 
 ```typescript
-import { actionExtract, actionCheck, actionList, actionPurge } from 'npmdata';
-import type { NpmdataExtractEntry, ProgressEvent } from 'npmdata';
+import { actionExtract, actionCheck, actionList, actionPurge } from 'filedist';
+import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
 
-const entries: NpmdataExtractEntry[] = [
+const entries: FiledistExtractEntry[] = [
   { package: 'my-shared-assets@^2.0.0', output: { path: './data' } },
 ];
 const cwd = process.cwd();
@@ -570,7 +570,7 @@ if (hasDrift) {
 // remove all managed files (no network required)
 await actionPurge({ entries, config: null, cwd });
 
-// list all files managed by npmdata in an output directory
+// list all files managed by filedist in an output directory
 const managed = await actionList({ entries, config: null, cwd });
 // ManagedFileMetadata[]: Array<{ path: string; packageName: string; packageVersion: string }>
 ```
@@ -591,13 +591,13 @@ See the root [README.md](../README.md) for the full documentation.
 
 ## Managed file tracking
 
-Extracted files are set read-only (`444`) and tracked in a `.npmdata` marker file in each output directory. On subsequent extractions:
+Extracted files are set read-only (`444`) and tracked in a `.filedist` marker file in each output directory. On subsequent extractions:
 
 - Unchanged files are skipped.
 - Updated files are overwritten.
 - Files removed from the package are deleted locally.
 
-The marker file uses a `|`-delimited format; files written by older versions of `npmdata` using the comma-delimited format are read correctly for backward compatibility.
+The marker file uses a `|`-delimited format; files written by older versions of `filedist` using the comma-delimited format are read correctly for backward compatibility.
 
 Multiple packages can coexist in the same output directory; each owns its own files.
 
@@ -614,15 +614,15 @@ Multiple packages can coexist in the same output directory; each owns its own fi
 | `src/utils.ts` | Low-level utilities: package install, glob/hash helpers, package manager detection |
 | `src/index.ts` | Public API surface |
 
-### Marker file (`.npmdata`)
+### Marker file (`.filedist`)
 
-Each output directory that contains managed files gets a `.npmdata` CSV file. Columns: `path`, `packageName`, `packageVersion` — one row per file, no header. This is the source of truth for ownership tracking and clean removal.
+Each output directory that contains managed files gets a `.filedist` CSV file. Columns: `path`, `packageName`, `packageVersion` — one row per file, no header. This is the source of truth for ownership tracking and clean removal.
 
 ### Key design decisions
 
 - File identity is tracked by path + hash, not by timestamp, to be deterministic across machines.
 - Extract uses a two-phase diff + execute model: compute all changes first, then apply them, enabling conflict detection and rollback before any file is written.
-- The bin shim generated by `npmdata init` contains no logic; all behaviour is versioned inside this library.
+- The bin shim generated by `filedist init` contains no logic; all behaviour is versioned inside this library.
 
 ### Dev workflow
 

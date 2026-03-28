@@ -1,7 +1,7 @@
 install:
-	# copy local relative dependencies (required by local npmdata package)
+	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
-	cp -R ../../lib/dist/npmdata-0.0.1.tgz ../lib/dist/
+	cp -R ../../lib/dist/filedist-0.0.1.tgz ../lib/dist/
 
 	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
 	pnpm install
@@ -25,17 +25,17 @@ test: clean install
 	# user1 should be managed and in .gitignore
 	test -e output/data/users-dataset/user1.json
 	grep -e "data/users-dataset/user1.json" output/.gitignore
-	grep -e "data/users-dataset/user1.json" output/.npmdata
+	grep -e "data/users-dataset/user1.json" output/.filedist
 
 	# user2 should be unmanaged and not in .gitignore
 	test -e output/data/users-dataset/user2.json
-	! grep -e "data/users-dataset/user2.json" output/.npmdata
+	! grep -e "data/users-dataset/user2.json" output/.filedist
 	! grep -e "data/users-dataset/user2.json" output/.gitignore
 
 	# user3 was excluded, so it should not be extracted at all
 	test ! -e output/data/users-dataset/user3.json
 
-	! grep -e "conf/config-schema.js" output/.npmdata
+	! grep -e "conf/config-schema.js" output/.filedist
 
 	pnpm exec example-files-package check --output output
 
@@ -45,7 +45,7 @@ test: clean install
 	test ! -e output/.configs/app.config.json
 	test ! -e output/docs/adrs/adr-001-sample1.md
 
-	# unmanaged files survive purge because they are not tracked in .npmdata
+	# unmanaged files survive purge because they are not tracked in .filedist
 	test $$(find output -type f | wc -l) -eq 2
 	test -e output/data/users-dataset/user2.json
 	test -e output/conf/config-schema.js

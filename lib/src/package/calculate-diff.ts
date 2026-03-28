@@ -13,7 +13,7 @@ import { applyContentReplacementsToBuffer } from './content-replacements';
  * Calculate the diff between the desired file list (from resolveFiles) and the
  * actual state of each output directory.
  *
- * Only managed files (tracked in .npmdata markers) are included in the 'extra'
+ * Only managed files (tracked in .filedist markers) are included in the 'extra'
  * analysis, scoped to the packages represented in `resolvedFiles`.
  *
  * @returns DiffResult classifying each file as ok, missing, extra, or conflict.

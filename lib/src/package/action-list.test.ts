@@ -9,7 +9,7 @@ import { actionList } from './action-list';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-action-list-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-action-list-'));
 });
 
 afterEach(() => {

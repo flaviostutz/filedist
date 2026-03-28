@@ -1,8 +1,8 @@
 /* eslint-disable no-undefined */
 import {
   PackageConfig,
-  NpmdataConfig,
-  NpmdataExtractEntry,
+  FiledistConfig,
+  FiledistExtractEntry,
   SelectorConfig,
   OutputConfig,
   SourceKind,
@@ -113,10 +113,10 @@ export function parseArgv(argv: string[]): ParsedArgv {
 }
 
 /**
- * Build NpmdataExtractEntry objects from --packages + --output CLI flags.
+ * Build FiledistExtractEntry objects from --packages + --output CLI flags.
  * Returns null if --packages is not set.
  */
-export function buildEntriesFromArgv(parsed: ParsedArgv): NpmdataExtractEntry[] | null {
+export function buildEntriesFromArgv(parsed: ParsedArgv): FiledistExtractEntry[] | null {
   if (!parsed.packages || parsed.packages.length === 0) {
     // eslint-disable-next-line unicorn/no-null
     return null;
@@ -155,13 +155,13 @@ export function buildEntriesFromArgv(parsed: ParsedArgv): NpmdataExtractEntry[] 
 }
 
 /**
- * Apply CLI overrides from ParsedArgv to each NpmdataExtractEntry.
+ * Apply CLI overrides from ParsedArgv to each FiledistExtractEntry.
  * CLI flags always take precedence over config file values.
  */
 export function applyArgvOverrides(
-  entries: NpmdataExtractEntry[],
+  entries: FiledistExtractEntry[],
   parsed: ParsedArgv,
-): NpmdataExtractEntry[] {
+): FiledistExtractEntry[] {
   return entries.map((entry) => {
     const updatedOutput: OutputConfig = {
       ...entry.output,
@@ -202,9 +202,9 @@ export function applyArgvOverrides(
  * Throws if no packages are configured.
  */
 export function resolveEntriesFromConfigAndArgs(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
-): NpmdataExtractEntry[] {
+): FiledistExtractEntry[] {
   const parsed = parseArgv(argv);
   let entries = buildEntriesFromArgv(parsed);
   if (!entries) {

@@ -7,7 +7,7 @@ import { ensureDir } from '../utils';
 import { MARKER_FILE } from './constants';
 
 /**
- * Read all managed file entries from a .npmdata marker file.
+ * Read all managed file entries from a .filedist marker file.
  * Format: path|packageName|packageVersion — one row per file, no header.
  * Pipe is used as separator so file paths containing commas are handled safely.
  */
@@ -29,7 +29,7 @@ export async function readMarker(markerFilePath: string): Promise<ManagedFileMet
 }
 
 /**
- * Write managed file entries to a .npmdata marker file.
+ * Write managed file entries to a .filedist marker file.
  * Format: path|packageName|packageVersion — one row per file, no header.
  * Makes the file read-only after writing.
  */
@@ -60,14 +60,14 @@ export async function writeMarker(
 }
 
 /**
- * Returns the path of the .npmdata marker file for a given output directory.
+ * Returns the path of the .filedist marker file for a given output directory.
  */
 export function markerPath(outputDir: string): string {
   return path.join(outputDir, MARKER_FILE);
 }
 
 /**
- * Read all managed file entries from an output directory's .npmdata marker.
+ * Read all managed file entries from an output directory's .filedist marker.
  */
 export async function readOutputDirMarker(outputDir: string): Promise<ManagedFileMetadata[]> {
   return readMarker(markerPath(outputDir));

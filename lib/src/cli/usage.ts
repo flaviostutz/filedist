@@ -11,7 +11,7 @@ export function printUsage(command?: string): void {
   switch (cmd) {
     case 'extract':
       console.log(`
-Usage: npmdata [extract] [options]
+Usage: filedist [extract] [options]
 
 Extract files from one or more npm packages into a local output directory.
 
@@ -25,11 +25,11 @@ Options:
   --keep-existing         Skip files that already exist; create missing ones.
   --nosync [bool]         Keep stale managed files on disk during extract (default: false).
   --gitignore [bool]      Enable/disable .gitignore update (default: true). Use --gitignore=false to disable.
-  --managed [bool]        Enable/disable managed mode (default: true). Use --managed=false to write without .npmdata marker.
+  --managed [bool]        Enable/disable managed mode (default: true). Use --managed=false to write without .filedist marker.
   --dry-run               Report changes without writing to disk.
   --upgrade               Force fresh package install even if satisfying version installed.
   --presets <tags>        Comma-separated preset tags; only matching entries are processed.
-  --config <file>         Path to a config file (overrides auto-discovered .npmdatarc / package.json).
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --silent                Suppress per-file output; print only final summary line.
   --verbose, -v           Print detailed step information.
   --help                  Print this help text.
@@ -41,7 +41,7 @@ Exit codes: 0 success | 1 error
 
     case 'check':
       console.log(`
-Usage: npmdata check [options]
+Usage: filedist check [options]
 
 Verify that locally extracted files match their package sources.
 
@@ -53,7 +53,7 @@ Options:
   --content-regex <re>    Regex strings for content filtering.
   --managed [bool]        Silently skip unmanaged entries. Use --managed=false.
   --presets <tags>        Comma-separated preset tags; only matching entries are checked.
-  --config <file>         Path to a config file (overrides auto-discovered .npmdatarc / package.json).
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --verbose, -v           Print detailed comparison information.
   --help                  Print this help text.
 
@@ -63,13 +63,13 @@ Exit codes: 0 all in sync | 1 drift detected or error
 
     case 'list':
       console.log(`
-Usage: npmdata list [options]
+Usage: filedist list [options]
 
-Print all files currently managed by npmdata in the output directory.
+Print all files currently managed by filedist in the output directory.
 
 Options:
   --output, -o <dir>      Output directory to inspect.
-  --config <file>         Path to a config file (overrides auto-discovered .npmdatarc / package.json).
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --verbose, -v           Print additional metadata per file.
   --help                  Print this help text.
 
@@ -80,7 +80,7 @@ Exit codes: 0 always
 
     case 'purge':
       console.log(`
-Usage: npmdata purge [options]
+Usage: filedist purge [options]
 
 Remove all managed files from the output directory.
 
@@ -90,7 +90,7 @@ Options:
   --output, -o <dir>      Output directory to purge.
   --presets <tags>        Comma-separated preset tags; only matching entries are purged.
   --dry-run               Print what would be removed without deleting.
-  --config <file>         Path to a config file (overrides auto-discovered .npmdatarc / package.json).
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --silent                Suppress per-file output.
   --verbose, -v           Print detailed deletion steps.
   --help                  Print this help text.
@@ -101,7 +101,7 @@ Exit codes: 0 purge complete | 1 error during deletion
 
     case 'init':
       console.log(`
-Usage: npmdata init [options]
+Usage: filedist init [options]
 
 Scaffold a new publishable npm data package.
 
@@ -110,21 +110,21 @@ Options:
   --verbose, -v           Print scaffolding steps.
   --help                  Print this help text.
 
-Created files: package.json, bin/npmdata.js
+Created files: package.json, bin/filedist.js
 Exit codes: 0 success | 1 target dir has conflicting files
 `);
       break;
 
     case 'presets':
       console.log(`
-Usage: npmdata presets
+Usage: filedist presets
 
 List all unique preset tags defined in the configuration.
 Presets are declared in each entry's "presets" field and can be used
 to selectively run extract, check, list, or purge via --presets <tag>.
 
 Options:
-  --config <file>         Path to a config file (overrides auto-discovered .npmdatarc / package.json).
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --help                  Print this help text.
 
 Output format: one preset per line, sorted alphabetically
@@ -134,7 +134,7 @@ Exit codes: 0 success | 1 no configuration found
 
     default:
       console.log(`
-Usage: npmdata [command] [options]
+Usage: filedist [command] [options]
 
 Commands:
   extract (default)  Extract files from npm packages
@@ -144,7 +144,7 @@ Commands:
   init               Scaffold a publishable data package
   presets            List all preset tags defined in configuration
 
-Run 'npmdata <command> --help' for command-specific help.
+Run 'filedist <command> --help' for command-specific help.
 Version: ${VERSION}
 `);
   }
@@ -152,5 +152,5 @@ Version: ${VERSION}
 
 export function printVersion(): void {
   // Try to read version from package.json
-  console.log(`npmdata v${VERSION}`);
+  console.log(`filedist v${VERSION}`);
 }

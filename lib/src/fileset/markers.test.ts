@@ -8,7 +8,7 @@ import { MARKER_FILE } from './constants';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-markers-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-markers-'));
 });
 
 afterEach(() => {
@@ -24,12 +24,12 @@ describe('markerPath', () => {
 
 describe('readMarker', () => {
   it('returns empty array when marker file does not exist', async () => {
-    const result = await readMarker(path.join(tmpDir, '.npmdata'));
+    const result = await readMarker(path.join(tmpDir, '.filedist'));
     expect(result).toEqual([]);
   });
 
   it('parses CSV rows into ManagedFileMetadata entries', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0\ndocs/guide.md|mypkg|1.0.0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(2);
@@ -48,14 +48,14 @@ describe('readMarker', () => {
   });
 
   it('skips blank lines in marker file', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     fs.writeFileSync(mPath, 'a.md|pkg|1.0.0\n\nb.md|pkg|1.0.0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(2);
   });
 
   it('falls back to empty string for missing fields in malformed rows', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     // Line with only one field — packageName and packageVersion will be undefined → ''
     fs.writeFileSync(mPath, 'only-path\n');
     const result = await readMarker(mPath);
@@ -68,7 +68,7 @@ describe('readMarker', () => {
 
   it('correctly parses file paths that contain commas', async () => {
     // Pipe separator means commas in file paths are never ambiguous.
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     fs.writeFileSync(mPath, 'src/my,util.ts|mypkg|1.0.0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(1);
@@ -79,7 +79,7 @@ describe('readMarker', () => {
   });
 
   it('parses symlink entries with a kind field', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     fs.writeFileSync(mPath, 'links/guide.md|mypkg|1.0.0|symlink\n');
     const result = await readMarker(mPath);
     expect(result).toEqual([
@@ -95,7 +95,7 @@ describe('readMarker', () => {
 
 describe('writeMarker', () => {
   it('creates a marker file with pipe-separated rows and makes it read-only', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
       { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3' },
     ]);
@@ -109,7 +109,7 @@ describe('writeMarker', () => {
   });
 
   it('writes symlink entries with an explicit kind field', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
       { path: 'links/README.md', packageName: 'mypkg', packageVersion: '1.2.3', kind: 'symlink' },
     ]);
@@ -119,7 +119,7 @@ describe('writeMarker', () => {
   });
 
   it('removes existing marker file when writing empty entries', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     // Create the file first
     await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
     expect(fs.existsSync(mPath)).toBe(true);
@@ -130,13 +130,13 @@ describe('writeMarker', () => {
   });
 
   it('does nothing when writing empty entries and file does not exist', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, []);
     expect(fs.existsSync(mPath)).toBe(false);
   });
 
   it('overwrites existing marker file with new entries', async () => {
-    const mPath = path.join(tmpDir, '.npmdata');
+    const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [{ path: 'old.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
     await writeMarker(mPath, [{ path: 'new.md', packageName: 'pkg', packageVersion: '2.0.0' }]);
     const content = fs.readFileSync(mPath, 'utf8');
@@ -145,7 +145,7 @@ describe('writeMarker', () => {
   });
 
   it('creates intermediate directories if they do not exist', async () => {
-    const mPath = path.join(tmpDir, 'nested', 'dir', '.npmdata');
+    const mPath = path.join(tmpDir, 'nested', 'dir', '.filedist');
     await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
     expect(fs.existsSync(mPath)).toBe(true);
   });

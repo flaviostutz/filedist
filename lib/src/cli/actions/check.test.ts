@@ -2,7 +2,7 @@
 /* eslint-disable unicorn/no-null */
 
 import { actionCheck } from '../../package/action-check';
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { printUsage } from '../usage';
 
 import { runCheck } from './check';
@@ -17,7 +17,7 @@ const mockActionCheck = actionCheck as jest.MockedFunction<typeof actionCheck>;
 
 const NO_DRIFT = { missing: [], conflict: [], extra: [] };
 
-const CONFIG: NpmdataConfig = {
+const CONFIG: FiledistConfig = {
   sets: [{ package: 'my-pkg@1.0.0', output: { path: './out', gitignore: false } }],
 };
 

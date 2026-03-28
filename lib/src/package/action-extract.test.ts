@@ -60,7 +60,7 @@ describe('actionExtract', () => {
     expect(fs.existsSync(path.join(outputDir, 'docs/api.md'))).toBe(true);
   }, 60000);
 
-  it('writes .npmdata marker after extraction', async () => {
+  it('writes .filedist marker after extraction', async () => {
     await installMockPackage('marker-pkg', '1.0.0', { 'src/index.ts': 'export {}' }, tmpDir);
 
     const outputDir = path.join(tmpDir, 'output');
@@ -317,13 +317,13 @@ describe('actionExtract', () => {
     expect(result.modified).toBe(0);
   }, 60000);
 
-  it('recursively extracts sub-package npmdata.sets from installed dependency', async () => {
+  it('recursively extracts sub-package filedist.sets from installed dependency', async () => {
     // Install a "dep" package
     await installMockPackage('recursive-dep', '1.0.0', { 'dep-file.md': '# Dep' }, tmpDir);
-    // Install a "main" package that will have npmdata.sets pointing to recursive-dep
+    // Install a "main" package that will have filedist.sets pointing to recursive-dep
     await installMockPackage('recursive-main', '1.0.0', { 'main-file.md': '# Main' }, tmpDir);
 
-    // Modify recursive-main's package.json in node_modules to include npmdata.sets
+    // Modify recursive-main's package.json in node_modules to include filedist.sets
     const mainPkgPath = path.join(tmpDir, 'node_modules', 'recursive-main');
     const mainPkgJsonPath = path.join(mainPkgPath, 'package.json');
     const existingJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
@@ -331,7 +331,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...existingJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'recursive-dep',
@@ -361,7 +361,7 @@ describe('actionExtract', () => {
     expect(fs.existsSync(path.join(outputDir, 'dep-out', 'dep-file.md'))).toBe(true);
   }, 90000);
 
-  it('extracts from git repositories, follows nested .npmdatarc, and cleans .npmdata-tmp afterwards', async () => {
+  it('extracts from git repositories, follows nested .filedistrc, and cleans .filedist-tmp afterwards', async () => {
     const childRepo = await createMockGitRepo(
       'extract-child',
       { 'child/data.json': '{"ok":true}' },
@@ -374,7 +374,7 @@ describe('actionExtract', () => {
       tmpDir,
       {
         tag: 'v2.0.0',
-        npmdataConfig: {
+        filedistConfig: {
           sets: [
             { output: { path: '.', gitignore: false } },
             {
@@ -401,8 +401,8 @@ describe('actionExtract', () => {
     expect(result.added).toBe(2);
     expect(fs.existsSync(path.join(outputDir, 'docs', 'guide.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'nested', 'child', 'data.json'))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, '.npmdata-tmp'))).toBe(false);
-    expect(fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8')).toContain('.npmdata-tmp');
+    expect(fs.existsSync(path.join(tmpDir, '.filedist-tmp'))).toBe(false);
+    expect(fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8')).toContain('.filedist-tmp');
 
     const parentMarker = await readMarker(path.join(outputDir, MARKER_FILE));
     const childMarker = await readMarker(path.join(outputDir, 'nested', MARKER_FILE));
@@ -444,12 +444,12 @@ describe('actionExtract', () => {
     expect(fs.existsSync(path.join(outputDir, 'data', 'data/sample.csv'))).toBe(true);
   }, 90000);
 
-  it('selector.presets filters which nested npmdata.sets are recursively extracted', async () => {
+  it('selector.presets filters which nested filedist.sets are recursively extracted', async () => {
     // Install two nested packages, each representing a different preset
     await installMockPackage('nested-docs', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
     await installMockPackage('nested-data', '1.0.0', { 'data/sample.csv': 'a,b' }, tmpDir);
 
-    // Install a main package whose npmdata.sets references both nested packages,
+    // Install a main package whose filedist.sets references both nested packages,
     // each tagged with a different preset
     await installMockPackage('preset-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
     const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'preset-main', 'package.json');
@@ -458,7 +458,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...existing,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'nested-docs',
@@ -496,9 +496,9 @@ describe('actionExtract', () => {
     expect(fs.existsSync(path.join(outputDir, 'nested', 'data', 'sample.csv'))).toBe(false);
   }, 90000);
 
-  it('extracts self-referencing npmdata.sets inline when selector.presets is active', async () => {
+  it('extracts self-referencing filedist.sets inline when selector.presets is active', async () => {
     // Simulates a self-installable (binpkg) data-package that declares which of its own files
-    // belong to each preset via self-referencing npmdata.sets entries.
+    // belong to each preset via self-referencing filedist.sets entries.
     await installMockPackage(
       'self-ref-pkg',
       '1.0.0',
@@ -510,14 +510,14 @@ describe('actionExtract', () => {
       tmpDir,
     );
 
-    // Add self-referencing npmdata.sets to the installed package's package.json
+    // Add self-referencing filedist.sets to the installed package's package.json
     const pkgJsonPath = path.join(tmpDir, 'node_modules', 'self-ref-pkg', 'package.json');
     const existing = JSON.parse(fs.readFileSync(pkgJsonPath).toString()) as object;
     fs.writeFileSync(
       pkgJsonPath,
       JSON.stringify({
         ...existing,
-        npmdata: {
+        filedist: {
           sets: [
             {
               presets: ['docs'],
@@ -568,7 +568,7 @@ describe('actionExtract', () => {
       pkgJsonPath,
       JSON.stringify({
         ...existing,
-        npmdata: {
+        filedist: {
           sets: [
             {
               presets: ['docs'],
@@ -612,7 +612,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...existing,
-        npmdata: {
+        filedist: {
           sets: [{ package: 'some-dep', presets: ['docs'], output: { path: '.' } }],
         },
       }),
@@ -945,17 +945,17 @@ describe('actionExtract', () => {
       tmpDir,
     );
 
-    // A main package that lists merge-dep in its npmdata.sets
+    // A main package that lists merge-dep in its filedist.sets
     await installMockPackage('merge-main', '1.0.0', { 'readme.md': 'main file' }, tmpDir);
 
-    // Patch main package.json in node_modules to declare npmdata.sets for merge-dep
+    // Patch main package.json in node_modules to declare filedist.sets for merge-dep
     const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'merge-main', 'package.json');
     const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
     fs.writeFileSync(
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'merge-dep',
@@ -1055,7 +1055,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'dryrun-dep',
@@ -1093,7 +1093,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'keepex-dep',
@@ -1137,7 +1137,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'depforce-pkg',
@@ -1179,7 +1179,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ package: 'unmngcasc-dep', output: { path: 'dep-out', gitignore: false } }],
         },
       }),
@@ -1214,7 +1214,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'unmngdep-pkg',
@@ -1250,7 +1250,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'gitcasc-dep',
@@ -1287,7 +1287,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'symsub-dep',
@@ -1350,7 +1350,7 @@ describe('actionExtract', () => {
       l2PkgJsonPath,
       JSON.stringify({
         ...l2PkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ package: 'level3-pkg', output: { path: 'l3', gitignore: false } }],
         },
       }),
@@ -1363,7 +1363,7 @@ describe('actionExtract', () => {
       l1PkgJsonPath,
       JSON.stringify({
         ...l1PkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ package: 'level2-pkg', output: { path: 'l2', gitignore: false } }],
         },
       }),
@@ -1478,7 +1478,7 @@ describe('actionExtract', () => {
       mainPkgJsonPath,
       JSON.stringify({
         ...mainPkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ package: 'verbose-dep', output: { path: 'dep-out', gitignore: false } }],
         },
       }),

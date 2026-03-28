@@ -1,7 +1,7 @@
 /**
- * Name of the npmdata marker file that tracks managed files.
+ * Name of the filedist marker file that tracks managed files.
  */
-export const MARKER_FILE = '.npmdata';
+export const MARKER_FILE = '.filedist';
 
 /**
  * Default inclusion glob patterns applied when no `files` is specified in SelectorConfig.
@@ -15,8 +15,8 @@ export const DEFAULT_FILE_PATTERNS = ['**'];
  */
 export const DEFAULT_EXCLUDE_PATTERNS = [
   'package.json',
-  '.npmdatarc',
-  '.npmdatarc.*',
+  '.filedistrc',
+  '.filedistrc.*',
   '.git/**',
   'bin/**',
   'README.md',
@@ -25,5 +25,5 @@ export const DEFAULT_EXCLUDE_PATTERNS = [
 ];
 
 export const GITIGNORE_FILE = '.gitignore';
-export const GITIGNORE_START = '# npmdata:start';
-export const GITIGNORE_END = '# npmdata:end';
+export const GITIGNORE_START = '# filedist:start';
+export const GITIGNORE_END = '# filedist:end';

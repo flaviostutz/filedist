@@ -89,7 +89,7 @@ export async function actionExtract(options: ExtractOptions): Promise<ExtractRes
         if (!desired.ignoreIfExisting && !desired.force && isUnmanagedConflict) {
           throw new Error(
             `Conflict: file "${entry.relPath}" in "${entry.outputDir}" exists and is not managed` +
-              ` by npmdata.\nUse --force to overwrite or --managed=false to skip.`,
+              ` by filedist.\nUse --force to overwrite or --managed=false to skip.`,
           );
         }
       }
@@ -281,7 +281,7 @@ function writeFileToOutput(srcPath: string, destPath: string, managed: boolean):
 }
 
 /**
- * Update the .npmdata marker and .gitignore for one output directory after
+ * Update the .filedist marker and .gitignore for one output directory after
  * disk changes have been applied.
  */
 async function updateOutputDirMetadata(

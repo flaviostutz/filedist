@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { createMockGitRepo, installMockPackage } from '../fileset/test-utils';
-import { NpmdataExtractEntry } from '../types';
+import { FiledistExtractEntry } from '../types';
 
 import { resolveFiles, resolveFilesDetailed } from './resolve-files';
 
@@ -11,7 +11,7 @@ describe('resolveFiles', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-resolve-files-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-resolve-files-'));
   });
 
   afterEach(() => {
@@ -22,7 +22,7 @@ describe('resolveFiles', () => {
     await installMockPackage('leaf-pkg', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
 
     const outputDir = path.join(tmpDir, 'output');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'leaf-pkg', output: { path: outputDir, gitignore: false } },
     ];
 
@@ -35,11 +35,11 @@ describe('resolveFiles', () => {
     expect(files[0].managed).toBe(true);
   }, 60000);
 
-  it('resolves a self-package entry inside npmdata.sets', async () => {
-    // Install a package that has npmdata.sets with a self-package entry (no package field)
+  it('resolves a self-package entry inside filedist.sets', async () => {
+    // Install a package that has filedist.sets with a self-package entry (no package field)
     await installMockPackage('self-pkg', '1.0.0', { 'data/sample.json': '{}' }, tmpDir);
 
-    // Patch the installed package.json to include a self-package npmdata set
+    // Patch the installed package.json to include a self-package filedist set
     const pkgPath = path.join(tmpDir, 'node_modules', 'self-pkg');
     const pkgJson = JSON.parse(
       fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
@@ -48,7 +48,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             // Self-package entry: no package field
             { output: { path: '.' } },
@@ -58,7 +58,7 @@ describe('resolveFiles', () => {
     );
 
     const outputDir = path.join(tmpDir, 'output');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'self-pkg', output: { path: outputDir, gitignore: false } },
     ];
 
@@ -79,7 +79,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ output: { path: '.' }, selector: { files: ['data/**'] }, presets: ['basic'] }],
         },
       }),
@@ -98,7 +98,7 @@ describe('resolveFiles', () => {
     await installMockPackage('child-pkg', '1.0.0', { 'child.md': '# Child' }, tmpDir);
     await installMockPackage('parent-pkg', '1.0.0', { 'parent.md': '# Parent' }, tmpDir);
 
-    // Patch parent to declare npmdata.sets with self-package and child entries
+    // Patch parent to declare filedist.sets with self-package and child entries
     const parentPath = path.join(tmpDir, 'node_modules', 'parent-pkg');
     const parentPkgJson = JSON.parse(
       fs.readFileSync(path.join(parentPath, 'package.json')).toString(),
@@ -107,7 +107,7 @@ describe('resolveFiles', () => {
       path.join(parentPath, 'package.json'),
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             { output: { path: '.' } }, // self-package entry
             { package: 'child-pkg', output: { path: 'child' } }, // external entry
@@ -117,7 +117,7 @@ describe('resolveFiles', () => {
     );
 
     const outputDir = path.join(tmpDir, 'output');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'parent-pkg', output: { path: outputDir, gitignore: false } },
     ];
 
@@ -140,7 +140,7 @@ describe('resolveFiles', () => {
       path.join(parentPath, 'package.json'),
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             { output: { path: '.' }, selector: { files: ['docs/**'] } },
             { package: 'dep-pkg', output: { path: '.' }, selector: { files: ['conf/dep.js'] } },
@@ -182,7 +182,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [{ output: { path: '.' }, selector: { files: ['data/**'] } }],
         },
       }),
@@ -209,7 +209,7 @@ describe('resolveFiles', () => {
     });
 
     const outputDir = path.join(tmpDir, 'output-git');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       {
         package: `${repo.repoUrl}@v1.0.0`,
         output: { path: outputDir, gitignore: false },
@@ -224,7 +224,7 @@ describe('resolveFiles', () => {
     expect(files[0].packageVersion).toBe(repo.head);
   }, 60000);
 
-  it('loads nested .npmdatarc config from cloned git repos recursively', async () => {
+  it('loads nested .filedistrc config from cloned git repos recursively', async () => {
     const childRepo = await createMockGitRepo(
       'git-child',
       { 'child/guide.md': '# Child Guide' },
@@ -233,7 +233,7 @@ describe('resolveFiles', () => {
     );
     const parentRepo = await createMockGitRepo('git-parent', { 'parent.md': '# Parent' }, tmpDir, {
       tag: 'parent-v1',
-      npmdataConfig: {
+      filedistConfig: {
         sets: [
           { output: { path: '.', gitignore: false } },
           {
@@ -283,7 +283,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               selector: {
@@ -331,7 +331,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               selector: {
@@ -396,7 +396,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               selector: {
@@ -447,7 +447,7 @@ describe('resolveFiles', () => {
     await installMockPackage('dup-pkg', '1.0.0', { 'file.md': '# File' }, tmpDir);
 
     const outputDir = path.join(tmpDir, 'output');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'dup-pkg', output: { path: outputDir, gitignore: false } },
       { package: 'dup-pkg', output: { path: outputDir, gitignore: false } },
     ];
@@ -499,7 +499,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             { presets: ['docs'], output: { path: '.' }, selector: { files: ['*.md'] } },
             { presets: ['data'], output: { path: '.' }, selector: { files: ['*.json'] } },
@@ -509,7 +509,7 @@ describe('resolveFiles', () => {
     );
 
     const outputDir = path.join(tmpDir, 'output');
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       {
         package: 'presets-pkg',
         output: { path: outputDir, gitignore: false },
@@ -535,7 +535,7 @@ describe('resolveFiles', () => {
       path.join(pkgPath, 'package.json'),
       JSON.stringify({
         ...pkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             { presets: ['special'], output: { path: '.' }, selector: { files: ['data.json'] } },
             {

@@ -27,8 +27,8 @@ export type PurgeSummary = {
  *
  * Uses resolveFiles() to build the desired file list (installing packages as needed),
  * then calculateDiff() to find the managed files on disk. Deletes ok, conflict,
- * and extra files (i.e. everything currently managed by npmdata for these packages).
- * Updates .npmdata markers and .gitignore entries for affected output directories.
+ * and extra files (i.e. everything currently managed by filedist for these packages).
+ * Updates .filedist markers and .gitignore entries for affected output directories.
  */
 export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> {
   const { entries, cwd, dryRun = false, verbose = false, onProgress } = options;

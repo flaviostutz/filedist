@@ -7,7 +7,7 @@ import { applyContentReplacementsToBuffer, applyContentReplacements } from './co
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-cr-test-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-cr-test-'));
 });
 
 afterEach(() => {
@@ -17,9 +17,9 @@ afterEach(() => {
 describe('applyContentReplacementsToBuffer', () => {
   it('replaces a simple string', () => {
     const result = applyContentReplacementsToBuffer('Hello World', [
-      { files: '*.md', match: 'World', replace: 'npmdata' },
+      { files: '*.md', match: 'World', replace: 'filedist' },
     ]);
-    expect(result).toBe('Hello npmdata');
+    expect(result).toBe('Hello filedist');
   });
 
   it('applies multiple replacements in order', () => {
@@ -62,9 +62,11 @@ describe('applyContentReplacements', () => {
     const filePath = path.join(tmpDir, 'README.md');
     fs.writeFileSync(filePath, 'Hello World');
 
-    await applyContentReplacements(tmpDir, [{ files: '*.md', match: 'World', replace: 'npmdata' }]);
+    await applyContentReplacements(tmpDir, [
+      { files: '*.md', match: 'World', replace: 'filedist' },
+    ]);
 
-    expect(fs.readFileSync(filePath, 'utf8')).toBe('Hello npmdata');
+    expect(fs.readFileSync(filePath, 'utf8')).toBe('Hello filedist');
   });
 
   it('no-ops when replacements array is empty', async () => {

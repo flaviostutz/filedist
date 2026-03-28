@@ -7,7 +7,7 @@ import os from 'node:os';
 import { writeMarker, markerPath } from '../fileset/markers';
 import { addToGitignore } from '../fileset/gitignore';
 import { installMockPackage } from '../fileset/test-utils';
-import { NpmdataExtractEntry, ProgressEvent } from '../types';
+import { FiledistExtractEntry, ProgressEvent } from '../types';
 import { filterEntriesByPresets } from '../utils';
 
 import { actionPurge } from './action-purge';
@@ -15,7 +15,7 @@ import { actionPurge } from './action-purge';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-action-purge-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-action-purge-'));
 });
 
 afterEach(() => {
@@ -34,7 +34,7 @@ describe('actionPurge', () => {
       { path: 'guide.md', packageName: 'mypkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir });
@@ -54,7 +54,7 @@ describe('actionPurge', () => {
       { path: 'guide.md', packageName: 'mypkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir, dryRun: true });
@@ -77,7 +77,7 @@ describe('actionPurge', () => {
     ]);
 
     // Only purge pkg-a
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'pkg-a@1.0.0', output: { path: outputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir });
@@ -104,7 +104,7 @@ describe('actionPurge', () => {
       { path: 'b.md', packageName: 'pkg-b', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'pkg-a@1.0.0', output: { path: outA }, presets: ['preset-a'] },
       { package: 'pkg-b@1.0.0', output: { path: outB }, presets: ['preset-b'] },
     ];
@@ -130,7 +130,7 @@ describe('actionPurge', () => {
       { path: 'guide.md', packageName: 'mypkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
     await actionPurge({
@@ -155,7 +155,7 @@ describe('actionPurge', () => {
       { path: 'notes.md', packageName: 'mypkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'mypkg@1.0.0', output: { path: outputDir } },
     ];
     await actionPurge({
@@ -207,7 +207,7 @@ describe('actionPurge', () => {
       { path: 'verbose.md', packageName: 'verbose-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'verbose-pkg@1.0.0', output: { path: outputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir, verbose: true });
@@ -226,7 +226,7 @@ describe('actionPurge', () => {
       { path: 'file.md', packageName: 'vdry-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'vdry-pkg@1.0.0', output: { path: outputDir } },
     ];
     const result = await actionPurge({
@@ -240,19 +240,19 @@ describe('actionPurge', () => {
     expect(fs.existsSync(path.join(outputDir, 'file.md'))).toBe(true);
   }, 60_000);
 
-  it('hierarchically purges transitive packages declared in npmdata.sets', async () => {
+  it('hierarchically purges transitive packages declared in filedist.sets', async () => {
     // Install child first
     await installMockPackage('pkg-child', '1.0.0', { 'child.md': 'child content' }, tmpDir);
-    // Install parent (no files — only the npmdata.sets entry matters)
+    // Install parent (no files — only the filedist.sets entry matters)
     await installMockPackage('pkg-parent', '1.0.0', { 'parent.md': 'parent content' }, tmpDir);
-    // Patch parent's installed package.json to declare npmdata.sets → child
+    // Patch parent's installed package.json to declare filedist.sets → child
     const parentPkgJsonPath = path.join(tmpDir, 'node_modules', 'pkg-parent', 'package.json');
     const parentPkgJson = JSON.parse(fs.readFileSync(parentPkgJsonPath).toString()) as object;
     fs.writeFileSync(
       parentPkgJsonPath,
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: { sets: [{ package: 'pkg-child@1.0.0', output: { path: 'child-out' } }] },
+        filedist: { sets: [{ package: 'pkg-child@1.0.0', output: { path: 'child-out' } }] },
       }),
     );
 
@@ -273,7 +273,7 @@ describe('actionPurge', () => {
       { path: 'child.md', packageName: 'pkg-child', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'pkg-parent@1.0.0', output: { path: parentOutputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir });
@@ -284,10 +284,10 @@ describe('actionPurge', () => {
     expect(fs.existsSync(path.join(childOutputDir, 'child.md'))).toBe(false);
   }, 120_000);
 
-  it('hierarchically purges transitive packages declared in npmdata.sets with verbose', async () => {
+  it('hierarchically purges transitive packages declared in filedist.sets with verbose', async () => {
     // Install child first
     await installMockPackage('vp-child', '1.0.0', { 'child.md': 'child content' }, tmpDir);
-    // Install parent, then patch npmdata.sets into the installed package.json
+    // Install parent, then patch filedist.sets into the installed package.json
     await installMockPackage('vp-parent', '1.0.0', { 'parent.md': 'parent content' }, tmpDir);
     const parentPkgJsonPath = path.join(tmpDir, 'node_modules', 'vp-parent', 'package.json');
     const parentPkgJson = JSON.parse(fs.readFileSync(parentPkgJsonPath).toString());
@@ -295,7 +295,7 @@ describe('actionPurge', () => {
       parentPkgJsonPath,
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: { sets: [{ package: 'vp-child@1.0.0', output: { path: 'child-out' } }] },
+        filedist: { sets: [{ package: 'vp-child@1.0.0', output: { path: 'child-out' } }] },
       }),
     );
 
@@ -313,7 +313,7 @@ describe('actionPurge', () => {
       { path: 'child.md', packageName: 'vp-child', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'vp-parent@1.0.0', output: { path: parentOutputDir } },
     ];
     const result = await actionPurge({ entries, cwd: tmpDir, verbose: true });
@@ -348,7 +348,7 @@ describe('actionPurge', () => {
       parentPkgJsonPath,
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'purge-nested-child@1.0.0',

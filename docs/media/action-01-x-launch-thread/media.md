@@ -9,13 +9,13 @@ AI coding teams have a weird distribution problem:
 - eval datasets somewhere else
 - every consumer repo ends up copying files by hand
 
-I built `npmdata` to fix that.
+I built `filedist` to fix that.
 
-https://github.com/flaviostutz/npmdata
+https://github.com/flaviostutz/filedist
 
 Post 2
 
-`npmdata` lets you publish folders from npm packages or plain git repos and extract them into any workspace.
+`filedist` lets you publish folders from npm packages or plain git repos and extract them into any workspace.
 
 That means you can version and reuse:
 
@@ -30,7 +30,7 @@ Post 3
 Example:
 
 ```sh
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Same idea works for prompt repos, internal agent rules, and curated data bundles.
@@ -44,7 +44,7 @@ The part I wanted most:
 - no custom sync script
 - safe updates with `check` and `purge`
 
-Managed files get a `.npmdata` marker so updates stay predictable.
+Managed files get a `.filedist` marker so updates stay predictable.
 
 Post 5
 
@@ -62,4 +62,4 @@ Post 6
 
 If that sounds useful, take a look at the examples and star the repo so I know this direction is worth pushing.
 
-https://github.com/flaviostutz/npmdata
+https://github.com/flaviostutz/filedist

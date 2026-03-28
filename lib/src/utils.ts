@@ -9,7 +9,7 @@ import semver from 'semver';
 import { detect } from 'package-manager-detector/detect';
 import { resolveCommand } from 'package-manager-detector/commands';
 
-import { NpmdataExtractEntry, PackageConfig } from './types';
+import { FiledistExtractEntry, PackageConfig } from './types';
 
 const PACKAGE_MANAGER_LOCK_FILES = [
   'package-lock.json',
@@ -177,7 +177,7 @@ export async function installOrUpgradePackage(
   }
 
   // Ensure a package.json exists so the package manager can operate
-  // this happens when npmdata is used as npx without a package.json in the current directory, for example
+  // this happens when filedist is used as npx without a package.json in the current directory, for example
   const pkgJsonPath = path.join(workDir, 'package.json');
   if (!fs.existsSync(pkgJsonPath)) {
     if (verbose) {
@@ -277,9 +277,9 @@ export function formatDisplayPath(targetPath: string, cwd?: string): string {
  * When no presets are requested, all entries pass through.
  */
 export function filterEntriesByPresets(
-  entries: NpmdataExtractEntry[],
+  entries: FiledistExtractEntry[],
   presets: string[] | undefined,
-): NpmdataExtractEntry[] {
+): FiledistExtractEntry[] {
   if (!presets || presets.length === 0) return entries;
   return entries.filter((entry) => {
     // entry.presets tags the set for consumer-side --presets filtering;
@@ -304,7 +304,7 @@ export function initTempPackageJson(workDir: string, verbose?: boolean): void {
 
   fs.writeFileSync(
     pkgJsonPath,
-    JSON.stringify({ name: 'npmdata-tmp', version: '99.99.99', private: true }, undefined, 2),
+    JSON.stringify({ name: 'filedist-tmp', version: '99.99.99', private: true }, undefined, 2),
   );
 
   // Ensure node_modules is ignored in .gitignore
@@ -325,12 +325,12 @@ export function cleanupTempPackageJson(cwd: string, verbose?: boolean): void {
   const tempPkgJsonPath = path.join(cwd, 'package.json');
   if (!fs.existsSync(tempPkgJsonPath)) return;
 
-  // verify if this package.json was created by us (npmdata) by checking its name and version
+  // verify if this package.json was created by us (filedist) by checking its name and version
   const tempPkgJsonContent = JSON.parse(fs.readFileSync(tempPkgJsonPath).toString()) as {
     name: string;
     version: string;
   };
-  if (tempPkgJsonContent.name !== 'npmdata-tmp' || tempPkgJsonContent.version !== '99.99.99')
+  if (tempPkgJsonContent.name !== 'filedist-tmp' || tempPkgJsonContent.version !== '99.99.99')
     return;
 
   if (verbose) {

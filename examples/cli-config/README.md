@@ -1,24 +1,24 @@
 # cli-config
 
-This example demonstrates using **npmdata** via a local configuration file rather than passing
-`--packages` on every command. It shows that `npmdata extract`, `npmdata check`, and `npmdata purge`
+This example demonstrates using **filedist** via a local configuration file rather than passing
+`--packages` on every command. It shows that `filedist extract`, `filedist check`, and `filedist purge`
 all work without `--packages` when a configuration is detected automatically.
 
 ## How it works
 
-When `--packages` is omitted from an `extract`, `check`, or `purge` command, the `npmdata` CLI
+When `--packages` is omitted from an `extract`, `check`, or `purge` command, the `filedist` CLI
 searches for a configuration using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) in the
 following order (starting from the current working directory):
 
 | Location | Format |
 |---|---|
-| `package.json` → `"npmdata"` key | JSON object with `"sets"` array |
-| `.npmdatarc` | JSON or YAML object with `"sets"` array |
-| `.npmdatarc.json` | JSON object with `"sets"` array |
-| `.npmdatarc.yaml` / `.npmdatarc.yml` | YAML object with `"sets"` array |
-| `npmdata.config.js` | CommonJS module exporting object with `sets` array |
+| `package.json` → `"filedist"` key | JSON object with `"sets"` array |
+| `.filedistrc` | JSON or YAML object with `"sets"` array |
+| `.filedistrc.json` | JSON object with `"sets"` array |
+| `.filedistrc.yaml` / `.filedistrc.yml` | YAML object with `"sets"` array |
+| `filedist.config.js` | CommonJS module exporting object with `sets` array |
 
-Each entry in the `sets` array supports the same fields as a data-package `"npmdata.sets"` array entry.
+Each entry in the `sets` array supports the same fields as a data-package `"filedist.sets"` array entry.
 
 ## Configuration approaches
 
@@ -27,7 +27,7 @@ Each entry in the `sets` array supports the same fields as a data-package `"npmd
 ```json
 {
   "name": "my-project",
-  "npmdata": {
+  "filedist": {
     "sets": [
       {
         "package": "example-files-package",
@@ -39,7 +39,7 @@ Each entry in the `sets` array supports the same fields as a data-package `"npmd
 }
 ```
 
-### Option B – .npmdatarc
+### Option B – .filedistrc
 
 ```json
 {
@@ -60,16 +60,16 @@ Each entry in the `sets` array supports the same fields as a data-package `"npmd
 make install
 
 # extracts files – no --packages argument needed
-pnpm exec npmdata extract
+pnpm exec filedist extract
 
 # verifies local files are in sync
-pnpm exec npmdata check
+pnpm exec filedist check
 
 # removes all managed files
-pnpm exec npmdata purge
+pnpm exec filedist purge
 
 # lists all preset tags defined in the configuration
-pnpm exec npmdata presets
+pnpm exec filedist presets
 ```
 
 ## Presets
@@ -87,24 +87,24 @@ Entries can be tagged with `presets` so that only a subset is processed when `--
 
 ```bash
 # list available preset tags
-pnpm exec npmdata presets
+pnpm exec filedist presets
 # → basic
 # → extra
 
 # extract only "basic"-tagged entries
-pnpm exec npmdata extract --presets basic
+pnpm exec filedist extract --presets basic
 
 # check only "basic"-tagged entries
-pnpm exec npmdata check --presets basic
+pnpm exec filedist check --presets basic
 ```
 
 > **`presets` vs `selector.presets`**
 >
 > - **`sets[].presets`** — tags **this entry**. When a consumer runs `--presets basic`, only entries
->   tagged `basic` are processed. This is what `npmdata presets` lists.
+>   tagged `basic` are processed. This is what `filedist presets` lists.
 >
-> - **`sets[].selector.presets`** — filters which of the **target package's own** `npmdata.sets` are
->   recursively extracted. If `example-files-package` itself has an `npmdata.sets` array with its own
+> - **`sets[].selector.presets`** — filters which of the **target package's own** `filedist.sets` are
+>   recursively extracted. If `example-files-package` itself has an `filedist.sets` array with its own
 >   preset tags, you can control which of those inner sets are pulled by setting `selector.presets` on
 >   the entry that references it.
 
@@ -115,11 +115,11 @@ make test
 ```
 
 This runs the full test cycle twice – once reading the configuration from `package.json` and once
-from a temporary `.npmdatarc` file – to verify that both configuration sources work correctly.
+from a temporary `.filedistrc` file – to verify that both configuration sources work correctly.
 
 ## Entry format reference
 
-Each entry supports the same fields as a data-package `"npmdata.sets"` array entry:
+Each entry supports the same fields as a data-package `"filedist.sets"` array entry:
 
 | Field | Type | Description |
 |---|---|---|
@@ -130,7 +130,7 @@ Each entry supports the same fields as a data-package `"npmdata.sets"` array ent
 | `force` | `boolean` | Overwrite existing files |
 | `keepExisting` | `boolean` | Skip files that already exist |
 | `gitignore` | `boolean` | Manage `.gitignore` (default: `true`) |
-| `managed` | `boolean` | Write with `.npmdata` marker (default: `true`). Set to `false` to skip tracking |
+| `managed` | `boolean` | Write with `.filedist` marker (default: `true`). Set to `false` to skip tracking |
 | `dryRun` | `boolean` | Simulate without writing |
 | `silent` | `boolean` | Suppress per-file output |
 | `verbose` | `boolean` | Print detailed progress |

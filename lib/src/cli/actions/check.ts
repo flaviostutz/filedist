@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { parseArgv, resolveEntriesFromConfigAndArgs } from '../argv';
 import { printUsage } from '../usage';
 import { actionCheck } from '../../package/action-check';
@@ -8,7 +8,7 @@ import { actionCheck } from '../../package/action-check';
  * `check` CLI action handler.
  */
 export async function runCheck(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
 ): Promise<void> {

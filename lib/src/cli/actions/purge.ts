@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { NpmdataConfig, NpmdataExtractEntry } from '../../types';
+import { FiledistConfig, FiledistExtractEntry } from '../../types';
 import { parseArgv, buildEntriesFromArgv, applyArgvOverrides } from '../argv';
 import { printUsage } from '../usage';
 import { formatProgressFile } from '../progress';
@@ -9,7 +9,7 @@ import { actionPurge } from '../../package/action-purge';
  * `purge` CLI action handler.
  */
 export async function runPurge(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
 ): Promise<void> {
@@ -20,7 +20,7 @@ export async function runPurge(
 
   const parsed = parseArgv(argv);
 
-  let entries: NpmdataExtractEntry[] = [];
+  let entries: FiledistExtractEntry[] = [];
   const cliEntries = buildEntriesFromArgv(parsed);
   if (cliEntries) {
     entries = cliEntries;

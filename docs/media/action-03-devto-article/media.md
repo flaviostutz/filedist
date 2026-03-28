@@ -2,7 +2,7 @@
 
 ## Title
 
-How I distribute prompt packs, agent instructions, and shared repo assets with npmdata
+How I distribute prompt packs, agent instructions, and shared repo assets with filedist
 
 ## Tags
 
@@ -26,22 +26,22 @@ The naive ways to share them all get painful quickly.
 
 I wanted something simpler: version those assets once, keep them in npm or plain git, and let consumer projects extract exactly what they need.
 
-That is why I built `npmdata`.
+That is why I built `filedist`.
 
-## What npmdata does
+## What filedist does
 
-`npmdata` publishes folders as reusable packages or reads them from plain git repositories, then extracts selected files into any workspace.
+`filedist` publishes folders as reusable packages or reads them from plain git repositories, then extracts selected files into any workspace.
 
 It supports three patterns:
 
 1. Ad-hoc extraction from a package or git repo
-2. Consumer-side config with `.npmdatarc` or `package.json`
+2. Consumer-side config with `.filedistrc` or `package.json`
 3. Curated packages that bundle many upstream sources into one reusable distribution
 
 Here is the simplest example:
 
 ```sh
-npx npmdata extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 That pulls versioned files from a git repository into a local folder.
@@ -58,13 +58,13 @@ AI coding workflows often need the same supporting files in many repositories:
 
 Those files behave more like versioned dependencies than ad-hoc docs.
 
-With `npmdata`, you can keep them in one source repo and distribute them with explicit refs. Consumers can then:
+With `filedist`, you can keep them in one source repo and distribute them with explicit refs. Consumers can then:
 
 - run `extract` to install them locally
 - run `check` to see if their copy drifted
 - run `purge` to remove managed files cleanly
 
-Managed outputs include a `.npmdata` marker file so ownership stays explicit.
+Managed outputs include a `.filedist` marker file so ownership stays explicit.
 
 ## A useful mental model
 
@@ -83,10 +83,10 @@ The best near-term fit seems to be teams sharing:
 - datasets used for AI evaluations
 - reusable setup/config files
 
-If you are doing that today with copy-paste or submodules, `npmdata` is worth a look.
+If you are doing that today with copy-paste or submodules, `filedist` is worth a look.
 
 Repo and examples:
 
-https://github.com/flaviostutz/npmdata
+https://github.com/flaviostutz/filedist
 
 If you try it, star the repo and tell me which asset type you want to package first.

@@ -10,7 +10,7 @@ import { writeMarker, markerPath } from './markers';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-purge-test-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-purge-test-'));
 });
 
 afterEach(() => {

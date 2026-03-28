@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { printUsage } from '../usage';
 
 /**
  * `presets` CLI action handler.
  * Lists all unique preset tags found across config entries.
  */
-export async function runPresets(config: NpmdataConfig | null, argv: string[]): Promise<void> {
+export async function runPresets(config: FiledistConfig | null, argv: string[]): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('presets');
     return;

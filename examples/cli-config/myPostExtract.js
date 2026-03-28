@@ -2,14 +2,14 @@
 /**
  * Example post-extract script for the cli-config example.
  *
- * npmdata calls this script after a successful extract action, appending the
+ * filedist calls this script after a successful extract action, appending the
  * full command-line arguments (action + flags) so the script can inspect them.
  *
  * The script is executed with its cwd set to the effective output base directory
  * (the value of --output, or process.cwd() when --output is not supplied).
  *
  * This example reads the output directory from the --output / -o flag passed
- * by npmdata, logs all received parameters, and writes a "lastUpdated" file
+ * by filedist, logs all received parameters, and writes a "lastUpdated" file
  * inside that directory recording the ISO timestamp of the last successful extraction.
  */
 
@@ -21,7 +21,7 @@ const path = require('path');
 const args = process.argv.slice(2);
 console.log('Post-extract: received parameters:', args);
 
-// Parse --output / -o from the arguments passed by npmdata
+// Parse --output / -o from the arguments passed by filedist
 function parseOutput(argv) {
   for (let i = 0; i < argv.length; i++) {
     if ((argv[i] === '--output' || argv[i] === '-o') && i + 1 < argv.length) {

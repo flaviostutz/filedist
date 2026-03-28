@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { NpmdataExtractEntry, SourceKind } from '../types';
+import { FiledistExtractEntry, SourceKind } from '../types';
 import { formatDisplayPath, installOrUpgradePackage, spawnWithLog } from '../utils';
 
 export type PackageTarget = {
@@ -21,7 +21,7 @@ export type ResolvedPackageSource = {
 };
 
 export type SourceRuntime = {
-  resolvePackage: (entry: NpmdataExtractEntry, upgrade: boolean) => Promise<ResolvedPackageSource>;
+  resolvePackage: (entry: FiledistExtractEntry, upgrade: boolean) => Promise<ResolvedPackageSource>;
   cleanup: () => void;
 };
 
@@ -57,7 +57,7 @@ export function parsePackageTarget(
 export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime {
   const packageCache = new Map<string, ResolvedPackageSource>();
   const cloneDirs = new Set<string>();
-  const tempRoot = path.join(cwd, '.npmdata-tmp');
+  const tempRoot = path.join(cwd, '.filedist-tmp');
 
   const ensureTempRoot = (): void => {
     if (!fs.existsSync(tempRoot)) {
@@ -68,12 +68,12 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
         );
       }
     }
-    ensureGitignoreContains(cwd, '.npmdata-tmp');
+    ensureGitignoreContains(cwd, '.filedist-tmp');
   };
 
   return {
     async resolvePackage(
-      entry: NpmdataExtractEntry,
+      entry: FiledistExtractEntry,
       upgrade: boolean,
     ): Promise<ResolvedPackageSource> {
       if (!entry.package) {

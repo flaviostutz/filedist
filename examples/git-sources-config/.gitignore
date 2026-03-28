@@ -1,6 +1,6 @@
 package.json
 pnpm-lock.yaml
-.npmdatarc
+.filedistrc
 repos
 output
-.npmdata-tmp
+.filedist-tmp

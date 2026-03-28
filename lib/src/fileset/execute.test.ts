@@ -82,7 +82,7 @@ describe('execute', () => {
     expect(stat.mode & 0o200).toBe(0); // no write bit
   });
 
-  it('updates .npmdata marker file', async () => {
+  it('updates .filedist marker file', async () => {
     const srcPath = writeFile(pkgDir, 'guide.md', '# Guide');
     const destPath = path.join(outputDir, 'guide.md');
     const map = makeMap({
@@ -255,7 +255,7 @@ describe('execute', () => {
       const logs = consoleSpy.mock.calls.map((args) => args.join(' ')).join('\n');
       expect(logs).toContain('[verbose] execute: adding file output/verbose-add.md');
       expect(logs).toContain('[verbose] execute: modifying file output/verbose-mod.md');
-      expect(logs).toContain('[verbose] execute: writing marker file at output/.npmdata');
+      expect(logs).toContain('[verbose] execute: writing marker file at output/.filedist');
       expect(logs).not.toContain(destPath);
     } finally {
       consoleSpy.mockRestore();

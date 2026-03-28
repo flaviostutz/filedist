@@ -2,7 +2,7 @@
 /* eslint-disable unicorn/no-null */
 
 import { actionPurge } from '../../package/action-purge';
-import { NpmdataConfig, ProgressEvent } from '../../types';
+import { FiledistConfig, ProgressEvent } from '../../types';
 import { printUsage } from '../usage';
 
 import { runPurge } from './purge';
@@ -17,7 +17,7 @@ const mockActionPurge = actionPurge as jest.MockedFunction<typeof actionPurge>;
 
 const DEFAULT_RESULT = { deleted: 0, symlinksRemoved: 0, dirsRemoved: 0 };
 
-const CONFIG: NpmdataConfig = {
+const CONFIG: FiledistConfig = {
   sets: [{ package: 'my-pkg@1.0.0', output: { path: './out', gitignore: false } }],
 };
 

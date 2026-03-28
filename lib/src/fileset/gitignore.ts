@@ -4,7 +4,7 @@ import path from 'node:path';
 import { MARKER_FILE, GITIGNORE_FILE, GITIGNORE_START, GITIGNORE_END } from './constants';
 
 /**
- * Add paths to the npmdata-managed section in .gitignore.
+ * Add paths to the filedist-managed section in .gitignore.
  * Creates the file if it does not exist.
  * Always includes the MARKER_FILE itself in the managed section.
  */
@@ -13,7 +13,7 @@ export async function addToGitignore(markerDir: string, paths: string[]): Promis
 }
 
 /**
- * Read the paths currently listed in the npmdata-managed section.
+ * Read the paths currently listed in the filedist-managed section.
  */
 export function readManagedGitignoreEntries(markerDir: string): Set<string> {
   const gitignorePath = path.join(markerDir, GITIGNORE_FILE);
@@ -25,7 +25,7 @@ export function readManagedGitignoreEntries(markerDir: string): Set<string> {
 }
 
 /**
- * Remove specific paths from the npmdata-managed section in .gitignore.
+ * Remove specific paths from the filedist-managed section in .gitignore.
  * Removes the entire section if no paths remain. Deletes the file if empty.
  */
 export async function removeFromGitignore(markerDir: string, paths: string[]): Promise<void> {
@@ -43,7 +43,7 @@ export async function removeFromGitignore(markerDir: string, paths: string[]): P
 }
 
 /**
- * Replace the entire npmdata-managed gitignore section with a new set of paths.
+ * Replace the entire filedist-managed gitignore section with a new set of paths.
  */
 export function updateGitignoreSection(
   markerDir: string,

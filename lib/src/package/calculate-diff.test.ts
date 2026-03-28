@@ -14,7 +14,7 @@ describe('calculateDiff', () => {
   let pkgDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-calculate-diff-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-calculate-diff-'));
     outputDir = path.join(tmpDir, 'output');
     pkgDir = path.join(tmpDir, 'pkg');
     fs.mkdirSync(outputDir, { recursive: true });

@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
 import path from 'node:path';
 
-import { searchAndLoadNpmdataConfig, loadNpmdataConfigFile } from '../package/config';
-import { NpmdataConfig } from '../types';
+import { searchAndLoadFiledistConfig, loadFiledistConfigFile } from '../package/config';
+import { FiledistConfig } from '../types';
 
 import { printUsage, printVersion } from './usage';
 import { runExtract } from './actions/extract';
@@ -20,7 +20,7 @@ const KNOWN_COMMANDS = new Set(['extract', 'check', 'list', 'purge', 'init', 'pr
  *
  * @param argv      - Process argument vector (argv[0] = node, argv[1] = script).
  * @param cwd       - Working directory for output path resolution (defaults to process.cwd()).
- * @param configSearchCwd - Directory to search for npmdata config (defaults to cwd).
+ * @param configSearchCwd - Directory to search for filedist config (defaults to cwd).
  */
 export async function cli(argv: string[], cwd?: string, configSearchCwd?: string): Promise<number> {
   const args = argv.slice(2); // strip node + script
@@ -65,14 +65,14 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
   // Load config from cwd, unless --packages is specified (CLI-only mode)
   const packagesSpecified = args.includes('--packages');
 
-  let config: Awaited<ReturnType<typeof searchAndLoadNpmdataConfig>>;
+  let config: Awaited<ReturnType<typeof searchAndLoadFiledistConfig>>;
   if (configFilePath) {
-    config = await loadNpmdataConfigFile(path.resolve(effectiveCwd, configFilePath));
+    config = await loadFiledistConfigFile(path.resolve(effectiveCwd, configFilePath));
   } else if (packagesSpecified) {
     // eslint-disable-next-line unicorn/no-null
     config = null;
   } else {
-    config = await searchAndLoadNpmdataConfig(effectiveConfigSearchCwd);
+    config = await searchAndLoadFiledistConfig(effectiveConfigSearchCwd);
   }
 
   try {
@@ -86,7 +86,7 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
 
 async function dispatch(
   action: string,
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   cmdArgs: string[],
   cwd: string,
 ): Promise<void> {

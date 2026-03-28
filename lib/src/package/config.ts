@@ -1,35 +1,35 @@
 import { cosmiconfig } from 'cosmiconfig';
 
-import { NpmdataConfig } from '../types';
+import { FiledistConfig } from '../types';
 
 const CONFIG_BASENAMES = [
-  '.npmdatarc',
-  '.npmdatarc.json',
-  '.npmdatarc.yaml',
-  '.npmdatarc.yml',
-  'npmdata.config.js',
-  'npmdata.config.cjs',
+  '.filedistrc',
+  '.filedistrc.json',
+  '.filedistrc.yaml',
+  '.filedistrc.yml',
+  'filedist.config.js',
+  'filedist.config.cjs',
   'package.json',
 ] as const;
 
 /**
- * Search for an npmdata configuration using cosmiconfig, starting from the given cwd.
+ * Search for a filedist configuration using cosmiconfig, starting from the given cwd.
  * Looks for (in priority order):
- *   - .npmdatarc (JSON or YAML)
- *   - .npmdatarc.json / .npmdatarc.yaml / .npmdatarc.js
- *   - npmdata.config.js
- *   - "npmdata" key in package.json
+ *   - .filedistrc (JSON or YAML)
+ *   - .filedistrc.json / .filedistrc.yaml / .filedistrc.js
+ *   - filedist.config.js
+ *   - "filedist" key in package.json
  *
- * Returns the NpmdataConfig when found, or null when no configuration is present.
+ * Returns the FiledistConfig when found, or null when no configuration is present.
  */
-export async function searchAndLoadNpmdataConfig(cwd: string): Promise<NpmdataConfig | null> {
-  const explorer = cosmiconfig('npmdata');
+export async function searchAndLoadFiledistConfig(cwd: string): Promise<FiledistConfig | null> {
+  const explorer = cosmiconfig('filedist');
   const result = await explorer.search(cwd);
   if (!result || result.isEmpty) {
     // eslint-disable-next-line unicorn/no-null
     return null;
   }
-  const cfg = result.config as NpmdataConfig;
+  const cfg = result.config as FiledistConfig;
   if (!cfg || !Array.isArray(cfg.sets)) {
     // eslint-disable-next-line unicorn/no-null
     return null;
@@ -38,19 +38,19 @@ export async function searchAndLoadNpmdataConfig(cwd: string): Promise<NpmdataCo
 }
 
 /**
- * Load an npmdata configuration from an explicit file path using cosmiconfig.
+ * Load a filedist configuration from an explicit file path using cosmiconfig.
  * Supports JSON, YAML, and JS config files.
  *
- * Returns the NpmdataConfig when found, or null when the file is empty or invalid.
+ * Returns the FiledistConfig when found, or null when the file is empty or invalid.
  */
-export async function loadNpmdataConfigFile(filePath: string): Promise<NpmdataConfig | null> {
-  const explorer = cosmiconfig('npmdata');
+export async function loadFiledistConfigFile(filePath: string): Promise<FiledistConfig | null> {
+  const explorer = cosmiconfig('filedist');
   const result = await explorer.load(filePath);
   if (!result || result.isEmpty) {
     // eslint-disable-next-line unicorn/no-null
     return null;
   }
-  const cfg = result.config as NpmdataConfig;
+  const cfg = result.config as FiledistConfig;
   if (!cfg || !Array.isArray(cfg.sets)) {
     // eslint-disable-next-line unicorn/no-null
     return null;
@@ -59,12 +59,12 @@ export async function loadNpmdataConfigFile(filePath: string): Promise<NpmdataCo
 }
 
 /**
- * Load npmdata config only from the given directory, without searching parent folders.
+ * Load filedist config only from the given directory, without searching parent folders.
  */
-export async function loadNpmdataConfigFromDirectory(
+export async function loadFiledistConfigFromDirectory(
   directory: string,
-): Promise<NpmdataConfig | null> {
-  const explorer = cosmiconfig('npmdata');
+): Promise<FiledistConfig | null> {
+  const explorer = cosmiconfig('filedist');
 
   for (const basename of CONFIG_BASENAMES) {
     let result;
@@ -78,7 +78,7 @@ export async function loadNpmdataConfigFromDirectory(
     }
     if (!result || result.isEmpty) continue;
 
-    const cfg = result.config as NpmdataConfig;
+    const cfg = result.config as FiledistConfig;
     if (cfg && Array.isArray(cfg.sets)) {
       return cfg;
     }

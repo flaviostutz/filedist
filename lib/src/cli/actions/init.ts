@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import path from 'node:path';
 
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { actionInit } from '../../package/action-init';
@@ -10,7 +10,7 @@ import { actionInit } from '../../package/action-init';
  * `init` CLI action handler.
  */
 export async function runInit(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
 ): Promise<void> {
@@ -29,5 +29,5 @@ export async function runInit(
   };
 
   await actionInit(outputDir, verbose ?? false, initConfig);
-  console.log('Init complete. Scaffolded package.json and bin/npmdata.js.');
+  console.log('Init complete. Scaffolded package.json and bin/filedist.js.');
 }

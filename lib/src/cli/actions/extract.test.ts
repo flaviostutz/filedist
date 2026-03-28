@@ -2,7 +2,7 @@
 /* eslint-disable unicorn/no-null */
 
 import { actionExtract } from '../../package/action-extract';
-import { NpmdataConfig, ProgressEvent } from '../../types';
+import { FiledistConfig, ProgressEvent } from '../../types';
 import { printUsage } from '../usage';
 
 import { runExtract } from './extract';
@@ -33,7 +33,7 @@ const mockActionExtract = actionExtract as jest.MockedFunction<typeof actionExtr
 
 const DEFAULT_RESULT = { added: 1, modified: 0, deleted: 0, skipped: 0 };
 
-const CONFIG_WITH_SETS: NpmdataConfig = {
+const CONFIG_WITH_SETS: FiledistConfig = {
   sets: [
     {
       package: 'config-pkg@1.0.0',
@@ -94,7 +94,7 @@ describe('runExtract — source selection', () => {
   });
 
   it('passes multiple config sets when defined', async () => {
-    const multiConfig: NpmdataConfig = {
+    const multiConfig: FiledistConfig = {
       sets: [
         { package: 'pkg-a@1.0.0', output: { path: './a' } },
         { package: 'pkg-b@2.0.0', output: { path: './b' } },
@@ -161,7 +161,7 @@ describe('runExtract — CLI overrides applied to config entries', () => {
   });
 
   it('applies CLI overrides to all config entries', async () => {
-    const multiConfig: NpmdataConfig = {
+    const multiConfig: FiledistConfig = {
       sets: [
         { package: 'pkg-a@1.0.0', output: { path: './a' } },
         { package: 'pkg-b@2.0.0', output: { path: './b' } },
@@ -193,7 +193,7 @@ describe('runExtract — CLI --packages does not apply applyArgvOverrides redund
 });
 
 describe('runExtract — preset filtering', () => {
-  const configWithPresets: NpmdataConfig = {
+  const configWithPresets: FiledistConfig = {
     sets: [
       { package: 'pkg-docs@1.0.0', output: { path: '.' }, selector: { presets: ['docs'] } },
       { package: 'pkg-api@1.0.0', output: { path: '.' }, selector: { presets: ['api'] } },
@@ -270,7 +270,7 @@ describe('runExtract — onProgress handler', () => {
       return DEFAULT_RESULT;
     });
 
-    const config: NpmdataConfig = {
+    const config: FiledistConfig = {
       sets: [{ package: 'pkg@1.0.0', output: { path: '.' }, silent }],
     };
     const logs: string[] = [];
@@ -373,7 +373,7 @@ describe('runExtract — onProgress handler', () => {
 });
 
 describe('runExtract — postExtractScript', () => {
-  const configWithScript: NpmdataConfig = {
+  const configWithScript: FiledistConfig = {
     sets: [{ package: 'pkg@1.0.0', output: { path: '.' } }],
     postExtractScript: 'echo done',
   };

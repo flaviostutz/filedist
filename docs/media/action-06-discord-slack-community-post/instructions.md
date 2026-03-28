@@ -1,7 +1,7 @@
 # Publish Instructions
 
 - Platform: Discord or Slack communities focused on AI coding, dev tooling, or open source
-- Goal: create direct conversations with practitioners who can test npmdata quickly and star the repo if it fits
+- Goal: create direct conversations with practitioners who can test filedist quickly and star the repo if it fits
 - Best publish time: weekdays, 15:00-18:00 UTC
 - Frequency: 2 community posts during launch week, each adapted to the specific server or workspace tone
 - Format: short text post plus one screenshot or GIF; keep the message under 120 words if the channel moves quickly

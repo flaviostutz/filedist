@@ -5,7 +5,7 @@ import os from 'node:os';
 import { jest } from '@jest/globals';
 
 import { installMockPackage } from '../fileset/test-utils';
-import { NpmdataExtractEntry } from '../types';
+import { FiledistExtractEntry } from '../types';
 import { writeMarker, markerPath } from '../fileset/markers';
 import { filterEntriesByPresets } from '../utils';
 
@@ -15,7 +15,7 @@ import { actionExtract } from './action-extract';
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-action-check-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-action-check-'));
 });
 
 afterEach(() => {
@@ -42,7 +42,7 @@ describe('actionCheck', () => {
       { path: 'guide.md', packageName: 'check-action-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'check-action-pkg@1.0.0', output: { path: outputDir } },
     ];
 
@@ -81,7 +81,7 @@ describe('actionCheck', () => {
     ]);
     // Deliberately do NOT write src/index.ts to outputDir → it will appear as missing
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'not-installed-pkg@1.0.0', output: { path: outputDir } },
     ];
 
@@ -131,7 +131,7 @@ describe('actionCheck', () => {
   }, 60000);
 
   it('skips entries with managed=false when skipUnmanaged=true', async () => {
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'some-pkg', output: { path: path.join(tmpDir, 'out'), managed: false } },
     ];
 
@@ -155,7 +155,7 @@ describe('actionCheck', () => {
     // Write the file with different content
     fs.writeFileSync(path.join(outputDir, 'a.md'), 'different content');
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'multi-pkg@1.0.0', output: { path: outputDir } },
     ];
 
@@ -167,7 +167,7 @@ describe('actionCheck', () => {
   it('emits onProgress events', async () => {
     await installMockPackage('progress-pkg', '1.0.0', { 'a.md': 'content' }, tmpDir);
     const events: string[] = [];
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'progress-pkg@1.0.0', output: { path: path.join(tmpDir, 'out') } },
     ];
 
@@ -192,7 +192,7 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(outputDir, 'a.txt'), 'hello');
 
     const events: Array<{ type: string; version?: string }> = [];
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       // No version specified → should use 'latest' in progress events
       { package: 'no-version-pkg', output: { path: outputDir } },
     ];
@@ -225,7 +225,7 @@ describe('actionCheck', () => {
     fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'docs/api.md'), '# API');
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       {
         package: 'sel-pkg@1.0.0',
         selector: { files: ['**'] },
@@ -324,7 +324,7 @@ describe('actionCheck', () => {
       { path: 'data/sample.csv', packageName: 'presets-data-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'presets-docs-pkg@1.0.0', output: { path: docsOutput }, presets: ['docs'] },
       { package: 'presets-data-pkg@1.0.0', output: { path: dataOutput }, presets: ['data'] },
     ];
@@ -366,7 +366,7 @@ describe('actionCheck', () => {
       { path: 'file.md', packageName: 'all-presets-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'all-presets-pkg@1.0.0', output: { path: outputDir }, presets: ['some-tag'] },
     ];
 
@@ -376,8 +376,8 @@ describe('actionCheck', () => {
     expect(result.conflict).toHaveLength(0);
   }, 60000);
 
-  it('recursively checks transitive packages declared in npmdata.sets', async () => {
-    // Parent package installed in node_modules with npmdata.sets pointing at a child
+  it('recursively checks transitive packages declared in filedist.sets', async () => {
+    // Parent package installed in node_modules with filedist.sets pointing at a child
     const parentPkgDir = path.join(tmpDir, 'node_modules', 'recurse-parent');
     fs.mkdirSync(parentPkgDir, { recursive: true });
     fs.writeFileSync(
@@ -385,7 +385,7 @@ describe('actionCheck', () => {
       JSON.stringify({
         name: 'recurse-parent',
         version: '1.0.0',
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'recurse-child@1.0.0',
@@ -422,7 +422,7 @@ describe('actionCheck', () => {
     ]);
     // Deliberately do NOT write child.md → should appear as missing after check
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'recurse-parent@1.0.0', output: { path: parentOutputDir } },
     ];
 
@@ -449,7 +449,7 @@ describe('actionCheck', () => {
       parentPkgJsonPath,
       JSON.stringify({
         ...parentPkgJson,
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: 'nested-child@1.0.0',
@@ -491,7 +491,7 @@ describe('actionCheck', () => {
       { path: 'readme.md', packageName: 'verbose-check-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'verbose-check-pkg@1.0.0', output: { path: outputDir } },
     ];
 
@@ -521,7 +521,7 @@ describe('actionCheck', () => {
     ]);
     // Deliberately do NOT write file.md to outputDir → it will be missing
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'missing-verbose-pkg@1.0.0', output: { path: outputDir } },
     ];
 
@@ -532,7 +532,7 @@ describe('actionCheck', () => {
   it('handles error reading transitive package.json gracefully with verbose', async () => {
     // Install a valid package so getInstalledIfSatisfies can parse the version.
     // Then spy on fs.readFileSync to throw on the second read of that package.json
-    // (the one done inside the try/catch in actionCheck that looks for npmdata.sets),
+    // (the one done inside the try/catch in actionCheck that looks for filedist.sets),
     // covering the catch + verbose warn branches.
     await installMockPackage('spy-corrupt-parent', '1.0.0', { 'readme.md': '# hi' }, tmpDir);
 
@@ -561,7 +561,7 @@ describe('actionCheck', () => {
     });
 
     try {
-      const entries: NpmdataExtractEntry[] = [
+      const entries: FiledistExtractEntry[] = [
         { package: 'spy-corrupt-parent@1.0.0', output: { path: outputDir } },
       ];
       // Should not throw — catch block inside actionCheck handles the error
@@ -574,7 +574,7 @@ describe('actionCheck', () => {
 
   it('skips entries with managed=false (output.managed=false)', async () => {
     // managed=false entries are filtered before resolveFiles — no package install attempted
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       {
         package: 'unmanaged-check-pkg',
         output: { path: path.join(tmpDir, 'out'), managed: false },
@@ -597,7 +597,7 @@ describe('actionCheck', () => {
       JSON.stringify({
         name: 'verbose-recurse-parent',
         version: '1.0.0',
-        npmdata: {
+        filedist: {
           sets: [{ package: 'verbose-recurse-child@1.0.0', output: { path: 'child-out' } }],
         },
       }),
@@ -625,7 +625,7 @@ describe('actionCheck', () => {
       { path: 'child.md', packageName: 'verbose-recurse-child', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'verbose-recurse-parent@1.0.0', output: { path: parentOutputDir } },
     ];
 
@@ -654,7 +654,7 @@ describe('actionCheck', () => {
       { path: 'b.md', packageName: 'shared-pkg-b', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'shared-pkg-a@1.0.0', output: { path: sharedOutput } },
       { package: 'shared-pkg-b@1.0.0', output: { path: sharedOutput } },
     ];
@@ -686,7 +686,7 @@ describe('actionCheck', () => {
       { path: 'b.md', packageName: 'absent-pkg', packageVersion: '1.0.0' },
     ]);
 
-    const entries: NpmdataExtractEntry[] = [
+    const entries: FiledistExtractEntry[] = [
       { package: 'absent-pkg@1.0.0', output: { path: sharedOutput } },
     ];
 

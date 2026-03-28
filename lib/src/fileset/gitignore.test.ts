@@ -19,11 +19,11 @@ describe('addToGitignore', () => {
   it('creates .gitignore from scratch with managed section', async () => {
     await addToGitignore(tmpDir, ['docs/file.md', 'README.md']);
     const content = fs.readFileSync(path.join(tmpDir, GITIGNORE_FILE), 'utf8');
-    expect(content).toContain('# npmdata:start');
+    expect(content).toContain('# filedist:start');
     expect(content).toContain(MARKER_FILE);
     expect(content).toContain('docs/file.md');
     expect(content).toContain('README.md');
-    expect(content).toContain('# npmdata:end');
+    expect(content).toContain('# filedist:end');
   });
 
   it('appends managed section to existing .gitignore', async () => {
@@ -33,7 +33,7 @@ describe('addToGitignore', () => {
     const content = fs.readFileSync(gitignorePath, 'utf8');
     expect(content).toContain('node_modules/');
     expect(content).toContain('dist/');
-    expect(content).toContain('# npmdata:start');
+    expect(content).toContain('# filedist:start');
     expect(content).toContain(MARKER_FILE);
     expect(content).toContain('docs/file.md');
   });
@@ -84,8 +84,8 @@ describe('removeFromGitignore', () => {
     const gitignorePath = path.join(tmpDir, GITIGNORE_FILE);
     const fileExists = fs.existsSync(gitignorePath);
     const content = fileExists ? fs.readFileSync(gitignorePath, 'utf8') : '';
-    expect(content).not.toContain('# npmdata:start');
-    expect(content).not.toContain('# npmdata:end');
+    expect(content).not.toContain('# filedist:start');
+    expect(content).not.toContain('# filedist:end');
   });
 
   it('deletes .gitignore file when it becomes empty after removal', async () => {
@@ -102,7 +102,7 @@ describe('removeFromGitignore', () => {
     await removeFromGitignore(tmpDir, ['only-file.md']);
     const content = fs.readFileSync(gitignorePath, 'utf8');
     expect(content).toContain('node_modules/');
-    expect(content).not.toContain('# npmdata:start');
+    expect(content).not.toContain('# filedist:start');
   });
 
   it('does nothing when .gitignore does not exist', async () => {

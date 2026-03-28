@@ -25,20 +25,20 @@ describe('binpkg', () => {
     // Install the mock data package into tmpDir so the CLI can resolve it
     await installMockPackage(DATA_PKG_NAME, '1.0.0', DATA_PKG_FILES, tmpDir);
 
-    // Simulate the data package's own root: has package.json (with name + npmdata config)
+    // Simulate the data package's own root: has package.json (with name + filedist config)
     // and a bin/ subdirectory from which binpkg gets __dirname.
     const fakePkgRoot = path.join(tmpDir, 'fake-data-pkg');
     binDir = path.join(fakePkgRoot, 'bin');
     fs.mkdirSync(binDir, { recursive: true });
 
-    // The data package's package.json also contains an npmdata config with an external set.
+    // The data package's package.json also contains a filedist config with an external set.
     // binpkg must NOT use this config — it should only extract DATA_PKG_NAME itself.
     fs.writeFileSync(
       path.join(fakePkgRoot, 'package.json'),
       JSON.stringify({
         name: DATA_PKG_NAME,
         version: '1.0.0',
-        npmdata: {
+        filedist: {
           sets: [
             {
               package: DATA_PKG_NAME,
@@ -100,10 +100,10 @@ describe('binpkg', () => {
     expect(fs.existsSync(path.join(outputDir, 'docs/readme.md'))).toBe(true);
   }, 60_000);
 
-  it('applies --files selector from CLI args — ignores data package npmdata config selector', async () => {
+  it('applies --files selector from CLI args — ignores data package filedist config selector', async () => {
     const outputDir = path.join(tmpDir, 'output-files');
 
-    // The data package npmdata config only selects 'data/**', but we pass 'docs/**' via CLI.
+    // The data package filedist config only selects 'data/**', but we pass 'docs/**' via CLI.
     // binpkg must use the CLI arg, not the config.
     await expect(
       binpkg(binDir, ['--output', outputDir, '--gitignore=false', '--files', 'docs/**']),
@@ -114,10 +114,10 @@ describe('binpkg', () => {
     expect(fs.existsSync(path.join(outputDir, 'data/file2.md'))).toBe(false);
   }, 60_000);
 
-  it('does not extract external packages listed in data package npmdata config', async () => {
+  it('does not extract external packages listed in data package filedist config', async () => {
     const outputDir = path.join(tmpDir, 'output-no-ext');
 
-    // If binpkg used the npmdata config it would try to install 'nonexistent-external-pkg',
+    // If binpkg used the filedist config it would try to install 'nonexistent-external-pkg',
     // which does not exist, and would fail. A clean exit(0) proves it was not attempted.
     await expect(binpkg(binDir, ['--output', outputDir, '--gitignore=false'])).rejects.toThrow(
       'process.exit(0)',

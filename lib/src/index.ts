@@ -1,4 +1,4 @@
-// Public library exports for npmdata v2
+// Public library exports for filedist v2
 
 export { actionExtract } from './package/action-extract';
 export type { ExtractOptions, ExtractResult } from './package/action-extract';
@@ -20,8 +20,8 @@ export { calculateDiff } from './package/calculate-diff';
 export { binpkg } from './cli/binpkg';
 
 export type {
-  NpmdataConfig,
-  NpmdataExtractEntry,
+  FiledistConfig,
+  FiledistExtractEntry,
   PackageConfig,
   SelectorConfig,
   OutputConfig,

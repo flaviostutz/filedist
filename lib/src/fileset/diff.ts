@@ -23,7 +23,7 @@ import { enumeratePackageFiles } from './package-files';
  * @param outputDir     Absolute path to the output directory.
  * @param selector      SelectorConfig controlling which package files are included.
  * @param outputConfig  OutputConfig controlling extraction behaviour.
- * @param existingMarker Current managed file entries from the .npmdata marker.
+ * @param existingMarker Current managed file entries from the .filedist marker.
  * @param contentReplacements Content replacement configs to apply before hash comparison.
  * @returns ExtractionMap classifying all file operations.
  */

@@ -1,5 +1,5 @@
 {
-  "name": "npmdata",
+  "name": "filedist",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
@@ -11,19 +11,19 @@
     "dist/**/*.map",
     "package.json",
     "README.md",
-    "bin/npmdata.js"
+    "bin/filedist.js"
   ],
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/flaviostutz/npmdata.git"
+    "url": "git+https://github.com/flaviostutz/filedist.git"
   },
   "author": "flaviostutz",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/flaviostutz/npmdata/issues"
+    "url": "https://github.com/flaviostutz/filedist/issues"
   },
-  "homepage": "https://github.com/flaviostutz/npmdata#readme",
+  "homepage": "https://github.com/flaviostutz/filedist#readme",
   "devDependencies": {
     "@babel/preset-typescript": "^7.21.0",
     "@jest/globals": "^30.3.0",

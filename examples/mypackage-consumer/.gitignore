@@ -1,7 +1,7 @@
 output
 pnpm-lock.yaml
-# npmdata:start
-.npmdata
+# filedist:start
+.filedist
 .configs/app.config.json
 .configs/database.config.json
 data/users-dataset/user1.json
@@ -10,4 +10,4 @@ data/users-dataset/user3.json
 docs/README.md
 docs/adrs/adr-001-sample1.md
 docs/adrs/adr-002-sample2.md
-# npmdata:end
+# filedist:end

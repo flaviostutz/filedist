@@ -44,7 +44,7 @@ describe('cli', () => {
   it('defaults to extract command when no command given', async () => {
     const outputDir = path.join(tmpDir, 'output');
     await cli(
-      ['node', 'npmdata', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
+      ['node', 'filedist', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -54,7 +54,7 @@ describe('cli', () => {
   it('defaults to extract when first arg starts with -', async () => {
     const outputDir = path.join(tmpDir, 'output-flag');
     await cli(
-      ['node', 'npmdata', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
+      ['node', 'filedist', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -65,7 +65,7 @@ describe('cli', () => {
     await cli(
       [
         'node',
-        'npmdata',
+        'filedist',
         'extract',
         '--packages',
         PKG_NAME,
@@ -85,7 +85,7 @@ describe('cli', () => {
     await cli(
       [
         'node',
-        'npmdata',
+        'filedist',
         'extract',
         '--packages',
         PKG_NAME,
@@ -98,13 +98,13 @@ describe('cli', () => {
 
     // Write config so check knows what to verify
     fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
+      path.join(tmpDir, '.filedistrc.json'),
       JSON.stringify({
         sets: [{ package: PKG_NAME, output: { path: outputDir, gitignore: false } }],
       }),
     );
 
-    const exitCode = await cli(['node', 'npmdata', 'check'], tmpDir);
+    const exitCode = await cli(['node', 'filedist', 'check'], tmpDir);
 
     expect(exitCode).toBe(0); // no drift → exits 0
   }, 60_000);
@@ -116,7 +116,7 @@ describe('cli', () => {
     await cli(
       [
         'node',
-        'npmdata',
+        'filedist',
         'extract',
         '--packages',
         PKG_NAME,
@@ -133,13 +133,13 @@ describe('cli', () => {
     fs.writeFileSync(tamperedFile, '# Tampered');
 
     fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
+      path.join(tmpDir, '.filedistrc.json'),
       JSON.stringify({
         sets: [{ package: PKG_NAME, output: { path: outputDir, gitignore: false } }],
       }),
     );
 
-    const exitCode = await cli(['node', 'npmdata', 'check'], tmpDir);
+    const exitCode = await cli(['node', 'filedist', 'check'], tmpDir);
 
     expect(exitCode).toBe(1); // drift detected → exit code 1
   }, 60_000);
@@ -150,7 +150,7 @@ describe('cli', () => {
     await cli(
       [
         'node',
-        'npmdata',
+        'filedist',
         'extract',
         '--packages',
         PKG_NAME,
@@ -164,7 +164,7 @@ describe('cli', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    await cli(['node', 'npmdata', 'list'], outputDir);
+    await cli(['node', 'filedist', 'list'], outputDir);
     spy.mockRestore();
 
     expect(lines.some((l) => l.includes('docs/guide.md'))).toBe(true);
@@ -176,7 +176,7 @@ describe('cli', () => {
     await cli(
       [
         'node',
-        'npmdata',
+        'filedist',
         'extract',
         '--packages',
         PKG_NAME,
@@ -188,7 +188,7 @@ describe('cli', () => {
     );
 
     fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
+      path.join(tmpDir, '.filedistrc.json'),
       JSON.stringify({
         sets: [{ package: PKG_NAME, output: { path: outputDir, gitignore: false } }],
       }),
@@ -196,7 +196,7 @@ describe('cli', () => {
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
 
-    await cli(['node', 'npmdata', 'purge'], tmpDir);
+    await cli(['node', 'filedist', 'purge'], tmpDir);
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(false);
   }, 60_000);
@@ -205,10 +205,10 @@ describe('cli', () => {
     const initDir = path.join(tmpDir, 'my-data-pkg');
     fs.mkdirSync(initDir, { recursive: true });
 
-    await cli(['node', 'npmdata', 'init', '--output', initDir], tmpDir);
+    await cli(['node', 'filedist', 'init', '--output', initDir], tmpDir);
 
     expect(fs.existsSync(path.join(initDir, 'package.json'))).toBe(true);
-    expect(fs.existsSync(path.join(initDir, 'bin', 'npmdata.js'))).toBe(true);
+    expect(fs.existsSync(path.join(initDir, 'bin', 'filedist.js'))).toBe(true);
   }, 30_000);
 
   it('prints usage on global --help', async () => {
@@ -216,9 +216,9 @@ describe('cli', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    await cli(['node', 'npmdata', '--help'], tmpDir);
+    await cli(['node', 'filedist', '--help'], tmpDir);
     spy.mockRestore();
-    expect(lines.join('\n')).toMatch(/npmdata/i);
+    expect(lines.join('\n')).toMatch(/filedist/i);
   });
 
   it('prints version on --version', async () => {
@@ -226,14 +226,14 @@ describe('cli', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    await cli(['node', 'npmdata', '--version'], tmpDir);
+    await cli(['node', 'filedist', '--version'], tmpDir);
     spy.mockRestore();
     expect(lines.join('\n')).toMatch(/\d+\.\d+/);
   });
 
   it('routes to presets command — lists preset tags from config', async () => {
     fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
+      path.join(tmpDir, '.filedistrc.json'),
       JSON.stringify({
         sets: [
           { package: PKG_NAME, presets: ['prod', 'staging'] },
@@ -246,7 +246,7 @@ describe('cli', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    const code = await cli(['node', 'npmdata', 'presets'], tmpDir);
+    const code = await cli(['node', 'filedist', 'presets'], tmpDir);
     spy.mockRestore();
 
     expect(code).toBe(0);
@@ -258,7 +258,7 @@ describe('cli', () => {
 
   it('--config loads configuration from an explicit file path', async () => {
     const outputDir = path.join(tmpDir, 'output-custom-cfg');
-    const configFile = path.join(tmpDir, 'my-npmdata.json');
+    const configFile = path.join(tmpDir, 'my-filedist.json');
 
     fs.writeFileSync(
       configFile,
@@ -267,8 +267,8 @@ describe('cli', () => {
       }),
     );
 
-    // No .npmdatarc in tmpDir — config comes only from --config
-    await cli(['node', 'npmdata', 'extract', '--config', configFile], tmpDir);
+    // No .filedistrc in tmpDir — config comes only from --config
+    await cli(['node', 'filedist', 'extract', '--config', configFile], tmpDir);
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'docs/api.md'))).toBe(true);
@@ -281,7 +281,7 @@ describe('cli', () => {
 
     // Write an auto-discovered config that points to outputDefault
     fs.writeFileSync(
-      path.join(tmpDir, '.npmdatarc.json'),
+      path.join(tmpDir, '.filedistrc.json'),
       JSON.stringify({
         sets: [{ package: PKG_NAME, output: { path: outputDefault, gitignore: false } }],
       }),
@@ -295,7 +295,7 @@ describe('cli', () => {
       }),
     );
 
-    await cli(['node', 'npmdata', 'extract', '--config', configFile], tmpDir);
+    await cli(['node', 'filedist', 'extract', '--config', configFile], tmpDir);
 
     // Only outputCustom should be populated
     expect(fs.existsSync(path.join(outputCustom, 'docs/guide.md'))).toBe(true);
@@ -313,7 +313,7 @@ describe('cli', () => {
       }),
     );
 
-    await cli(['node', 'npmdata', 'extract', '--config', 'relative-cfg.json'], tmpDir);
+    await cli(['node', 'filedist', 'extract', '--config', 'relative-cfg.json'], tmpDir);
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
   }, 60_000);

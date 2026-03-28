@@ -2,7 +2,7 @@
 
 ## Context and Problem Statement
 
-npmdata must support multi-level package composition: a consumer may reference a data package that itself references other data packages, each with their own file selectors, output paths, and presets. File extraction must be predictable, composable, and actionable by multiple commands (extract, check, purge) without duplicating logic.
+filedist must support multi-level package composition: a consumer may reference a data package that itself references other data packages, each with their own file selectors, output paths, and presets. File extraction must be predictable, composable, and actionable by multiple commands (extract, check, purge) without duplicating logic.
 
 How should the extraction algorithm handle config inheritance, file selection, and output resolution across multiple package levels?
 
@@ -18,8 +18,8 @@ Extraction is split into a read-only diff phase and an action phase. Config flow
 
 Given `(packageName, version/ref, selectorConfig, outputConfig, source)`:
 
-1. Resolve the source package: install from npm or clone from git into `.npmdata-tmp`.
-2. Load config for the resolved package root (from its `package.json` or `.npmdatarc`).
+1. Resolve the source package: install from npm or clone from git into `.filedist-tmp`.
+2. Load config for the resolved package root (from its `package.json` or `.filedistrc`).
 3. If no config is found: call `extractFileset(packageName, version/ref, selectorConfig, outputConfig)` — directly walk and filter the package files to produce a diff (add/modify/delete/skip).
 4. If config is found, for each fileset entry in config:
    - Merge the entry's selector and output config with the incoming `selectorConfig`/`outputConfig` using the merge rules below.
@@ -31,9 +31,9 @@ Given `(packageName, version/ref, selectorConfig, outputConfig, source)`:
 Given the full diff produced in Phase 1:
 - `extract`: write/delete files to disk (skipped when `dryRun`). File deletions are deferred until all filesets are processed so a file claimed by one package can be superseded by another in the same run.
 - `check`: compare hashes, report differences.
-- `purge`: delete files using only the local `.npmdata` marker — no network access needed.
+- `purge`: delete files using only the local `.filedist` marker — no network access needed.
 
-When the source is git, the clone lives in `.npmdata-tmp/<hashed-repo-dir>` during the command and is deleted afterwards.
+When the source is git, the clone lives in `.filedist-tmp/<hashed-repo-dir>` during the command and is deleted afterwards.
 
 **Merge rules (applied at step 3 of Phase 1)**
 
@@ -58,7 +58,7 @@ myorg-kit       → /myorg/welcome.md
     { package: devops-rules,   files: devops/**,   presets: [basic, extended] }
     { package: security-rules, files: security/**, presets: [extended] }
 
-consumer (.npmdatarc):
+consumer (.filedistrc):
   sets:
     { package: myorg-kit, files: *.md }
 ```
@@ -72,13 +72,13 @@ Consumer calls `extract --presets basic`. Result:
 **CLI equivalences**
 
 ```
-npx npmdata extract --packages myorg-kit
+npx filedist extract --packages myorg-kit
 npx myorg-kit extract
-npx npmdata extract   # (with .npmdatarc set pointing to myorg-kit)
+npx filedist extract   # (with .filedistrc set pointing to myorg-kit)
 ```
 
 ```
-npx npmdata extract --packages myorg-kit --presets basic
+npx filedist extract --packages myorg-kit --presets basic
 npx myorg-kit extract --presets basic
 ```
 

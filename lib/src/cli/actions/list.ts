@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { NpmdataConfig } from '../../types';
+import { FiledistConfig } from '../../types';
 import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { actionList } from '../../package/action-list';
@@ -9,7 +9,7 @@ import { actionList } from '../../package/action-list';
  * Note: list always ignores --presets.
  */
 export async function runList(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
 ): Promise<void> {

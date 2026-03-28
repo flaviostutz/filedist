@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { NpmdataConfig, ProgressEvent } from '../../types';
+import { FiledistConfig, ProgressEvent } from '../../types';
 import { parseArgv, resolveEntriesFromConfigAndArgs } from '../argv';
 import { printUsage } from '../usage';
 import { formatProgressFile } from '../progress';
@@ -12,7 +12,7 @@ import { spawnWithLog } from '../../utils';
  * Parses argv, merges with config, calls actionExtract, prints summary.
  */
 export async function runExtract(
-  config: NpmdataConfig | null,
+  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
 ): Promise<void> {

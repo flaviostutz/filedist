@@ -4,7 +4,7 @@ This is an example **consumer** project. It installs `example-files-package` (th
 
 ## How it works
 
-`example-files-package` was prepared with `npmdata init`, so it ships a `bin/npmdata.js` entry point. After installing the package, consumers can call that script directly — no separate `npmdata` invocation needed. That packaged CLI reads the publisher package's own `npmdata.sets`, including package-less self entries and any external dependency entries:
+`example-files-package` was prepared with `filedist init`, so it ships a `bin/filedist.js` entry point. After installing the package, consumers can call that script directly — no separate `filedist` invocation needed. That packaged CLI reads the publisher package's own `filedist.sets`, including package-less self entries and any external dependency entries:
 
 ```sh
 # extract only docs files (.gitignore entries are written by default)
@@ -20,12 +20,12 @@ pnpm exec example-files-package extract --files "docs/**/*" --dry-run
 pnpm exec example-files-package check
 ```
 
-Alternatively, use `npmdata` directly and point it at the installed package:
+Alternatively, use `filedist` directly and point it at the installed package:
 
 ```sh
-pnpm exec npmdata extract --packages example-files-package --files "docs/**/*"
-pnpm exec npmdata check  --packages example-files-package
-pnpm exec npmdata list
+pnpm exec filedist extract --packages example-files-package --files "docs/**/*"
+pnpm exec filedist check  --packages example-files-package
+pnpm exec filedist list
 ```
 
 ## Running the example

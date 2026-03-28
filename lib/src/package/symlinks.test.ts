@@ -12,7 +12,7 @@ import {
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-symlinks-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-symlinks-'));
 });
 
 afterEach(() => {

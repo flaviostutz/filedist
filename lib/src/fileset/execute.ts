@@ -20,7 +20,7 @@ import { addToGitignore } from './gitignore';
  *  - Copy toAdd and toModify files from source to dest
  *  - Make managed files read-only (unless unmanaged mode)
  *  - Delete toDelete files
- *  - Update .npmdata marker file (unless dryRun or unmanaged)
+ *  - Update .filedist marker file (unless dryRun or unmanaged)
  *  - Update .gitignore (unless dryRun, unmanaged, or gitignore=false)
  *
  * @param map         The ExtractionMap produced by diff().

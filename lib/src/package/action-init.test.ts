@@ -19,7 +19,7 @@ const { execSync: mockExecSync } = require('node:child_process') as {
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npmdata-action-init-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-action-init-'));
   mockExecSync.mockClear();
 });
 
@@ -35,17 +35,17 @@ describe('actionInit', () => {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
     expect(pkgJson.name).toBe('my-data-pkg');
     expect(pkgJson.version).toBe('1.0.0');
-    expect(pkgJson.bin).toBe('bin/npmdata.js');
+    expect(pkgJson.bin).toBe('bin/filedist.js');
   });
 
-  it('creates bin/npmdata.js shim', async () => {
+  it('creates bin/filedist.js shim', async () => {
     const outputDir = path.join(tmpDir, 'my-pkg');
     await actionInit(outputDir, false);
 
-    const binPath = path.join(outputDir, 'bin', 'npmdata.js');
+    const binPath = path.join(outputDir, 'bin', 'filedist.js');
     expect(fs.existsSync(binPath)).toBe(true);
     const content = fs.readFileSync(binPath, 'utf8');
-    expect(content).toContain("require('npmdata').binpkg(__dirname, process.argv.slice(2))");
+    expect(content).toContain("require('filedist').binpkg(__dirname, process.argv.slice(2))");
   });
 
   it('updates existing package.json without throwing', async () => {
@@ -61,18 +61,21 @@ describe('actionInit', () => {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
     expect(pkgJson.name).toBe('existing-pkg');
     expect(pkgJson.version).toBe('2.0.0');
-    expect(pkgJson.bin).toBe('bin/npmdata.js');
+    expect(pkgJson.bin).toBe('bin/filedist.js');
     expect(pkgJson.dependencies.some).toBe('1');
   });
 
-  it('skips creating bin/npmdata.js when it already exists', async () => {
+  it('skips creating bin/filedist.js when it already exists', async () => {
     const outputDir = path.join(tmpDir, 'existing-bin');
     fs.mkdirSync(path.join(outputDir, 'bin'), { recursive: true });
-    fs.writeFileSync(path.join(outputDir, 'bin', 'npmdata.js'), '#!/usr/bin/env node\n// existing');
+    fs.writeFileSync(
+      path.join(outputDir, 'bin', 'filedist.js'),
+      '#!/usr/bin/env node\n// existing',
+    );
 
     await actionInit(outputDir, false);
 
-    const content = fs.readFileSync(path.join(outputDir, 'bin', 'npmdata.js'), 'utf8');
+    const content = fs.readFileSync(path.join(outputDir, 'bin', 'filedist.js'), 'utf8');
     expect(content).toContain('// existing');
   });
 
@@ -83,11 +86,11 @@ describe('actionInit', () => {
     await actionInit(outputDir, true);
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('package.json'));
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('npmdata.js'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('filedist.js'));
     consoleSpy.mockRestore();
   });
 
-  it('adds --files patterns to package.json files list and npmdata sets', async () => {
+  it('adds --files patterns to package.json files list and filedist sets', async () => {
     const outputDir = path.join(tmpDir, 'files-pkg');
     await actionInit(outputDir, false, { files: ['docs/**', 'data/**'] });
 
@@ -95,11 +98,11 @@ describe('actionInit', () => {
     expect(pkgJson.files).toContain('docs/**');
     expect(pkgJson.files).toContain('data/**');
     expect(pkgJson.files).toContain('package.json');
-    expect(pkgJson.files).toContain('bin/npmdata.js');
-    expect(pkgJson.npmdata.sets[0].selector.files).toEqual(['docs/**', 'data/**']);
+    expect(pkgJson.files).toContain('bin/filedist.js');
+    expect(pkgJson.filedist.sets[0].selector.files).toEqual(['docs/**', 'data/**']);
   });
 
-  it('adds --packages as external npmdata sets', async () => {
+  it('adds --packages as external filedist sets', async () => {
     const outputDir = path.join(tmpDir, 'packages-pkg');
     await actionInit(outputDir, false, {
       files: ['conf/globals.js'],
@@ -107,12 +110,12 @@ describe('actionInit', () => {
     });
 
     const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
-    expect(pkgJson.npmdata.sets).toHaveLength(2);
-    expect(pkgJson.npmdata.sets[1].package).toBe('eslint@8');
-    expect(pkgJson.npmdata.sets[1].selector.files).toEqual(['conf/globals.js']);
+    expect(pkgJson.filedist.sets).toHaveLength(2);
+    expect(pkgJson.filedist.sets[1].package).toBe('eslint@8');
+    expect(pkgJson.filedist.sets[1].selector.files).toEqual(['conf/globals.js']);
   });
 
-  it('creates package-less self set as first entry in npmdata sets', async () => {
+  it('creates package-less self set as first entry in filedist sets', async () => {
     const outputDir = path.join(tmpDir, 'self-pkg');
     await actionInit(outputDir, false, {
       files: ['docs/**'],
@@ -120,18 +123,18 @@ describe('actionInit', () => {
     });
 
     const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
-    expect(pkgJson.npmdata.sets[0].package).toBeUndefined();
-    expect(pkgJson.npmdata.sets[1].package).toBe('some-pkg@1');
+    expect(pkgJson.filedist.sets[0].package).toBeUndefined();
+    expect(pkgJson.filedist.sets[1].package).toBe('some-pkg@1');
   });
 
-  it('runs package manager add for npmdata after writing package.json', async () => {
+  it('runs package manager add for filedist after writing package.json', async () => {
     const outputDir = path.join(tmpDir, 'install-pkg');
     await actionInit(outputDir, false);
 
-    // execSync should have been called with an "add"/"install" command including "npmdata"
+    // execSync should have been called with an "add"/"install" command including "filedist"
     expect(mockExecSync).toHaveBeenCalledTimes(1);
     const cmd = mockExecSync.mock.calls[0][0] as string;
-    expect(cmd).toMatch(/npmdata/);
+    expect(cmd).toMatch(/filedist/);
   });
 
   it('includes external packages in the add command', async () => {
@@ -139,7 +142,7 @@ describe('actionInit', () => {
     await actionInit(outputDir, false, { packages: ['eslint@8'] });
 
     const cmd = mockExecSync.mock.calls[0][0] as string;
-    expect(cmd).toMatch(/npmdata/);
+    expect(cmd).toMatch(/filedist/);
     expect(cmd).toMatch(/eslint@8/);
   });
 });

@@ -1,6 +1,6 @@
 # _local BDRs Index
 
-Project-local business decisions for npmdata. These decisions must not be shared with other contexts and override all broader-scope business decisions when addressing the same topic.
+Project-local business decisions for filedist. These decisions must not be shared with other contexts and override all broader-scope business decisions when addressing the same topic.
 
 ## Marketing
 

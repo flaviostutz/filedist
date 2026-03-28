@@ -74,7 +74,7 @@ export const createMockGitRepo = async (
   files: Record<string, string>,
   tmpDir: string,
   options?: {
-    npmdataConfig?: Record<string, unknown>;
+    filedistConfig?: Record<string, unknown>;
     tag?: string;
   },
 ): Promise<{ repoDir: string; repoUrl: string; head: string; tag?: string }> => {
@@ -90,13 +90,16 @@ export const createMockGitRepo = async (
     fs.writeFileSync(fullPath, content);
   }
 
-  if (options?.npmdataConfig) {
-    fs.writeFileSync(path.join(repoDir, '.npmdatarc.json'), JSON.stringify(options.npmdataConfig));
+  if (options?.filedistConfig) {
+    fs.writeFileSync(
+      path.join(repoDir, '.filedistrc.json'),
+      JSON.stringify(options.filedistConfig),
+    );
   }
 
   execSync('git init', { cwd: repoDir, stdio: 'pipe' });
-  execSync('git config user.email "npmdata-tests@example.com"', { cwd: repoDir, stdio: 'pipe' });
-  execSync('git config user.name "npmdata tests"', { cwd: repoDir, stdio: 'pipe' });
+  execSync('git config user.email "filedist-tests@example.com"', { cwd: repoDir, stdio: 'pipe' });
+  execSync('git config user.name "filedist tests"', { cwd: repoDir, stdio: 'pipe' });
   execSync('git add .', { cwd: repoDir, stdio: 'pipe' });
   execSync('git commit -m "initial"', { cwd: repoDir, stdio: 'pipe' });
   if (options?.tag) {

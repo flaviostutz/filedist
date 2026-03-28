@@ -4,11 +4,11 @@ SHELL := /bin/bash
 	@echo "Unknown target: $@. Ignoring"
 
 init-publisher: install
-	# package.json already contains the full npmdata configuration (no init step needed)
+	# package.json already contains the full filedist configuration (no init step needed)
 	# create the bin shim that allows consumers to run `npx example-files-package`
 	mkdir -p bin
-	printf '#!/usr/bin/env node\n'"'"'use strict'"'"';\nrequire('"'"'npmdata'"'"').binpkg(__dirname, process.argv.slice(2));\n' > bin/npmdata.js
-	chmod +x bin/npmdata.js
+	printf '#!/usr/bin/env node\n'"'"'use strict'"'"';\nrequire('"'"'filedist'"'"').binpkg(__dirname, process.argv.slice(2));\n' > bin/filedist.js
+	chmod +x bin/filedist.js
 
 build: install
 	rm -rf dist
@@ -41,7 +41,7 @@ test:
 
 install:
 	# replace the dependency with the local package
-	pnpm add npmdata@file:../../lib/dist/npmdata-0.0.1.tgz
+	pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
 	@# update local tar gz checksum
 	pnpm install
 

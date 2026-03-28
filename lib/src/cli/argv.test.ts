@@ -1,4 +1,4 @@
-import { NpmdataExtractEntry } from '../types';
+import { FiledistExtractEntry } from '../types';
 import { filterEntriesByPresets } from '../utils';
 
 import { parseArgv, buildEntriesFromArgv, applyArgvOverrides } from './argv';
@@ -151,7 +151,7 @@ describe('buildEntriesFromArgv', () => {
 });
 
 describe('filterEntriesByPresets', () => {
-  const entries: NpmdataExtractEntry[] = [
+  const entries: FiledistExtractEntry[] = [
     { package: 'pkg-a', output: { path: '.' }, selector: { presets: ['docs'] } },
     { package: 'pkg-b', output: { path: '.' }, selector: { presets: ['api', 'docs'] } },
     { package: 'pkg-c', output: { path: '.' }, selector: {} },
@@ -174,7 +174,7 @@ describe('filterEntriesByPresets', () => {
 });
 
 describe('applyArgvOverrides', () => {
-  const baseEntry: NpmdataExtractEntry = {
+  const baseEntry: FiledistExtractEntry = {
     package: 'test-pkg',
     output: { path: './current', force: false },
     selector: { files: ['*.ts'] },
@@ -211,7 +211,7 @@ describe('applyArgvOverrides', () => {
   });
 
   it('preserves config keepExisting=true when --keep-existing is not set on CLI', () => {
-    const entryWithKeepExisting: NpmdataExtractEntry = {
+    const entryWithKeepExisting: FiledistExtractEntry = {
       package: 'test-pkg',
       output: { path: './current', keepExisting: true },
       selector: {},

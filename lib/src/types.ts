@@ -14,7 +14,7 @@ export type PackageConfig = {
 };
 
 export type BasicPackageOptions = {
-  entries: NpmdataExtractEntry[];
+  entries: FiledistExtractEntry[];
   cwd: string;
   dryRun?: boolean;
   verbose?: boolean;
@@ -43,7 +43,7 @@ export type SelectorConfig = {
    */
   contentRegexes?: string[];
   /**
-   * Filters which of the target package's own nested `npmdata.sets` are recursively
+   * Filters which of the target package's own nested `filedist.sets` are recursively
    * extracted. Only sets in the target package whose `presets` field includes at least
    * one of these tags will be processed. When omitted or empty, all nested sets are
    * extracted. Not applied to the files selected from the target package itself.
@@ -73,11 +73,11 @@ export type OutputConfig = {
    */
   keepExisting?: boolean;
   /**
-   * Create/update .gitignore alongside each .npmdata marker.
+   * Create/update .gitignore alongside each .filedist marker.
    */
   gitignore?: boolean;
   /**
-   * When set to false: write without .npmdata marker, no gitignore update, no read-only. Existing files skipped.
+   * When set to false: write without .filedist marker, no gitignore update, no read-only. Existing files skipped.
    * Takes precedence over force. Defaults to true (managed).
    */
   managed?: boolean;
@@ -133,15 +133,15 @@ export type ContentReplacementConfig = {
 };
 
 /**
- * One entry in the npmdata.sets array. Represents a single extraction target.
+ * One entry in the filedist.sets array. Represents a single extraction target.
  *
  * Two variants:
  *  - Self-package entry  (no `package` field): leaf of recursion; files come from the
- *    package whose npmdata.sets contains this entry.
+ *    package whose filedist.sets contains this entry.
  *  - External-package entry (`package` field set): recurses into the named package's own
- *    npmdata.sets (or enumerates its files directly when it has no sets).
+ *    filedist.sets (or enumerates its files directly when it has no sets).
  */
-export type NpmdataExtractEntry = {
+export type FiledistExtractEntry = {
   /**
    * Flat package spec string ("my-pkg@^1.2.3"). When absent the entry is a
    * self-package entry — files are drawn from the package that owns this sets array.
@@ -166,11 +166,11 @@ export type NpmdataExtractEntry = {
 };
 
 /**
- * Top-level structure stored under npmdata key in package.json or in any cosmiconfig source.
+ * Top-level structure stored under filedist key in package.json or in any cosmiconfig source.
  */
-export type NpmdataConfig = {
+export type FiledistConfig = {
   /** All extraction entries. */
-  sets: NpmdataExtractEntry[];
+  sets: FiledistExtractEntry[];
   /**
    * Shell command run after successful extract (not during --dry-run).
    * Executed in process.cwd(). Full argv appended as arguments.
@@ -197,7 +197,7 @@ export type SkippedFile = {
 };
 
 /**
- * A file in outputDir that is not tracked by npmdata and blocks extraction.
+ * A file in outputDir that is not tracked by filedist and blocks extraction.
  */
 export type ConflictFile = {
   relPath: string;
@@ -217,12 +217,12 @@ export type ExtractionMap = {
   toDelete: string[];
   /** Files skipped with reason. */
   toSkip: SkippedFile[];
-  /** Files in outputDir not tracked by npmdata that block extraction. */
+  /** Files in outputDir not tracked by filedist that block extraction. */
   conflicts: ConflictFile[];
 };
 
 /**
- * One row in a .npmdata CSV marker file.
+ * One row in a .filedist CSV marker file.
  * Format: path|packageName|packageVersion — one row per file, no header.
  */
 export type ManagedFileMetadata = {
@@ -256,7 +256,7 @@ export type ProgressEvent =
  * Result of a check operation for a single fileset.
  */
 export type CheckResult = {
-  /** Files in .npmdata marker but absent from output dir. */
+  /** Files in .filedist marker but absent from output dir. */
   missing: string[];
   /** Files whose content hash differs from package source. */
   modified: string[];
@@ -307,7 +307,7 @@ export type ResolvedFile = {
   packageVersion: string;
   /** Absolute path of the output directory where the file should be written. */
   outputDir: string;
-  /** Whether the file should be tracked in the .npmdata marker. Default: true. */
+  /** Whether the file should be tracked in the .filedist marker. Default: true. */
   managed: boolean;
   /** Whether the file should be added to .gitignore. Default: true. */
   gitignore: boolean;

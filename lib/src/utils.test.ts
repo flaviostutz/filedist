@@ -498,7 +498,7 @@ describe('installPackage', () => {
         const pkgJson = JSON.parse(
           fs.readFileSync(path.join(tmpDir, 'package.json')).toString(),
         ) as Record<string, unknown>;
-        expect(pkgJson.name).toBe('npmdata-tmp');
+        expect(pkgJson.name).toBe('filedist-tmp');
         expect(pkgJson.version).toBe('99.99.99');
         expect(pkgJson.private).toBe(true);
       } finally {
@@ -711,12 +711,12 @@ describe('initTempPackageJson', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates package.json with the expected npmdata-tmp structure', () => {
+  it('creates package.json with the expected filedist-tmp structure', () => {
     initTempPackageJson(tmpDir);
     const pkgJsonPath = path.join(tmpDir, 'package.json');
     expect(fs.existsSync(pkgJsonPath)).toBe(true);
     const content = JSON.parse(fs.readFileSync(pkgJsonPath).toString()) as Record<string, unknown>;
-    expect(content.name).toBe('npmdata-tmp');
+    expect(content.name).toBe('filedist-tmp');
     expect(content.version).toBe('99.99.99');
     expect(content.private).toBe(true);
   });
@@ -790,7 +790,7 @@ describe('cleanupTempPackageJson', () => {
   const writeTempPkgJson = (dir: string): void => {
     fs.writeFileSync(
       path.join(dir, 'package.json'),
-      JSON.stringify({ name: 'npmdata-tmp', version: '99.99.99', private: true }, undefined, 2),
+      JSON.stringify({ name: 'filedist-tmp', version: '99.99.99', private: true }, undefined, 2),
     );
   };
 
@@ -798,7 +798,7 @@ describe('cleanupTempPackageJson', () => {
     expect(() => cleanupTempPackageJson(tmpDir, false)).not.toThrow();
   });
 
-  it('does nothing when package.json was not created by npmdata (wrong name)', () => {
+  it('does nothing when package.json was not created by filedist (wrong name)', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'package.json'),
       JSON.stringify({ name: 'my-real-project', version: '99.99.99', private: true }),
@@ -809,10 +809,10 @@ describe('cleanupTempPackageJson', () => {
     expect(fs.existsSync(path.join(tmpDir, 'pnpm-lock.yaml'))).toBe(true);
   });
 
-  it('does nothing when package.json was not created by npmdata (wrong version)', () => {
+  it('does nothing when package.json was not created by filedist (wrong version)', () => {
     fs.writeFileSync(
       path.join(tmpDir, 'package.json'),
-      JSON.stringify({ name: 'npmdata-tmp', version: '1.0.0', private: true }),
+      JSON.stringify({ name: 'filedist-tmp', version: '1.0.0', private: true }),
     );
     cleanupTempPackageJson(tmpDir);
     expect(fs.existsSync(path.join(tmpDir, 'package.json'))).toBe(true);
