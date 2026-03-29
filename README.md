@@ -8,8 +8,8 @@ Publish folders as npm packages or git repositories and extract them in any work
 # extract files from any npm package into a local directory
 npx filedist extract --packages my-shared-assets@^2.0.0 --output ./data
 
-# extract directly from git (auto-detected from the URL-like spec)
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+# extract directly from git
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 ```typescript
@@ -19,7 +19,7 @@ import type { FiledistExtractEntry } from 'filedist';
 const entries: FiledistExtractEntry[] = [
   { package: 'my-shared-assets@^2.0.0', output: { path: './data' } },
   {
-    package: 'https://github.com/flaviostutz/xdrs-core@1.3.0',
+    package: 'git:github.com/flaviostutz/xdrs-core@1.3.0',
     output: { path: './xdrs' },
   },
 ];
@@ -27,7 +27,7 @@ const result = await actionExtract({ entries, cwd: process.cwd() });
 console.log(result.added, result.modified, result.deleted);
 ```
 
-Git sources are detected automatically when `package` uses a URL-like git spec (`https://`, `ssh://`, `git://`, `file://`, or `git@...`). Set `source: "git"` only when you want to force git resolution explicitly.
+Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
 
 ---
 
@@ -58,10 +58,10 @@ npx filedist extract --packages my-shared-assets --content-regex "env: productio
 npx filedist extract --packages my-shared-assets --output ./data --dry-run
 
 # git source examples
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
 ```
 
 ---
@@ -84,12 +84,12 @@ Declare sources in `.filedistrc` (or `package.json`) and run `extract` without `
       "output": { "path": "./templates" }
     },
     {
-      "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+      "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
       "selector": { "files": ["docs/**"] },
       "output": { "path": "./xdrs" }
     },
     {
-      "package": "file:///absolute/path/to/local-repo@v2.0.0",
+      "package": "git:file:///absolute/path/to/local-repo@v2.0.0",
       "selector": { "files": ["conf/**"] },
       "output": { "path": "./local-conf" }
     }
@@ -115,7 +115,7 @@ After `extract`, the output directory will contain the selected files alongside 
 
 Config is resolved looking at files: `package.json` (`"filedist"` key), `.filedistrc`, `.filedistrc.json`, `.filedistrc.yaml`, or `filedist.config.js`. Pass `--config <file>` to point to an explicit config file and skip auto-discovery.
 
-The same config file can mix npm packages and git repositories. Git entries can omit `source` when the package spec is URL-like; filedist auto-detects them as git. A git repository source can also provide its own `.filedistrc` or `package.json#filedist` with `sets`, and those nested sets participate in the same hierarchical resolution.
+The same config file can mix npm packages and git repositories. Use the `git:` prefix for git entries. A git repository source can also provide its own `.filedistrc` or `package.json#filedist` with `sets`, and those nested sets participate in the same hierarchical resolution.
 
 ### Example — Prepare a git repository source
 
@@ -147,7 +147,7 @@ shared-assets-repo/
       "presets": ["runtime"]
     },
     {
-      "package": "https://github.com/my-org/shared-policies@v1.4.0",
+      "package": "git:github.com/my-org/shared-policies@v1.4.0",
       "selector": { "files": ["policies/**"] },
       "output": { "path": "./vendor/policies" },
       "presets": ["runtime"]
@@ -159,8 +159,8 @@ shared-assets-repo/
 Commit and tag that repository, then consume it like any other source:
 
 ```sh
-npx filedist extract --packages https://github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets
-npx filedist extract --packages https://github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets --presets runtime
+npx filedist extract --packages git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets
+npx filedist extract --packages git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets --presets runtime
 ```
 
 In this setup, filedist clones the repository, reads the root `.filedistrc`, extracts the repo's own files from the self entries that omit `package`, and then follows any external `sets` entries recursively.
@@ -178,7 +178,7 @@ A data package bundles, filters, and versions content from multiple upstream sou
 pnpm dlx filedist init --files "docs/**,data/**"
 
 # also pull from upstream npm packages and git repositories
-pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,https://github.com/flaviostutz/xdrs-core@1.3.0"
+pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,git:github.com/flaviostutz/xdrs-core@1.3.0"
 ```
 
 `init` updates `package.json` with the right `files`, `bin`, and `dependencies` and writes a `bin/filedist.js` entry point. Then:
@@ -216,7 +216,7 @@ npm publish
         "presets": ["prod", "staging"]
       },
       {
-        "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
         "selector": { "files": ["docs/**"] },
         "output": { "path": "./xdrs" },
         "presets": ["prod"]
@@ -252,15 +252,15 @@ npx filedist extract --packages "pkg-a,pkg-b@1.x" --output ./data  # multiple pa
 npx filedist extract --packages my-pkg --output ./data --force   # overwrite existing files
 npx filedist extract --packages my-pkg --output ./data --managed=false  # skip tracking
 npx filedist extract --packages my-pkg@latest --output ./data --upgrade  # force reinstall
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs   # git source, auto-detected
-npx filedist extract --packages "https://github.com/org/repo-a@v1.0.0,file:///tmp/repo-b@main" --output ./git-data  # multiple git sources
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force   # overwrite existing files
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false  # skip tracking
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade  # force a fresh clone/check-out
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist extract --packages "git:github.com/org/repo-a@v1.0.0,git:file:///tmp/repo-b@main" --output ./git-data  # multiple git sources
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force   # overwrite existing files
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false  # skip tracking
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade  # force a fresh clone/check-out
 npx filedist extract --packages my-pkg --output ./data --gitignore=false  # skip .gitignore
 npx filedist extract --packages my-pkg --output ./data --dry-run  # preview only
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run  # preview only
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run  # preview only
 npx filedist extract --packages my-pkg --output ./data --nosync  # keep stale managed files on disk
 ```
 
@@ -300,8 +300,7 @@ Each entry in `filedist.sets` supports:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `package` | `string` | none | Source spec for external entries: npm (`my-pkg`, `my-pkg@^1.2.3`) or git (`https://host/org/repo@ref`) |
-| `source` | `auto \| npm \| git` | `auto` | Force the source type. `auto` detects git from URL-like specs and otherwise uses npm |
+| `package` | `string` | none | Source spec for external entries: npm (`my-pkg`, `npm:my-pkg@^1.2.3`) or git (`git:github.com/org/repo.git@ref`, `git:file:///tmp/repo@main`) |
 | `presets` | `string[]` | none | Tags this entry so it is included only when the matching `--presets <tag>` flag is used. Listed by `filedist presets` |
 | `output.path` | `string` | `.` (cwd) | Extraction directory, relative to where the command runs |
 | `selector.files` | `string[]` | all files | Glob patterns to filter extracted files |
@@ -411,7 +410,6 @@ Init:     --files <patterns>    Glob patterns of files to publish
           --output, -o <dir>    Directory to scaffold into (default: cwd)
 
 Extract:  --packages <specs>    Package specs (omit to read from config file)
-          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Output directory (default: cwd)
           --files <patterns>    Filter files by glob
           --content-regex <rx>  Filter files by content
@@ -427,13 +425,11 @@ Extract:  --packages <specs>    Package specs (omit to read from config file)
           --silent              Final result line only
 
 Check:    --packages <specs>    Same format as extract
-          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Directory to check
           --presets <tags>      Only check entries matching these preset tags
           --config <file>       Explicit config file path (overrides auto-discovery)
 
 Purge:    --packages <specs>    Package names to purge
-          --source <kind>       Source kind: auto, npm, or git
           --output, -o <dir>    Directory to purge from
           --dry-run             Preview without deleting
           --presets <tags>      Only purge entries matching these preset tags

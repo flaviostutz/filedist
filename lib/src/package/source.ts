@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { FiledistExtractEntry, SourceKind } from '../types';
+import { FiledistExtractEntry } from '../types';
 import { formatDisplayPath, installOrUpgradePackage, spawnWithLog } from '../utils';
 
 export type PackageTarget = {
@@ -25,27 +25,36 @@ export type SourceRuntime = {
   cleanup: () => void;
 };
 
-const GIT_SOURCE_REGEX = /^(?:https?|ssh|git|file):\/\/|^git@/i;
+type PackageSourceKind = 'npm' | 'git';
 
-export function parsePackageTarget(
-  spec: string,
-  requestedSource: SourceKind = 'auto',
-): PackageTarget {
-  const source = resolveSourceKind(spec, requestedSource);
+const GIT_SOURCE_REGEX = /^(?:https?|ssh|git|file):\/\/|^git@/i;
+const SOURCE_PREFIX_REGEX = /^(npm|git):(.*)$/s;
+const GIT_HOST_PATH_REGEX = /^[\d.A-Za-z-]+\.[A-Za-z]{2,}(?::\d+)?[/:].+/;
+
+export function parsePackageTarget(spec: string): PackageTarget {
+  const { source, value } = parsePackageSpecWithSource(spec);
   if (source === 'npm') {
-    const atIdx = spec.lastIndexOf('@');
+    if (GIT_SOURCE_REGEX.test(value)) {
+      throw new Error(
+        `Git repository specs must use the "git:" prefix. Received "${spec}". ` +
+          'Use a package string such as "git:github.com/org/repo.git@ref".',
+      );
+    }
+
+    const atIdx = value.lastIndexOf('@');
     if (atIdx > 0) {
-      const requestedVersion = spec.slice(atIdx + 1);
+      const requestedVersion = value.slice(atIdx + 1);
       return {
         source,
-        packageName: spec.slice(0, atIdx),
+        packageName: value.slice(0, atIdx),
         ...(requestedVersion ? { requestedVersion } : {}),
       };
     }
-    return { source, packageName: spec };
+    return { source, packageName: value };
   }
 
-  const { repository, ref } = splitGitSpec(spec);
+  const normalizedSpec = normalizeGitSpec(value);
+  const { repository, ref } = splitGitSpec(normalizedSpec);
   return {
     source,
     packageName: normalizeGitRepository(repository),
@@ -80,7 +89,7 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
         throw new Error('resolvePackage requires an entry with a package spec');
       }
 
-      const target = parsePackageTarget(entry.package, entry.source);
+      const target = parsePackageTarget(entry.package);
       const cacheKey = `${target.source}|${target.packageName}|${target.requestedVersion ?? ''}`;
 
       if (!upgrade) {
@@ -121,9 +130,34 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
   };
 }
 
-function resolveSourceKind(spec: string, requestedSource: SourceKind): 'npm' | 'git' {
-  if (requestedSource === 'npm' || requestedSource === 'git') return requestedSource;
-  return GIT_SOURCE_REGEX.test(spec) ? 'git' : 'npm';
+function parsePackageSpecWithSource(spec: string): { source: PackageSourceKind; value: string } {
+  const match = spec.match(SOURCE_PREFIX_REGEX);
+  if (!match) {
+    return { source: 'npm', value: spec };
+  }
+
+  const [, source, value] = match;
+  if (!value) {
+    throw new Error(`Package spec is missing a value after the "${source}:" prefix.`);
+  }
+
+  return { source: source as PackageSourceKind, value };
+}
+
+function normalizeGitSpec(spec: string): string {
+  if (GIT_SOURCE_REGEX.test(spec)) {
+    return spec;
+  }
+
+  if (GIT_HOST_PATH_REGEX.test(spec)) {
+    return `https://${spec}`;
+  }
+
+  throw new Error(
+    `Git package specs must point to a repository URL or host/path. Received "${spec}". ` +
+      'Use a package string such as "git:https://host/org/repo.git@ref" or ' +
+      '"git:github.com/org/repo.git@ref".',
+  );
 }
 
 function splitGitSpec(spec: string): { repository: string; ref?: string } {
@@ -151,8 +185,9 @@ function splitGitSpec(spec: string): { repository: string; ref?: string } {
   }
 
   throw new Error(
-    `Git source requires a URL-like package spec. Received "${spec}". ` +
-      'Use source="git" with a full repository URL such as https://host/org/repo@ref.',
+    `Git package specs must point to a repository URL or host/path. Received "${spec}". ` +
+      'Use a package string such as "git:https://host/org/repo.git@ref" or ' +
+      '"git:github.com/org/repo.git@ref".',
   );
 }
 

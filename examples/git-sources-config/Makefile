@@ -13,7 +13,7 @@ install:
 
 prepare-config:
 	PARENT_REPO_URL="file://$$(pwd)/repos/parent-repo"; \
-	jq --arg parentRepo "$$PARENT_REPO_URL" '.filedist.sets[0].package = ($$parentRepo + "@$(PARENT_TAG)")' package.json.orig > package.json
+	jq --arg parentRepo "$$PARENT_REPO_URL" '.filedist.sets[0].package = ("git:" + $$parentRepo + "@$(PARENT_TAG)")' package.json.orig > package.json
 
 prepare-repos:
 	rm -rf repos
@@ -21,7 +21,7 @@ prepare-repos:
 	mkdir -p repos/parent-repo/docs
 	printf '{"ok":true}\n' > repos/child-repo/child/data.json
 	CHILD_REPO_URL="file://$$(pwd)/repos/child-repo"; \
-	jq -n --arg childRepo "$$CHILD_REPO_URL" --arg childTag "$(CHILD_TAG)" '{sets:[{output:{path:".",gitignore:false}},{package:($$childRepo + "@" + $$childTag),source:"git",output:{path:"nested",gitignore:false}}]}' > repos/parent-repo/.filedistrc
+	jq -n --arg childRepo "$$CHILD_REPO_URL" --arg childTag "$(CHILD_TAG)" '{sets:[{output:{path:".",gitignore:false}},{package:("git:" + $$childRepo + "@" + $$childTag),output:{path:"nested",gitignore:false}}]}' > repos/parent-repo/.filedistrc
 	printf '# Parent Guide\n' > repos/parent-repo/docs/guide.md
 	git -C repos/child-repo init
 	git -C repos/child-repo config user.email 'filedist@example.com'
@@ -83,7 +83,7 @@ test: clean install prepare-repos
 	cp package.json.orig package.json
 	rm -f .filedistrc
 
-	@echo "All git source config tests passed"
+	@echo "All git-prefixed source config tests passed"
 
 clean:
 	@rm -rf node_modules

@@ -101,7 +101,7 @@ In the consumer project, declare the dataset source in its own `.filedistrc`.
 {
   "sets": [
     {
-      "package": "https://github.com/acme/acme-users-dataset@v1.0.0",
+      "package": "git:github.com/acme/acme-users-dataset@v1.0.0",
       "selector": {
         "files": ["data/users-dataset/**"]
       },
@@ -116,13 +116,13 @@ In the consumer project, declare the dataset source in its own `.filedistrc`.
 
 This keeps the consumer configuration out of `package.json` too. If you are trying to keep data distribution decoupled from Node-specific project metadata, this is the cleaner shape.
 
-You can also point to local repositories with `file://` URLs during development:
+You can also point to local repositories with `git:file://` URLs during development:
 
 ```json
 {
   "sets": [
     {
-      "package": "file:///absolute/path/to/acme-users-dataset@v1.0.0",
+      "package": "git:file:///absolute/path/to/acme-users-dataset@v1.0.0",
       "output": {
         "path": "./vendor-data"
       }
@@ -177,7 +177,7 @@ For example, changing from `v1.0.0` to `v1.1.0` is just a config edit:
 {
   "sets": [
     {
-      "package": "https://github.com/acme/acme-users-dataset@v1.1.0",
+      "package": "git:github.com/acme/acme-users-dataset@v1.1.0",
       "output": {
         "path": "./vendor-data"
       }
@@ -252,7 +252,7 @@ Consumer repo `.filedistrc`:
 {
   "sets": [
     {
-      "package": "https://github.com/acme/acme-users-dataset@v1.0.0",
+      "package": "git:github.com/acme/acme-users-dataset@v1.0.0",
       "output": {
         "path": "./vendor-data"
       }

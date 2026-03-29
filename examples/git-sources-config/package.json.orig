@@ -9,7 +9,7 @@
   "filedist": {
     "sets": [
       {
-        "package": "__PARENT_REPO_URL__@v2.0.0",
+        "package": "git:__PARENT_REPO_URL__@v2.0.0",
         "output": {
           "path": "output"
         }

@@ -16,8 +16,7 @@ Usage: filedist [extract] [options]
 Extract files from one or more npm packages into a local output directory.
 
 Options:
-  --packages <specs>      Comma-separated package specs (e.g. my-pkg@^1.2.3). Overrides config sets.
-  --source <kind>         Source kind: auto, npm, or git (default: auto).
+  --packages <specs>      Comma-separated package specs (e.g. my-pkg@^1.2.3, git:github.com/org/repo.git@main). Overrides config sets.
   --output, -o <dir>      Output directory path. Required when --packages is used.
   --files <globs>         Comma-separated glob patterns for file selection.
   --content-regex <re>    Comma-separated regex strings for content filtering.
@@ -47,7 +46,6 @@ Verify that locally extracted files match their package sources.
 
 Options:
   --packages <specs>      Comma-separated package specs. Overrides config sets.
-  --source <kind>         Source kind: auto, npm, or git (default: auto).
   --output, -o <dir>      Output directory path.
   --files <globs>         Glob patterns for file selection.
   --content-regex <re>    Regex strings for content filtering.
@@ -86,7 +84,6 @@ Remove all managed files from the output directory.
 
 Options:
   --packages <specs>      Comma-separated package specs. Limits purge to matching entries.
-  --source <kind>         Source kind: auto, npm, or git (default: auto).
   --output, -o <dir>      Output directory to purge.
   --presets <tags>        Comma-separated preset tags; only matching entries are purged.
   --dry-run               Print what would be removed without deleting.

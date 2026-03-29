@@ -29,22 +29,9 @@ describe('parseArgv', () => {
     );
   });
 
-  it('parses --packages as comma-split PackageConfig list', () => {
-    const result = parseArgv(['--packages', 'my-pkg@^1.0.0,@scope/other@2.x']);
-    expect(result.packages).toEqual([
-      { name: 'my-pkg', version: '^1.0.0' },
-      { name: '@scope/other', version: '2.x' },
-    ]);
-  });
-
-  it('parses --source', () => {
-    expect(parseArgv(['--source', 'git']).source).toBe('git');
-    expect(parseArgv(['--source', 'npm']).source).toBe('npm');
-    expect(parseArgv(['--source', 'auto']).source).toBe('auto');
-  });
-
-  it('throws on invalid --source', () => {
-    expect(() => parseArgv(['--source', 'svn'])).toThrow('--source must be one of: auto, npm, git');
+  it('parses --packages as comma-split raw specs', () => {
+    const result = parseArgv(['--packages', 'my-pkg@^1.0.0,git:github.com/acme/repo.git@main']);
+    expect(result.packages).toEqual(['my-pkg@^1.0.0', 'git:github.com/acme/repo.git@main']);
   });
 
   it('parses --output / -o', () => {
@@ -136,11 +123,10 @@ describe('buildEntriesFromArgv', () => {
     expect(entries![0].output!.path).toBe('./out');
   });
 
-  it('builds entries with an explicit source', () => {
-    const parsed = parseArgv(['--packages', 'https://example.com/repo@main', '--source', 'git']);
+  it('builds entries with a prefixed git package', () => {
+    const parsed = parseArgv(['--packages', 'git:github.com/acme/repo.git@main']);
     const entries = buildEntriesFromArgv(parsed);
-    expect(entries![0].package).toBe('https://example.com/repo@main');
-    expect(entries![0].source).toBe('git');
+    expect(entries![0].package).toBe('git:github.com/acme/repo.git@main');
   });
 
   it('leaves output path undefined when --output is not set', () => {
@@ -281,9 +267,14 @@ describe('applyArgvOverrides', () => {
     expect(result[0].verbose).toBe(true);
   });
 
-  it('applies --source override', () => {
-    const parsed = parseArgv(['--source', 'git', '--packages', 'test-pkg']);
-    const result = applyArgvOverrides([baseEntry], parsed);
-    expect(result[0].source).toBe('git');
+  it('does not rewrite package specs when applying overrides', () => {
+    const entry: FiledistExtractEntry = {
+      package: 'git:github.com/acme/repo.git@main',
+      output: { path: './current' },
+      selector: {},
+    };
+    const parsed = parseArgv(['--packages', 'test-pkg']);
+    const result = applyArgvOverrides([entry], parsed);
+    expect(result[0].package).toBe('git:github.com/acme/repo.git@main');
   });
 });

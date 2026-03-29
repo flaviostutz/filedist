@@ -203,7 +203,7 @@ describe('resolveFiles', () => {
     expect(files.map((f) => f.relPath)).toEqual([]);
   }, 60000);
 
-  it('resolves a git source using auto-detection and a git ref', async () => {
+  it('resolves a git-prefixed source with a git ref', async () => {
     const repo = await createMockGitRepo('git-leaf', { 'docs/guide.md': '# Git Guide' }, tmpDir, {
       tag: 'v1.0.0',
     });
@@ -211,7 +211,7 @@ describe('resolveFiles', () => {
     const outputDir = path.join(tmpDir, 'output-git');
     const entries: FiledistExtractEntry[] = [
       {
-        package: `${repo.repoUrl}@v1.0.0`,
+        package: `git:${repo.repoUrl}@v1.0.0`,
         output: { path: outputDir, gitignore: false },
       },
     ];
@@ -237,8 +237,7 @@ describe('resolveFiles', () => {
         sets: [
           { output: { path: '.', gitignore: false } },
           {
-            package: `${childRepo.repoUrl}@child-v1`,
-            source: 'git',
+            package: `git:${childRepo.repoUrl}@child-v1`,
             output: { path: 'nested', gitignore: false },
           },
         ],
@@ -249,7 +248,7 @@ describe('resolveFiles', () => {
     const files = await resolveFiles(
       [
         {
-          package: `${parentRepo.repoUrl}@parent-v1`,
+          package: `git:${parentRepo.repoUrl}@parent-v1`,
           output: { path: outputDir, gitignore: false },
         },
       ],

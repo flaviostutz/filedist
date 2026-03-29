@@ -1,9 +1,4 @@
 /**
- * Internal parsed representation of an npm package specifier.
- */
-export type SourceKind = 'auto' | 'npm' | 'git';
-
-/**
  * Internal parsed representation of a package specifier.
  */
 export type PackageConfig = {
@@ -143,12 +138,12 @@ export type ContentReplacementConfig = {
  */
 export type FiledistExtractEntry = {
   /**
-   * Flat package spec string ("my-pkg@^1.2.3"). When absent the entry is a
-   * self-package entry — files are drawn from the package that owns this sets array.
+   * Flat package spec string. Supports npm specs such as "my-pkg@^1.2.3" and
+   * git specs prefixed with "git:", such as "git:github.com/org/repo.git@main".
+   * When omitted, the entry is a self-package entry — files are drawn from the
+   * package that owns this sets array.
    */
   package?: string;
-  /** Resolve package from npm, git, or auto-detect from the package spec. */
-  source?: SourceKind;
   /** Where/how to write files. Defaults to current directory with no special flags. */
   output?: OutputConfig;
   /** Which files to select and install options. */

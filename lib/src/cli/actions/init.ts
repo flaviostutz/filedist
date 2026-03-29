@@ -25,7 +25,7 @@ export async function runInit(
 
   const initConfig = {
     files,
-    packages: packages?.map((p) => (p.version ? `${p.name}@${p.version}` : p.name)),
+    packages,
   };
 
   await actionInit(outputDir, verbose ?? false, initConfig);

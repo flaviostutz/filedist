@@ -1,13 +1,6 @@
 /* eslint-disable no-undefined */
-import {
-  PackageConfig,
-  FiledistConfig,
-  FiledistExtractEntry,
-  SelectorConfig,
-  OutputConfig,
-  SourceKind,
-} from '../types';
-import { parsePackageSpec, filterEntriesByPresets } from '../utils';
+import { FiledistConfig, FiledistExtractEntry, SelectorConfig, OutputConfig } from '../types';
+import { filterEntriesByPresets } from '../utils';
 
 /**
  * Parsed CLI flags for all commands.
@@ -15,8 +8,7 @@ import { parsePackageSpec, filterEntriesByPresets } from '../utils';
  * defaults are applied downstream in the library.
  */
 export type ParsedArgv = {
-  packages?: PackageConfig[];
-  source?: SourceKind;
+  packages?: string[];
   output?: string;
   files?: string[];
   exclude?: string[];
@@ -77,23 +69,12 @@ export function parseArgv(argv: string[]): ParsedArgv {
     throw new Error('--force and --keep-existing are mutually exclusive');
   }
 
-  const packagesRaw = getCommaSplit('--packages');
-  const packages = packagesRaw?.map((s) => parsePackageSpec(s));
+  const packages = getCommaSplit('--packages');
 
   const verboseFlag = getBoolFlag('--verbose');
-  const sourceValue = getValue('--source');
-  if (
-    sourceValue !== undefined &&
-    sourceValue !== 'auto' &&
-    sourceValue !== 'npm' &&
-    sourceValue !== 'git'
-  ) {
-    throw new Error('--source must be one of: auto, npm, git');
-  }
 
   return {
     packages,
-    source: sourceValue as SourceKind | undefined,
     output: getValue('--output', '-o'),
     files: getCommaSplit('--files'),
     exclude: getCommaSplit('--exclude'),
@@ -145,8 +126,7 @@ export function buildEntriesFromArgv(parsed: ParsedArgv): FiledistExtractEntry[]
   };
 
   return parsed.packages.map((pkg) => ({
-    package: pkg.version ? `${pkg.name}@${pkg.version}` : pkg.name,
-    ...(parsed.source !== undefined ? { source: parsed.source } : {}),
+    package: pkg,
     output,
     selector,
     ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),
@@ -185,7 +165,6 @@ export function applyArgvOverrides(
 
     return {
       ...entry,
-      ...(parsed.source !== undefined ? { source: parsed.source } : {}),
       output: updatedOutput,
       selector: updatedSelector,
       ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),

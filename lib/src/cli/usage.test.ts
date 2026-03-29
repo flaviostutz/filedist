@@ -26,7 +26,8 @@ describe('printUsage', () => {
     expect(lines.join('\n')).toMatch(/filedist.*extract/i);
     expect(lines.join('\n')).toMatch(/--output/);
     expect(lines.join('\n')).toMatch(/--nosync/);
-    expect(lines.join('\n')).toMatch(/--source/);
+    expect(lines.join('\n')).toMatch(/git:github\.com/);
+    expect(lines.join('\n')).not.toMatch(/--source/);
   });
 
   it('prints check usage when command is "check"', () => {

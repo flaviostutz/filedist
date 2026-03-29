@@ -10,7 +10,7 @@ CLI auto-discovers:
 
 ## What it verifies
 
-- git package specs are resolved from a local `file://` repository URL
+- git-prefixed package specs are resolved from a local `file://` repository URL
 - nested `.filedistrc` inside a cloned git repository is loaded recursively
 - extracted files land in separate output roots with separate `.filedist` markers
 - git metadata and `.filedistrc` files are not copied into the output

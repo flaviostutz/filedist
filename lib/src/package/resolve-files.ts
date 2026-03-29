@@ -179,7 +179,7 @@ async function resolveFilesInternal(
       }
     } else {
       // ── External-package entry ────────────────────────────────────────────
-      const pkg = parsePackageTarget(entry.package, entry.source);
+      const pkg = parsePackageTarget(entry.package);
       const upgrade = mergedSelector.upgrade ?? false;
 
       onProgress?.({
@@ -239,7 +239,7 @@ async function resolveFilesInternal(
             addRelevantPackage(
               relevantPackagesByOutputDir,
               setOutputDir,
-              parsePackageTarget(pkgSet.package, pkgSet.source).packageName,
+              parsePackageTarget(pkgSet.package).packageName,
             );
           } else {
             addRelevantPackage(

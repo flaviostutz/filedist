@@ -18,11 +18,11 @@ Use `npx filedist extract` directly from the command line whenever you need to p
 ```sh
 npx filedist extract --packages my-shared-assets@^2.0.0 --output ./data
 
-# or use a git repository as the source (auto-detected from the URL-like spec)
-npx filedist extract --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+# or use a git repository as the source
+npx filedist extract --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
-Git sources are detected automatically when `package` uses a URL-like git spec (`https://`, `ssh://`, `git://`, `file://`, or `git@...`). Set `source: "git"` only when you want to force git resolution explicitly.
+Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
 
 ### Pattern 2 — Data packages with embedded configuration
 
@@ -47,7 +47,7 @@ Create a dedicated npm package whose `package.json` declares an `filedist` confi
         "output": { "path": "./configs" }
       },
       {
-        "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
         "selector": { "files": ["docs/**"] },
         "output": { "path": "./xdrs" }
       }
@@ -85,7 +85,7 @@ Add an `filedist` configuration directly to a project's own `package.json` (or a
         "output": { "path": "./data" }
       },
       {
-        "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
         "selector": { "files": ["docs/**"] },
         "output": { "path": "./xdrs" }
       }
@@ -105,7 +105,7 @@ Or write a standalone `.filedistrc` (JSON object at the top level):
       "output": { "path": "./data" }
     },
     {
-      "package": "file:///absolute/path/to/local-repo@v2.0.0",
+      "package": "git:file:///absolute/path/to/local-repo@v2.0.0",
       "selector": { "files": ["conf/**"] },
       "output": { "path": "./local-conf" }
     }
@@ -134,7 +134,7 @@ Config is resolved using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfi
 
 All runner flags (`--dry-run`, `--silent`, `--verbose`, `--gitignore=false`, `--managed=false`, `--presets`, `--output`) work as usual.
 
-Config-file mode can mix npm packages and git repositories in the same `sets` array. Git entries can omit `source` when the package spec is URL-like; filedist auto-detects them as git.
+Config-file mode can mix npm packages and git repositories in the same `sets` array. Use the `git:` prefix for git entries.
 
 **When to use:** When a consuming project wants to pin and automate a set of data extractions locally without publishing a separate data package. This is the lightest-weight approach — no extra package, no `init` step, just a config block and a single CLI call.
 
@@ -154,7 +154,7 @@ pnpm dlx filedist init --files "docs/**,data/**,configs/**"
 pnpm dlx filedist init --files "docs/**" --packages shared-configs@^1.0.0
 
 # share multiple upstream sources, including git
-pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,https://github.com/flaviostutz/xdrs-core@1.3.0"
+pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,git:github.com/flaviostutz/xdrs-core@1.3.0"
 
 ```
 
@@ -266,8 +266,7 @@ Each entry in the `filedist.sets` array in `package.json` supports the following
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `package` | `string` | required | Source spec to install and extract. Either npm (`my-pkg`, `my-pkg@^1.2.3`) or git (`https://host/org/repo@ref`). |
-| `source` | `auto \| npm \| git` | `auto` | Force the source type. `auto` detects git from URL-like specs and otherwise uses npm. |
+| `package` | `string` | required | Source spec to install and extract. Either npm (`my-pkg`, `npm:my-pkg@^1.2.3`) or git (`git:github.com/org/repo.git@ref`, `git:file:///tmp/repo@main`). |
 | `output.path` | `string` | `.` (cwd) | Directory where files will be extracted, relative to where the consumer runs the command. |
 | `selector.files` | `string[]` | all files | Glob patterns to filter which files are extracted (e.g. `["data/**", "*.json"]`). |
 | `selector.exclude` | `string[]` | `["package.json","bin/**","README.md","node_modules/**"]` (when `files` is unset), none otherwise | Glob patterns to exclude files even when they match `selector.files` (e.g. `["test/**", "**/*.test.*"]`). |
@@ -328,7 +327,7 @@ Example with multiple options:
         "presets": ["prod"]
       },
       {
-        "package": "https://github.com/flaviostutz/xdrs-core@1.3.0",
+        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
         "selector": {
           "files": ["docs/**"],
           "upgrade": true
@@ -489,12 +488,12 @@ Init options:
 
 Extract options:
   --packages <specs>       Comma-separated package specs.
-  --source <kind>         Source kind: auto, npm, or git.
                            When omitted, filedist searches for a configuration file
                            (package.json "filedist" key, .filedistrc, etc.) and runs all
                            entries defined there.
-                           Each spec is "name" or "name@version", e.g.
-                           "my-pkg@^1.0.0,other-pkg@2.x"
+                           Each spec is `name`, `name@version`, `npm:name@version`, or
+                           `git:github.com/org/repo.git@ref`, e.g.
+                           "my-pkg@^1.0.0,git:github.com/org/repo.git@main"
   --output, -o <dir>       Output directory (default: current directory)
   --force                  Overwrite existing files or files owned by a different package
   --keep-existing          Skip files that already exist; create them when absent. Cannot be

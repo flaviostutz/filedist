@@ -378,8 +378,7 @@ describe('actionExtract', () => {
           sets: [
             { output: { path: '.', gitignore: false } },
             {
-              package: `${childRepo.repoUrl}@v1.0.0`,
-              source: 'git',
+              package: `git:${childRepo.repoUrl}@v1.0.0`,
               output: { path: 'nested', gitignore: false },
             },
           ],
@@ -391,7 +390,7 @@ describe('actionExtract', () => {
     const result = await actionExtract({
       entries: [
         {
-          package: `${parentRepo.repoUrl}@v2.0.0`,
+          package: `git:${parentRepo.repoUrl}@v2.0.0`,
           output: { path: outputDir, gitignore: false },
         },
       ],
