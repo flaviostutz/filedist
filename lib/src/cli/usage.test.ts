@@ -15,10 +15,12 @@ describe('printUsage', () => {
     spy.mockRestore();
   });
 
-  it('prints extract usage when no command is given (default)', () => {
+  it('prints general usage when no command is given', () => {
     printUsage();
-    expect(lines.join('\n')).toMatch(/filedist.*extract/i);
-    expect(lines.join('\n')).toMatch(/--packages/);
+    expect(lines.join('\n')).toMatch(/usage: filedist \[command] \[options]/i);
+    expect(lines.join('\n')).toMatch(/extract \(default\)/i);
+    expect(lines.join('\n')).toMatch(/check/i);
+    expect(lines.join('\n')).not.toMatch(/--packages/);
   });
 
   it('prints extract usage when command is "extract"', () => {

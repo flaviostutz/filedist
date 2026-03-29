@@ -4,9 +4,10 @@ const VERSION = '2.0.0';
 
 /**
  * Print usage/help text for the given command to stdout.
+ * When no command is provided, print the top-level command index.
  */
 export function printUsage(command?: string): void {
-  const cmd = command ?? 'extract';
+  const cmd = command;
 
   switch (cmd) {
     case 'extract':

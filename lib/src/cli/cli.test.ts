@@ -218,7 +218,11 @@ describe('cli', () => {
     });
     await cli(['node', 'filedist', '--help'], tmpDir);
     spy.mockRestore();
-    expect(lines.join('\n')).toMatch(/filedist/i);
+    expect(lines.join('\n')).toMatch(/usage: filedist \[command] \[options]/i);
+    expect(lines.join('\n')).toMatch(/extract \(default\)/i);
+    expect(lines.join('\n')).toMatch(/check/i);
+    expect(lines.join('\n')).toMatch(/presets/i);
+    expect(lines.join('\n')).not.toMatch(/--packages/);
   });
 
   it('prints version on --version', async () => {
