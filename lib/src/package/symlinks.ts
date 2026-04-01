@@ -25,26 +25,21 @@ export async function createSymlinks(outputDir: string, configs: SymlinkConfig[]
       const srcAbsPath = path.join(outputDir, relPath);
       const linkName = path.basename(relPath);
       const linkPath = path.join(targetDir, linkName);
+      const linkTarget = getLinkTarget(targetDir, srcAbsPath);
 
-      const relTarget = path.relative(targetDir, srcAbsPath);
-
-      if (isSymlink(linkPath)) {
-        try {
-          if (fs.readlinkSync(linkPath) === relTarget) {
-            continue;
-          }
-        } catch {
-          // fall through and recreate the symlink below
-        }
+      if (isSymlink(linkPath) && linkResolvesTo(linkPath, targetDir, srcAbsPath)) {
+        continue;
       }
 
       // Remove existing symlink if present
-      if (fs.existsSync(linkPath) || isSymlink(linkPath)) {
+      if (isSymlink(linkPath)) {
+        fs.rmSync(linkPath, { recursive: true, force: true });
+      } else if (fs.existsSync(linkPath)) {
         fs.unlinkSync(linkPath);
       }
 
       // Create relative symlink
-      fs.symlinkSync(relTarget, linkPath);
+      fs.symlinkSync(linkTarget, linkPath, getSymlinkType(srcAbsPath));
     }
   }
 }
@@ -234,4 +229,26 @@ function isSymlink(filePath: string): boolean {
   } catch {
     return false;
   }
+}
+
+function linkResolvesTo(linkPath: string, targetDir: string, expectedTarget: string): boolean {
+  try {
+    return path.resolve(targetDir, fs.readlinkSync(linkPath)) === expectedTarget;
+  } catch {
+    return false;
+  }
+}
+
+function getLinkTarget(targetDir: string, sourcePath: string): string {
+  return getSymlinkType(sourcePath) === 'junction'
+    ? sourcePath
+    : path.relative(targetDir, sourcePath);
+}
+
+function getSymlinkType(sourcePath: string): fs.symlink.Type | undefined {
+  if (process.platform !== 'win32') {
+    return;
+  }
+
+  return fs.statSync(sourcePath).isDirectory() ? 'junction' : 'file';
 }
