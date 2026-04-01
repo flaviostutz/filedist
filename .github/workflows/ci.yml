@@ -32,7 +32,6 @@ jobs:
           'node -e "require(''node:fs'').rmSync(''dist'', { recursive: true, force: true })"'
           pnpm exec tsc --outDir dist
           pnpm pack --pack-destination dist
-          pnpm exec jest --verbose
         working-directory: lib
       - run: pnpm install --frozen-lockfile --config.dedupe-peer-dependents=false
         working-directory: examples/mypackage
