@@ -33,11 +33,11 @@ jobs:
           pnpm exec tsc --outDir dist
           pnpm pack --pack-destination dist
         working-directory: lib
-      - run: pnpm install --frozen-lockfile --config.dedupe-peer-dependents=false
+      - run: pnpm install --config.dedupe-peer-dependents=false
         working-directory: examples/mypackage
       - run: pnpm pack --pack-destination dist
         working-directory: examples/mypackage
-      - run: pnpm install --frozen-lockfile --config.dedupe-peer-dependents=false
+      - run: pnpm install --config.dedupe-peer-dependents=false
         working-directory: examples/cli-config
       - run: pnpm exec filedist extract
         working-directory: examples/cli-config
