@@ -16,7 +16,7 @@ jobs:
       - run: make lint
       - run:  make test
 
-  ci-windows-lib:
+  ci-windows-smoke-test:
     runs-on: windows-latest
     defaults:
       run:
