@@ -71,6 +71,45 @@ describe('createSymlinks', () => {
   it('no-ops on empty configs', async () => {
     await expect(createSymlinks(tmpDir, [])).resolves.toBeUndefined();
   });
+
+  it('logs and continues when symlink creation fails on Windows', async () => {
+    const outputDir = path.join(tmpDir, 'out');
+    fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(outputDir, 'docs', 'README.md'), '# hi');
+
+    const targetDir = path.join(tmpDir, 'links');
+    const linkPath = path.join(targetDir, 'README.md');
+
+    const symlinkSpy = jest.spyOn(fs, 'symlinkSync').mockImplementation(() => {
+      throw new Error('EPERM: operation not permitted');
+    });
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const originalPlatform = process.platform;
+
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+      configurable: true,
+    });
+
+    try {
+      await expect(
+        createSymlinks(outputDir, [{ source: 'docs/README.md', target: '../links' }]),
+      ).resolves.toBeUndefined();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Failed to create symlink on Windows for ${linkPath}`),
+      );
+      expect(fs.existsSync(linkPath)).toBe(false);
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
+      symlinkSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
 });
 
 describe('removeStaleSymlinks', () => {

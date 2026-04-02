@@ -41,6 +41,6 @@ jobs:
           pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
           pnpm install --no-frozen-lockfile
           pnpm exec filedist extract
-          pnpm exec filedist check
           node ../../.github/scripts/check-cli-config-symlinks.cjs
+          pnpm exec filedist check
         working-directory: examples/cli-config

@@ -39,7 +39,19 @@ export async function createSymlinks(outputDir: string, configs: SymlinkConfig[]
       }
 
       // Create relative symlink
-      fs.symlinkSync(linkTarget, linkPath, getSymlinkType(srcAbsPath));
+      try {
+        fs.symlinkSync(linkTarget, linkPath, getSymlinkType(srcAbsPath));
+      } catch (error) {
+        if (process.platform !== 'win32') {
+          throw error;
+        }
+
+        const message = error instanceof Error ? error.message : String(error);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Failed to create symlink on Windows for ${linkPath} -> ${srcAbsPath}: ${message}`,
+        );
+      }
     }
   }
 }
