@@ -36,7 +36,7 @@ test: clean install
 	node ../../.github/scripts/check-cli-config-symlinks.cjs
 
 	# remove without --packages: reads entries from lockfile
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/data-symlink/user1.json
@@ -55,7 +55,7 @@ test: clean install
 
 	pnpm exec filedist check
 	test -e output/docs/README.md
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/docs/README.md
 	test ! -e output/data-symlink/user1.json
 	test ! -e output/data-symlink/users-dataset
@@ -73,7 +73,7 @@ test: clean install
 	test ! -e output/data/users-dataset/user1.json
 	test -e output/lastUpdated
 	pnpm exec filedist check --presets "nested-eslint"
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/nested-eslint/conf/globals.js
 
 	# --- Test 4: presets command lists all preset tags ---
@@ -88,12 +88,32 @@ test: clean install
 	test -e output/eslint/conf/globals.js
 	test -e output/nested-eslint/conf/globals.js
 	pnpm exec filedist check --all
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/data-symlink/user1.json
 	test ! -e output/data-symlink/users-dataset
 	test ! -e output/nested-eslint/conf/globals.js
+
+	# --- Test 6: remove only a specific package leaves other packages' files intact ---
+	# use .filedistrc so actionRemove can parse sets from a standalone config file
+	jq '.filedist' package.json > .filedistrc
+	jq 'del(.filedist)' package.json > package.json.tmp && mv package.json.tmp package.json
+	rm -rf output
+	pnpm exec filedist install --all
+	test -e output/eslint/conf/globals.js
+	test -e output/docs/README.md
+	test -e output/data/users-dataset/user1.json
+	test -e output/nested-eslint/conf/globals.js
+	# remove only example-files-package sets; eslint@8 files must survive
+	pnpm exec filedist remove example-files-package
+	test ! -e output/docs/README.md
+	test ! -e output/data/users-dataset/user1.json
+	test ! -e output/nested-eslint/conf/globals.js
+	test -e output/eslint/conf/globals.js
+	# restore original package.json
+	cp package.json.orig package.json
+	rm -f .filedistrc
 
 	@echo "All config-file mode tests passed"
 

@@ -508,4 +508,28 @@ describe('cli', () => {
 
     expect(fs.existsSync(path.join(outputStandard, 'docs/guide.md'))).toBe(true);
   }, 60_000);
+
+  it('routes to update command — dispatches update action', async () => {
+    const outputDir = path.join(tmpDir, 'output-update');
+    const configFile = path.join(tmpDir, 'update-config.json');
+
+    // Write a config file and install to create a lockfile
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({
+        sets: [{ package: PKG_NAME, output: { path: outputDir, gitignore: false } }],
+      }),
+    );
+    await cli(['node', 'filedist', 'install', '--config', configFile], tmpDir);
+
+    const errors: string[] = [];
+    const spy = jest.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(args.join(' '));
+    });
+    await cli(['node', 'filedist', 'update', '--config', configFile], tmpDir);
+    spy.mockRestore();
+
+    // The update command was dispatched (no "Unknown command" error)
+    expect(errors.join('\n')).not.toContain('Unknown command');
+  }, 90_000);
 });

@@ -584,3 +584,82 @@ describe('actionRemove — managed_files cleanup', () => {
     expect(allTrackedFiles.some((f) => f.includes('clean.md'))).toBe(false);
   }, 60_000);
 });
+
+describe('actionRemove — branch coverage', () => {
+  it('throws when packageSpec is missing and all is not set', async () => {
+    writeConfig([]);
+    await expect(
+      actionRemove({
+        cwd: tmpDir,
+        configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+        // no packageSpec, no all
+      }),
+    ).rejects.toThrow('packageSpec is required when all is not true');
+  }, 60_000);
+
+  it('removes all entries when all=true with verbose', async () => {
+    await installMockPackage('all-v-pkg', '1.0.0', { 'av.md': '# av' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+
+    writeConfig([{ package: 'all-v-pkg@1.0.0', output: { path: outputDir, gitignore: false } }]);
+    await actionInstall({
+      entries: [{ package: 'all-v-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    const result = await actionRemove({
+      cwd: tmpDir,
+      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      all: true,
+      verbose: true,
+    });
+
+    expect(result.removedEntries).toBe(1);
+    expect(readConfigSets()).toHaveLength(0);
+  }, 60_000);
+
+  it('filters by presets when presets option is supplied', async () => {
+    await installMockPackage('preset-pkg', '1.0.0', { 'pp.md': '# pp' }, tmpDir);
+    const outA = path.join(tmpDir, 'outA');
+    const outB = path.join(tmpDir, 'outB');
+
+    const filePath = path.join(tmpDir, '.filedistrc.yml');
+    fs.writeFileSync(
+      filePath,
+      [
+        'sets:',
+        '  - package: preset-pkg@1.0.0',
+        '    presets: [web]',
+        '    output:',
+        '      path: ' + outA,
+        '      gitignore: false',
+        '  - package: preset-pkg@1.0.0',
+        '    presets: [mobile]',
+        '    output:',
+        '      path: ' + outB,
+        '      gitignore: false',
+      ].join('\n'),
+      'utf8',
+    );
+
+    await actionInstall({
+      entries: [
+        { package: 'preset-pkg@1.0.0', output: { path: outA, gitignore: false } },
+        { package: 'preset-pkg@1.0.0', output: { path: outB, gitignore: false } },
+      ],
+      cwd: tmpDir,
+    });
+
+    const result = await actionRemove({
+      cwd: tmpDir,
+      packageSpec: 'preset-pkg',
+      presets: ['web'],
+      configFilePath: filePath,
+    });
+
+    expect(result.removedEntries).toBe(1);
+    const remaining = readConfigSets() as Array<{ presets?: string[] }>;
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].presets).toContain('mobile');
+  }, 60_000);
+});

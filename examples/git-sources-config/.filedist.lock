@@ -1,17 +1,4 @@
 {
   "lockfileVersion": 1,
-  "packages": {
-    "git:file:///Users/flaviostutz/Documents/development/flaviostutz/filedist/examples/git-sources-config/repos/parent-repo@v2.0.0": {
-      "ref": "82b09d9b0617"
-    },
-    "git:file:///Users/flaviostutz/Documents/development/flaviostutz/filedist/examples/git-sources-config/repos/child-repo@v1.0.0": {
-      "ref": "a71a9e146ece"
-    }
-  },
-  "managed_files": {
-    'output': [
-      'aaaa|11111',
-      'bbbb|22222'
-    ]
-  },
+  "packages": {}
 }

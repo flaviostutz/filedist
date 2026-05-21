@@ -198,7 +198,11 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
       // no-op: file may not exist when using lockfile-only mode
     }
     existingConfig.sets = toKeep;
-    fs.writeFileSync(configFilePath, yaml.dump(existingConfig, { indent: 2 }), 'utf8');
+    const isJson = configFilePath.endsWith('.json');
+    const content = isJson
+      ? JSON.stringify(existingConfig, null, 2) + '\n'
+      : yaml.dump(existingConfig, { indent: 2 });
+    fs.writeFileSync(configFilePath, content, 'utf8');
   }
 
   // ── Run install with remaining entries to update lockfile ─────────────────

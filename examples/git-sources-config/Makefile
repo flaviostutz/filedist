@@ -55,7 +55,7 @@ test: clean install prepare-repos
 	test ! -e .filedist-tmp
 	grep -Fx ".filedist-tmp" .gitignore
 	pnpm exec filedist check
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/docs/guide.md
 	test ! -e output/nested/child/data.json
 	test ! -e .filedist-tmp
@@ -73,7 +73,7 @@ test: clean install prepare-repos
 	test ! -e output/nested/.git
 	test ! -e output/nested/.filedistrc
 	pnpm exec filedist check
-	pnpm exec filedist remove
+	pnpm exec filedist remove --all
 	test ! -e output/docs/guide.md
 	test ! -e output/nested/child/data.json
 

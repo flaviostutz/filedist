@@ -3,9 +3,6 @@
   "packages": {
     "example-files-package": {
       "ref": "1.0.0"
-    },
-    "eslint@8": {
-      "ref": "8.57.1"
     }
   },
   "sets": [
@@ -14,18 +11,12 @@
       "output": {
         "path": "output"
       },
-      "selector": {}
+      "selector": {
+        "presets": [
+          "special"
+        ]
+      },
+      "verbose": true
     }
-  ],
-  "managed_files": {
-    "output": [
-      ".configs/app.config.json|example-files-package|1.0.0|file|a3a666b83768|0",
-      ".configs/database.config.json|example-files-package|1.0.0|file|43a66e5f3a38|0",
-      "data/users-dataset/user1.json|example-files-package|1.0.0|file|3d64d87a6558|0",
-      "docs/README.md|example-files-package|1.0.0|file|b85a548ab52b|0",
-      "docs/adrs/adr-001-sample1.md|example-files-package|1.0.0|file|310a53f15562|0",
-      "docs/adrs/adr-002-sample2.md|example-files-package|1.0.0|file|892292b3de5d|0",
-      "conf/globals.js|eslint|8.57.1|file|6eda394b426d|0"
-    ]
-  }
+  ]
 }

@@ -990,4 +990,85 @@ describe('actionCheck — frozenLockfile', () => {
       '.filedist.lock',
     );
   });
+
+  it('localOnly mode: returns ok when files are intact', async () => {
+    await installMockPackage('local-ok-pkg', '1.0.0', { 'lok.md': '# lok' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+
+    await actionInstall({
+      entries: [{ package: 'local-ok-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    const result = await actionCheck({
+      entries: [{ package: 'local-ok-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+      localOnly: true,
+      verbose: true,
+    });
+
+    expect(result.ok).toBeGreaterThan(0);
+    expect(result.missing).toHaveLength(0);
+    expect(result.conflict).toHaveLength(0);
+  }, 90_000);
+
+  it('localOnly mode: detects missing files', async () => {
+    await installMockPackage('local-miss-pkg', '1.0.0', { 'miss.md': '# miss' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+
+    await actionInstall({
+      entries: [{ package: 'local-miss-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    // Delete the installed file to simulate missing
+    fs.rmSync(path.join(outputDir, 'miss.md'));
+
+    const result = await actionCheck({
+      entries: [{ package: 'local-miss-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+      localOnly: true,
+      verbose: true,
+    });
+
+    expect(result.missing).toHaveLength(1);
+  }, 90_000);
+
+  it('frozenLockfile mode with verbose emits verbose log', async () => {
+    await installMockPackage('frozen-verbose-pkg', '1.0.0', { 'fv.md': '# fv' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+
+    await actionInstall({
+      entries: [
+        { package: 'frozen-verbose-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
+      ],
+      cwd: tmpDir,
+    });
+
+    const result = await actionCheck({
+      entries: [],
+      cwd: tmpDir,
+      frozenLockfile: true,
+      verbose: true,
+    });
+
+    expect(result.ok).toBeGreaterThan(0);
+  }, 90_000);
+
+  it('returns empty summary when all entries have managed=false', async () => {
+    const result = await actionCheck({
+      entries: [
+        {
+          package: 'any-pkg@1.0.0',
+          output: { path: path.join(tmpDir, 'out'), gitignore: false, managed: false },
+        },
+      ],
+      cwd: tmpDir,
+    });
+
+    expect(result.ok).toBe(0);
+    expect(result.missing).toHaveLength(0);
+    expect(result.conflict).toHaveLength(0);
+    expect(result.extra).toHaveLength(0);
+  });
 });

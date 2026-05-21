@@ -49,7 +49,7 @@ test: clean install
 	pnpm exec filedist check --config myconfig.json
 
 	# --- Test 3: purge removes managed files but leaves the managed=false file behind ---
-	pnpm exec filedist purge --config myconfig.json
+	pnpm exec filedist remove --all --config myconfig.json
 	# managed files are removed
 	test ! -e output/.configs/app.config.json
 	test ! -e output/docs/README.md
@@ -57,9 +57,11 @@ test: clean install
 	# database.config.json is managed=false, so it survives purge
 	test -e output/.configs/database.config.json
 
-	# check should now fail because default-managed files are missing after purge
-	! pnpm exec filedist check --config myconfig.json
+	# check should now pass because remove --all also cleared the config entries
+	pnpm exec filedist check --config myconfig.json
 
+	# restore config and re-install to verify round-trip
+	cp -f myconfig.json.orig myconfig.json
 	pnpm exec filedist install --config myconfig.json
 	pnpm exec filedist check --config myconfig.json
 
@@ -73,3 +75,4 @@ clean:
 	@rm -rf output
 	@rm -f pnpm-lock.yaml
 	@cp -f package.json.orig package.json
+	@cp -f myconfig.json.orig myconfig.json

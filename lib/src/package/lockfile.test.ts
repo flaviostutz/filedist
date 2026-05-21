@@ -8,6 +8,7 @@ import {
   buildLockfileData,
   readManagedFilesForDir,
   writeManagedFilesForDir,
+  readSetsFromLockfile,
   LockfileData,
 } from './lockfile';
 
@@ -243,5 +244,42 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
     ]);
     const lock = readLockfile(tmpDir);
     expect(lock?.managed_files?.['output']).toBeDefined();
+  });
+});
+
+describe('readSetsFromLockfile', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-lockfile-sets-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it('returns undefined when lockfile does not exist', () => {
+    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+  });
+
+  it('returns undefined when lockfile has no sets key', () => {
+    const data: LockfileData = { lockfileVersion: 1, packages: {} };
+    writeLockfile(tmpDir, data);
+    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+  });
+
+  it('returns undefined when lockfile has empty sets array', () => {
+    const data: LockfileData = { lockfileVersion: 1, packages: {}, sets: [] };
+    writeLockfile(tmpDir, data);
+    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+  });
+
+  it('returns sets when lockfile has non-empty sets', () => {
+    const sets = [{ package: 'pkg@1.0.0', output: { path: './out', gitignore: false } }];
+    const data: LockfileData = { lockfileVersion: 1, packages: {}, sets };
+    writeLockfile(tmpDir, data);
+    const result = readSetsFromLockfile(tmpDir);
+    expect(result).not.toBeUndefined();
+    expect(result![0].package).toBe('pkg@1.0.0');
   });
 });

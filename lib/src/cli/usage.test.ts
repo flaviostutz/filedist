@@ -65,6 +65,17 @@ describe('printUsage', () => {
     expect(lines.join('\n')).toMatch(/filedist.*command/i);
     expect(lines.join('\n')).toMatch(/install.*default/i);
   });
+
+  it('prints remove usage when command is "remove"', () => {
+    printUsage('remove');
+    expect(lines.join('\n')).toMatch(/filedist remove/i);
+    expect(lines.join('\n')).toMatch(/--output/i);
+  });
+
+  it('prints presets usage when command is "presets"', () => {
+    printUsage('presets');
+    expect(lines.join('\n')).toMatch(/filedist presets/i);
+  });
 });
 
 describe('printVersion', () => {
