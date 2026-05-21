@@ -199,8 +199,10 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
     }
     existingConfig.sets = toKeep;
     const isJson = configFilePath.endsWith('.json');
+
     const content = isJson
-      ? JSON.stringify(existingConfig, null, 2) + '\n'
+      ? // eslint-disable-next-line unicorn/no-null
+        JSON.stringify(existingConfig, null, 2) + '\n'
       : yaml.dump(existingConfig, { indent: 2 });
     fs.writeFileSync(configFilePath, content, 'utf8');
   }

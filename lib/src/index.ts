@@ -7,11 +7,12 @@ export {
   readLockfile,
   writeLockfile,
   buildLockfileData,
+  computeLockfileChecksum,
   readManagedFilesForDir,
   writeManagedFilesForDir,
   outputDirKey,
 } from './package/lockfile';
-export type { LockfileData, LockfilePackageEntry } from './package/lockfile';
+export type { LockfileData } from './package/lockfile';
 
 export { actionCheck } from './package/action-check';
 export type { CheckOptions, CheckSummary } from './package/action-check';

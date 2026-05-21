@@ -1,22 +1,13 @@
-{
-  "lockfileVersion": 1,
-  "packages": {
-    "example-files-package": {
-      "ref": "1.0.0"
-    }
-  },
-  "sets": [
-    {
-      "package": "example-files-package",
-      "output": {
-        "path": "output"
-      },
-      "selector": {
-        "presets": [
-          "special"
-        ]
-      },
-      "verbose": true
-    }
-  ]
-}
+version: 1
+packages:
+  example-files-package: 1.0.0
+sets:
+  - package: example-files-package
+    output:
+      path: output
+    selector:
+      presets:
+        - special
+    verbose: true
+checksum: 90d2e5ab64b1
+

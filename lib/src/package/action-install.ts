@@ -95,7 +95,23 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
   const { cwd, verbose = false, onProgress, dryRun, entries: configEntries } = options;
   // Auto-enable frozen lockfile in CI environments
   const frozenLockfile = options.frozenLockfile ?? (!!process.env.CI && process.env.CI !== 'false');
+  const hasForce = configEntries.some((e) => e.output?.force === true);
   const sourceRuntime = createSourceRuntime(cwd, verbose);
+
+  // ── Corrupt lockfile recovery — when force is set, reset corrupt lockfile upfront ──────
+  // This must happen before any readLockfile / readManagedFilesForDir calls so all
+  // downstream reads get a valid (empty) lockfile rather than throwing.
+  if (hasForce && !frozenLockfile) {
+    try {
+      readLockfile(cwd);
+    } catch {
+      console.warn(
+        `Warning: ${LOCKFILE_NAME} is corrupt and will be recreated from scratch. ` +
+          `Dependencies may be bumped to newer versions.`,
+      );
+      writeLockfile(cwd, { version: 1, packages: {} as Record<string, string> });
+    }
+  }
 
   // ── Lock file handling — resolve locked versions and entries before resolution phase ────
   let lockedVersions: Map<string, string> | undefined;
@@ -109,7 +125,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
       );
     }
     lockedVersions = new Map(
-      Object.entries(lockfileData.packages).map(([spec, entry]) => [spec, entry.ref]),
+      Object.entries(lockfileData.packages).map(([spec, ref]) => [spec, ref]),
     );
     // Use set definitions from lockfile if available
     if (lockfileData.sets && lockfileData.sets.length > 0) {
@@ -153,8 +169,8 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // packages as "extra" and cleans them up. Skip in frozen mode.
     if (!frozenLockfile) {
       const existingLock = readLockfile(cwd);
-      if (existingLock?.managed_files) {
-        mergePackagesFromLockfile(cwd, relevantPackagesByOutputDir, existingLock.managed_files);
+      if (existingLock?.files) {
+        mergePackagesFromLockfile(cwd, relevantPackagesByOutputDir, existingLock.files);
       }
     }
 
@@ -183,13 +199,13 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // desired file set differs from what is recorded in the lock file.
     if (frozenLockfile && !isDryRun) {
       const frozenLockData = readLockfile(cwd);
-      if (frozenLockData?.managed_files) {
+      if (frozenLockData?.files) {
         const outputDirs = new Set<string>([
           ...resolvedFiles.map((f) => f.outputDir),
           ...relevantPackagesByOutputDir.keys(),
         ]);
         for (const outputDir of outputDirs) {
-          validateFrozenManagedFiles(cwd, outputDir, resolvedFiles, frozenLockData.managed_files);
+          validateFrozenManagedFiles(cwd, outputDir, resolvedFiles, frozenLockData.files!);
         }
       }
     }
@@ -387,7 +403,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // ── Write/update lock file ───────────────────────────────────────────────
     // Skip all lock file writes when dry-run or frozen.
     if (!isDryRun && !frozenLockfile) {
-      const existingLock = readLockfile(cwd) ?? { lockfileVersion: 1, packages: {} };
+      const existingLock = readLockfile(cwd) ?? { version: 1, packages: {} };
       const managedFilesMap: Record<string, string[]> = {};
       for (const [outputDir, entries] of managedFilesByOutputDir) {
         if (entries.length > 0) {
@@ -402,11 +418,10 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         packages,
         // Store the set definitions so check/purge/frozen-install can operate without config
         sets: configEntries,
-        // Always override managed_files with the freshly computed map so entries
+        // Always override files with the freshly computed map so entries
         // from removed sets are not carried over from the existingLock spread.
         // writeLockfile deletes the key when the map is empty.
-        // eslint-disable-next-line camelcase
-        managed_files: managedFilesMap,
+        files: managedFilesMap,
       };
       writeLockfile(cwd, updatedLock);
       if (verbose) {

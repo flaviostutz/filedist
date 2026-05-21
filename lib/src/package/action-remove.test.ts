@@ -244,7 +244,7 @@ describe('actionRemove — file deletion via install', () => {
     expect(lockAfter?.sets?.length ?? 0).toBe(0);
   }, 60_000);
 
-  it('removes only managed files from disk, clears managed_files in lock, and updates config and lock sets', async () => {
+  it('removes only managed files from disk, clears files in lock, and updates config and lock sets', async () => {
     await installMockPackage('full-check-pkg', '1.0.0', { 'managed.md': '# managed' }, tmpDir);
     const outputDir = path.join(tmpDir, 'out');
     const configFilePath = writeConfig([
@@ -271,7 +271,7 @@ describe('actionRemove — file deletion via install', () => {
     expect(fs.existsSync(path.join(outputDir, 'managed.md'))).toBe(false);
     expect(fs.existsSync(unmanagedFile)).toBe(true);
 
-    // 2. managed_files in lock no longer contains entries for the removed package
+    // 2. files in lock no longer contains entries for the removed package
     expect(
       readManagedFilesForDir(tmpDir, outputDir).filter((e) => e.packageName === 'full-check-pkg'),
     ).toHaveLength(0);
@@ -484,8 +484,8 @@ describe('actionRemove — hierarchical packages', () => {
   }, 120_000);
 });
 
-describe('actionRemove — managed_files cleanup', () => {
-  it('removes files tracked in managed_files that belong to the removed package', async () => {
+describe('actionRemove — files cleanup', () => {
+  it('removes files tracked in files that belong to the removed package', async () => {
     await installMockPackage('mf-pkg', '1.0.0', { 'mf.md': '# mf', 'extra.md': '# extra' }, tmpDir);
     const outputDir = path.join(tmpDir, 'out');
 
@@ -496,7 +496,7 @@ describe('actionRemove — managed_files cleanup', () => {
       cwd: tmpDir,
     });
 
-    // Verify files are tracked in managed_files before removal
+    // Verify files are tracked in files before removal
     const markerBefore = readManagedFilesForDir(tmpDir, outputDir);
     expect(markerBefore.some((e) => e.packageName === 'mf-pkg')).toBe(true);
 
@@ -515,7 +515,7 @@ describe('actionRemove — managed_files cleanup', () => {
     expect(markerAfter.filter((e) => e.packageName === 'mf-pkg')).toHaveLength(0);
   }, 60_000);
 
-  it('removes stale managed_files entries when install is run with remaining sets', async () => {
+  it('removes stale files entries when install is run with remaining sets', async () => {
     await installMockPackage('stale-a', '1.0.0', { 'a.md': 'a' }, tmpDir);
     await installMockPackage('stale-b', '1.0.0', { 'b.md': 'b' }, tmpDir);
     const outputDir = path.join(tmpDir, 'out');
@@ -555,7 +555,7 @@ describe('actionRemove — managed_files cleanup', () => {
     expect(markerAfter.some((e) => e.packageName === 'stale-b')).toBe(true);
   }, 60_000);
 
-  it('lockfile managed_files does not reference removed package after remove', async () => {
+  it('lockfile files does not reference removed package after remove', async () => {
     await installMockPackage('lf-clean', '1.0.0', { 'clean.md': '# clean' }, tmpDir);
     const outputDir = path.join(tmpDir, 'out');
 
@@ -567,8 +567,8 @@ describe('actionRemove — managed_files cleanup', () => {
     });
 
     const lockBefore = readLockfile(tmpDir);
-    // managed_files should reference the output dir before removal
-    expect(lockBefore?.managed_files).toBeDefined();
+    // files should reference the output dir before removal
+    expect(lockBefore?.files).toBeDefined();
 
     await actionRemove({
       cwd: tmpDir,
@@ -577,10 +577,10 @@ describe('actionRemove — managed_files cleanup', () => {
     });
 
     const lockAfter = readLockfile(tmpDir);
-    // After removal, no managed_files for the removed package's output dir
-    const managedFilesAfter = lockAfter?.managed_files ?? {};
-    const allTrackedFiles = Object.values(managedFilesAfter).flat();
-    // clean.md should not appear in any managed_files entry
+    // After removal, no files for the removed package's output dir
+    const filesAfter = lockAfter?.files ?? {};
+    const allTrackedFiles = Object.values(filesAfter).flat();
+    // clean.md should not appear in any files entry
     expect(allTrackedFiles.some((f) => f.includes('clean.md'))).toBe(false);
   }, 60_000);
 });

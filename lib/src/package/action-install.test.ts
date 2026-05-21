@@ -4,12 +4,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
 import { createMockGitRepo, installMockPackage } from '../fileset/test-utils';
 import { ProgressEvent } from '../types';
 
 import { actionCheck } from './action-check';
 import { actionInstall } from './action-install';
-import { readManagedFilesForDir, writeManagedFilesForDir } from './lockfile';
+import {
+  LockfileData,
+  readManagedFilesForDir,
+  writeLockfile,
+  writeManagedFilesForDir,
+} from './lockfile';
 
 describe('actionInstall', () => {
   let tmpDir: string;
@@ -264,6 +271,41 @@ describe('actionInstall', () => {
     });
 
     expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('user content');
+  }, 60000);
+
+  it('force does not overwrite a file previously installed as mutable', async () => {
+    await installMockPackage('force-mutable-pkg', '1.0.0', { 'guide.md': 'pkg content' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'output');
+    // First install with mutable — user is allowed to modify the file
+    await actionInstall({
+      entries: [
+        {
+          package: 'force-mutable-pkg',
+          output: { path: outputDir, mutable: true, gitignore: false },
+        },
+      ],
+      cwd: tmpDir,
+    });
+    // Simulate user modification
+    fs.chmodSync(path.join(outputDir, 'guide.md'), 0o644);
+    fs.writeFileSync(path.join(outputDir, 'guide.md'), 'user modified content');
+
+    // Second install with force — mutable files are always preserved regardless of force
+    const events: string[] = [];
+    await actionInstall({
+      entries: [
+        {
+          package: 'force-mutable-pkg',
+          output: { path: outputDir, force: true, gitignore: false },
+        },
+      ],
+      cwd: tmpDir,
+      onProgress: (e) => events.push(e.type),
+    });
+
+    expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('user modified content');
+    expect(events).not.toContain('file-modified');
   }, 60000);
 
   it('keeps stale managed files on disk when noSync is enabled', async () => {
@@ -1614,10 +1656,10 @@ describe('actionInstall — lock file', () => {
     });
     const lockPath = path.join(tmpDir, '.filedist.lock');
     expect(fs.existsSync(lockPath)).toBe(true);
-    const lockData = JSON.parse(fs.readFileSync(lockPath).toString());
-    expect(lockData.lockfileVersion).toBe(1);
+    const lockData = yaml.load(fs.readFileSync(lockPath, 'utf8')) as LockfileData;
+    expect(lockData.version).toBe(1);
     expect(lockData.packages[PKG]).toBeDefined();
-    expect(lockData.packages[PKG].ref).toBe('1.2.3');
+    expect(lockData.packages[PKG]).toBe('1.2.3');
   }, 60_000);
 
   it('does not write .filedist.lock on dry-run', async () => {
@@ -1670,13 +1712,7 @@ describe('actionInstall — lock file', () => {
     const outputDir = path.join(tmpDir, 'output');
     // Create a minimal lock file manually
     const lockPath = path.join(tmpDir, '.filedist.lock');
-    fs.writeFileSync(
-      lockPath,
-      JSON.stringify({
-        lockfileVersion: 1,
-        packages: { [PKG]: { ref: '2.0.0' } },
-      }),
-    );
+    writeLockfile(tmpDir, { version: 1, packages: { [PKG]: '2.0.0' } });
     const originalContent = fs.readFileSync(lockPath, 'utf8');
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
@@ -1773,14 +1809,54 @@ describe('actionInstall — lock file', () => {
 
     const lockPath = path.join(tmpDir, '.filedist.lock');
     expect(fs.existsSync(lockPath)).toBe(true);
-    const lockData = JSON.parse(fs.readFileSync(lockPath).toString());
+    const lockData = yaml.load(fs.readFileSync(lockPath, 'utf8')) as LockfileData;
 
     // Both the top-level package and its transitive sub-dependency must be locked
     expect(lockData.packages[MAIN]).toBeDefined();
-    expect(lockData.packages[MAIN].ref).toBe('1.0.0');
+    expect(lockData.packages[MAIN]).toBe('1.0.0');
     expect(lockData.packages[DEP]).toBeDefined();
-    expect(lockData.packages[DEP].ref).toBe('2.1.0');
+    expect(lockData.packages[DEP]).toBe('2.1.0');
   }, 90_000);
+
+  it('throws when lockfile is corrupt and force is NOT set', async () => {
+    const PKG = 'lock-corrupt-noforce-pkg';
+    await installMockPackage(PKG, '1.0.0', { 'data/file.txt': 'hello' }, tmpDir);
+    const lockPath = path.join(tmpDir, '.filedist.lock');
+    // Write valid YAML structure but with a tampered checksum
+    fs.writeFileSync(lockPath, yaml.dump({ version: 1, packages: {}, checksum: 'deadbeef' }));
+
+    const outputDir = path.join(tmpDir, 'output');
+    await expect(
+      actionInstall({
+        entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
+        cwd: tmpDir,
+      }),
+    ).rejects.toThrow();
+  }, 60_000);
+
+  it('recreates corrupt lockfile from scratch and warns when force=true', async () => {
+    const PKG = 'lock-corrupt-force-pkg';
+    await installMockPackage(PKG, '1.0.0', { 'data/file.txt': 'hello' }, tmpDir);
+    const lockPath = path.join(tmpDir, '.filedist.lock');
+    // Tampered checksum triggers corruption error
+    fs.writeFileSync(lockPath, yaml.dump({ version: 1, packages: {}, checksum: 'deadbeef' }));
+
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const outputDir = path.join(tmpDir, 'output');
+
+    await actionInstall({
+      entries: [{ package: PKG, output: { path: outputDir, gitignore: false, force: true } }],
+      cwd: tmpDir,
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('corrupt'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('recreated from scratch'));
+    const recreatedLockData = yaml.load(fs.readFileSync(lockPath, 'utf8')) as LockfileData;
+    expect(recreatedLockData.version).toBe(1);
+    expect(recreatedLockData.packages[PKG]).toBeDefined();
+    warnSpy.mockRestore();
+  }, 60_000);
 });
 
 describe('actionInstall — frozenLockfile', () => {
@@ -1852,14 +1928,14 @@ describe('actionInstall — frozenLockfile', () => {
 
     const outputDir = path.join(tmpDir, 'out');
 
-    // Normal install — writes lockfile with managed_files
+    // Normal install — writes lockfile with files
     await actionInstall({
       entries: [{ package: 'frozen-validate-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
     });
 
     // Manually add an extra untracked file to the output dir, then forcibly update the marker
-    // so the lockfile managed_files list diverges from what a fresh resolve would produce
+    // so the lockfile files list diverges from what a fresh resolve would produce
     writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'file.md',

@@ -311,4 +311,28 @@ describe('calculateDiff', () => {
       true,
     );
   });
+
+  it('skips content check for mutable existing entry even when force=true (compareWithSource)', async () => {
+    writeFile(pkgDir, 'guide.md', 'pkg content');
+    writeFile(outputDir, 'guide.md', 'user modified content'); // user changed it
+
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'guide.md',
+        packageName: 'test-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('user modified content'),
+        mutable: true, // previously installed as mutable
+      },
+    ]);
+
+    const resolved = [buildResolvedFile('guide.md', { force: true, mutable: false })];
+
+    // compareWithSource=true (extraction mode): mutable existing → content check always skipped
+    const result = await calculateDiff(resolved, true, tmpDir);
+
+    expect(result.ok).toHaveLength(1);
+    expect(result.conflict).toHaveLength(0);
+  });
 });

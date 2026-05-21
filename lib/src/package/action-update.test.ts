@@ -71,7 +71,7 @@ describe('actionUpdate', () => {
     });
 
     const lockBefore = readLockfile(tmpDir);
-    expect(lockBefore?.packages['update-lock-pkg']?.ref).toBe('1.0.0');
+    expect(lockBefore?.packages['update-lock-pkg']).toBe('1.0.0');
 
     // Publish v2
     await installMockPackage('update-lock-pkg', '2.0.0', { 'file.md': '# v2' }, tmpDir);
@@ -83,7 +83,7 @@ describe('actionUpdate', () => {
     });
 
     const lockAfter = readLockfile(tmpDir);
-    expect(lockAfter?.packages['update-lock-pkg']?.ref).toBe('2.0.0');
+    expect(lockAfter?.packages['update-lock-pkg']).toBe('2.0.0');
   }, 90_000);
 
   it('uses user-supplied entries over lockfile sets (like install)', async () => {

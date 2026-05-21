@@ -181,7 +181,7 @@ export function resolveFrozenLockfileContext(
   const entries =
     lockfileData.sets && lockfileData.sets.length > 0 ? lockfileData.sets : fallbackEntries;
   const lockedVersions = new Map(
-    Object.entries(lockfileData.packages).map(([spec, entry]) => [spec, entry.ref]),
+    Object.entries(lockfileData.packages).map(([spec, ref]) => [spec, ref]),
   );
   if (verbose) {
     console.log(

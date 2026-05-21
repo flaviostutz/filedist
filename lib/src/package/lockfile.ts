@@ -1,30 +1,57 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
 import { FiledistExtractEntry, ManagedFileMetadata } from '../types';
+import { shortenChecksum } from '../utils';
 
 export const LOCKFILE_NAME = '.filedist.lock';
 const LOCKFILE_VERSION = 1;
 
-export type LockfilePackageEntry = {
-  ref: string;
-};
-
 export type LockfileData = {
-  lockfileVersion: number;
-  packages: Record<string, LockfilePackageEntry>;
+  version: number;
+  /** Maps package spec → resolved version/ref string. */
+  packages: Record<string, string>;
   /**
    * Set definitions stored during install; used by check/purge/frozen-install
    * to operate without reading the user configuration file.
    */
   sets?: FiledistExtractEntry[];
-  managed_files?: Record<string, string[]>;
+  /** Maps output-dir key → pipe-delimited managed-file lines. */
+  files?: Record<string, string[]>;
+  /** SHA-256 checksum of packages + files + sets sections. Validated on every read. */
+  checksum?: string;
 };
+
+/**
+ * Compute a SHA-256 checksum over the packages, files, and sets sections of a
+ * lockfile. The input is deterministic (keys sorted) so the result is stable
+ * across writes.
+ */
+export function computeLockfileChecksum(
+  data: Pick<LockfileData, 'packages' | 'files' | 'sets'>,
+): string {
+  const sortedPackages = Object.fromEntries(
+    Object.entries(data.packages ?? {}).sort(([a], [b]) => a.localeCompare(b)),
+  );
+  const sortedFiles: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(data.files ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+    sortedFiles[k] = [...v].sort();
+  }
+  const payload = JSON.stringify({
+    packages: sortedPackages,
+    files: sortedFiles,
+    sets: data.sets ?? [],
+  });
+  return shortenChecksum(crypto.createHash('sha256').update(payload).digest('hex'));
+}
 
 /**
  * Read .filedist.lock from cwd.
  * Returns undefined when the file does not exist.
- * Throws when the file exists but cannot be parsed.
+ * Throws when the file exists but cannot be parsed or has a bad checksum.
  */
 export function readLockfile(cwd: string): LockfileData | undefined {
   const lockPath = path.join(cwd, LOCKFILE_NAME);
@@ -40,19 +67,31 @@ export function readLockfile(cwd: string): LockfileData | undefined {
   }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = yaml.load(raw);
   } catch {
-    throw new Error(`Lock file at ${lockPath} contains invalid JSON.`);
+    throw new Error(`Lock file at ${lockPath} contains invalid YAML.`);
   }
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
-    typeof (parsed as LockfileData).lockfileVersion !== 'number' ||
+    typeof (parsed as LockfileData).version !== 'number' ||
     typeof (parsed as LockfileData).packages !== 'object'
   ) {
     throw new Error(`Lock file at ${lockPath} has an unexpected format.`);
   }
-  return parsed as LockfileData;
+  const data = parsed as LockfileData;
+  // Validate checksum when present.
+  // eslint-disable-next-line no-undefined
+  if (data.checksum !== undefined) {
+    const expected = computeLockfileChecksum(data);
+    if (data.checksum !== expected) {
+      throw new Error(
+        `Lock file at ${lockPath} is corrupted (checksum mismatch). ` +
+          `Use --force to recreate it.`,
+      );
+    }
+  }
+  return data;
 }
 
 /**
@@ -61,15 +100,19 @@ export function readLockfile(cwd: string): LockfileData | undefined {
 export function writeLockfile(cwd: string, data: LockfileData): void {
   const lockPath = path.join(cwd, LOCKFILE_NAME);
 
-  const payload: LockfileData = { ...data, lockfileVersion: LOCKFILE_VERSION };
+  const payload: LockfileData = { ...data, version: LOCKFILE_VERSION };
 
   if (!payload.sets || payload.sets.length === 0) {
     delete payload.sets;
   }
-  if (!payload.managed_files || Object.keys(payload.managed_files).length === 0) {
-    delete payload.managed_files;
+  if (!payload.files || Object.keys(payload.files).length === 0) {
+    delete payload.files;
   }
-  const content = JSON.stringify(payload, void 0, 2) + '\n';
+  // Compute and attach checksum (exclude any stale checksum before computing).
+  delete payload.checksum;
+  payload.checksum = computeLockfileChecksum(payload);
+
+  const content = yaml.dump(payload, { lineWidth: -1, quotingType: "'" }) + '\n';
   fs.writeFileSync(lockPath, content, 'utf8');
 }
 
@@ -92,11 +135,11 @@ export function readSetsFromLockfile(cwd: string): FiledistExtractEntry[] | unde
 export function buildLockfileData(
   resolvedPackages: Map<string, { source: 'npm' | 'git'; resolvedVersion: string }>,
 ): LockfileData {
-  const packages: Record<string, LockfilePackageEntry> = {};
+  const packages: Record<string, string> = {};
   for (const [spec, info] of resolvedPackages) {
-    packages[spec] = { ref: info.resolvedVersion };
+    packages[spec] = info.resolvedVersion;
   }
-  return { lockfileVersion: LOCKFILE_VERSION, packages };
+  return { version: LOCKFILE_VERSION, packages };
 }
 
 // ── Managed-files helpers ────────────────────────────────────────────────────
@@ -136,10 +179,10 @@ function serializeManagedFileLine(e: ManagedFileMetadata): string {
 export function readManagedFilesForDir(cwd: string, outputDir: string): ManagedFileMetadata[] {
   const lockData = readLockfile(cwd);
 
-  if (!lockData?.managed_files) return [];
+  if (!lockData?.files) return [];
   const key = outputDirKey(cwd, outputDir);
 
-  const lines = lockData.managed_files[key] ?? [];
+  const lines = lockData.files[key] ?? [];
   return lines.map((line) => parseManagedFileLine(line));
 }
 
@@ -153,15 +196,14 @@ export function writeManagedFilesForDir(
   outputDir: string,
   entries: ManagedFileMetadata[],
 ): void {
-  const lockData = readLockfile(cwd) ?? { lockfileVersion: LOCKFILE_VERSION, packages: {} };
+  const lockData = readLockfile(cwd) ?? { version: LOCKFILE_VERSION, packages: {} };
   const key = outputDirKey(cwd, outputDir);
 
-  const managedFiles: Record<string, string[]> = lockData.managed_files ?? {};
+  const managedFiles: Record<string, string[]> = lockData.files ?? {};
   if (entries.length === 0) {
     delete managedFiles[key];
   } else {
     managedFiles[key] = entries.map((e) => serializeManagedFileLine(e));
   }
-  // eslint-disable-next-line camelcase
-  writeLockfile(cwd, { ...lockData, managed_files: managedFiles });
+  writeLockfile(cwd, { ...lockData, files: managedFiles });
 }

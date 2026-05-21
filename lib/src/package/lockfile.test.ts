@@ -2,10 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
 import {
   readLockfile,
   writeLockfile,
   buildLockfileData,
+  computeLockfileChecksum,
   readManagedFilesForDir,
   writeManagedFilesForDir,
   readSetsFromLockfile,
@@ -30,48 +33,71 @@ describe('lockfile', () => {
 
     it('returns parsed data for a valid lock file', () => {
       const data: LockfileData = {
-        lockfileVersion: 1,
-        packages: {
-          'eslint@^8': { ref: '8.57.0' },
-        },
+        version: 1,
+        packages: { 'eslint@^8': '8.57.0' },
       };
-      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), JSON.stringify(data));
+      writeLockfile(tmpDir, data);
       const result = readLockfile(tmpDir);
       expect(result).not.toBeUndefined();
-      expect(result!.lockfileVersion).toBe(1);
-      expect(result!.packages['eslint@^8'].ref).toBe('8.57.0');
+      expect(result!.version).toBe(1);
+      expect(result!.packages['eslint@^8']).toBe('8.57.0');
     });
 
-    it('throws when lock file contains invalid JSON', () => {
-      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), 'not valid json{{');
-      expect(() => readLockfile(tmpDir)).toThrow('invalid JSON');
+    it('throws when lock file contains invalid YAML', () => {
+      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), 'key: [unclosed');
+      expect(() => readLockfile(tmpDir)).toThrow('invalid YAML');
     });
 
     it('throws when lock file has unexpected format', () => {
-      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), JSON.stringify({ foo: 'bar' }));
+      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), yaml.dump({ foo: 'bar' }));
       expect(() => readLockfile(tmpDir)).toThrow('unexpected format');
+    });
+
+    it('throws when checksum is present but does not match', () => {
+      const data: LockfileData = {
+        version: 1,
+        packages: { 'pkg@1': '1.0.0' },
+        checksum: 'deadbeef',
+      };
+      fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), yaml.dump(data));
+      expect(() => readLockfile(tmpDir)).toThrow('corrupted');
+    });
+
+    it('passes when checksum is valid', () => {
+      const data: LockfileData = {
+        version: 1,
+        packages: { 'pkg@1': '1.0.0' },
+      };
+      writeLockfile(tmpDir, data);
+      expect(() => readLockfile(tmpDir)).not.toThrow();
     });
   });
 
   describe('writeLockfile', () => {
-    it('writes a readable lock file', () => {
+    it('writes a readable YAML lock file', () => {
       const data: LockfileData = {
-        lockfileVersion: 1,
-        packages: {
-          'my-pkg@^1': { ref: '1.2.3' },
-        },
+        version: 1,
+        packages: { 'my-pkg@^1': '1.2.3' },
       };
       writeLockfile(tmpDir, data);
       const lockPath = path.join(tmpDir, '.filedist.lock');
       expect(fs.existsSync(lockPath)).toBe(true);
-      const raw = fs.readFileSync(lockPath);
-      const parsed = JSON.parse(raw.toString()) as LockfileData;
-      expect(parsed.lockfileVersion).toBe(1);
-      expect(parsed.packages['my-pkg@^1'].ref).toBe('1.2.3');
+      const raw = fs.readFileSync(lockPath, 'utf8');
+      const parsed = yaml.load(raw) as LockfileData;
+      expect(parsed.version).toBe(1);
+      expect(parsed.packages['my-pkg@^1']).toBe('1.2.3');
+    });
+
+    it('writes a checksum field', () => {
+      writeLockfile(tmpDir, { version: 1, packages: { 'p@1': '1.0.0' } });
+      const raw = fs.readFileSync(path.join(tmpDir, '.filedist.lock'), 'utf8');
+      const parsed = yaml.load(raw) as LockfileData;
+      expect(parsed.checksum).toBeDefined();
+      expect(typeof parsed.checksum).toBe('string');
     });
 
     it('ends with a newline', () => {
-      writeLockfile(tmpDir, { lockfileVersion: 1, packages: {} });
+      writeLockfile(tmpDir, { version: 1, packages: {} });
       const raw = fs.readFileSync(path.join(tmpDir, '.filedist.lock'), 'utf8');
       expect(raw.endsWith('\n')).toBe(true);
     });
@@ -84,10 +110,10 @@ describe('lockfile', () => {
         ['git:github.com/org/repo.git@main', { source: 'git' as const, resolvedVersion: 'abc123' }],
       ]);
       const data = buildLockfileData(resolved);
-      expect(data.lockfileVersion).toBe(1);
+      expect(data.version).toBe(1);
       expect(Object.keys(data.packages)).toHaveLength(2);
-      expect(data.packages['eslint@^8'].ref).toBe('8.57.0');
-      expect(data.packages['git:github.com/org/repo.git@main'].ref).toBe('abc123');
+      expect(data.packages['eslint@^8']).toBe('8.57.0');
+      expect(data.packages['git:github.com/org/repo.git@main']).toBe('abc123');
     });
 
     it('returns empty packages for empty map', () => {
@@ -96,33 +122,63 @@ describe('lockfile', () => {
     });
   });
 
+  describe('computeLockfileChecksum', () => {
+    it('produces a 12-char hex string', () => {
+      const cs = computeLockfileChecksum({ packages: { 'p@1': '1.0.0' } });
+      expect(cs).toMatch(/^[\da-f]{12}$/);
+    });
+
+    it('is deterministic regardless of key insertion order', () => {
+      const cs1 = computeLockfileChecksum({ packages: { a: '1', b: '2' } });
+      const cs2 = computeLockfileChecksum({ packages: { b: '2', a: '1' } });
+      expect(cs1).toBe(cs2);
+    });
+
+    it('changes when packages change', () => {
+      const cs1 = computeLockfileChecksum({ packages: { 'p@1': '1.0.0' } });
+      const cs2 = computeLockfileChecksum({ packages: { 'p@1': '2.0.0' } });
+      expect(cs1).not.toBe(cs2);
+    });
+
+    it('changes when files change', () => {
+      const cs1 = computeLockfileChecksum({
+        packages: {},
+        files: { out: ['a.md|p|1|file|abc|0'] },
+      });
+      const cs2 = computeLockfileChecksum({
+        packages: {},
+        files: { out: ['b.md|p|1|file|abc|0'] },
+      });
+      expect(cs1).not.toBe(cs2);
+    });
+  });
+
   describe('roundtrip', () => {
-    it('write then read produces identical data', () => {
+    it('write then read produces equivalent data', () => {
       const data: LockfileData = {
-        lockfileVersion: 1,
+        version: 1,
         packages: {
-          'pkg-a@^2': { ref: '2.1.0' },
-          'git:host/repo.git@v3': { ref: 'dead1234beef' },
+          'pkg-a@^2': '2.1.0',
+          'git:host/repo.git@v3': 'dead1234beef',
         },
       };
       writeLockfile(tmpDir, data);
       const result = readLockfile(tmpDir);
-      expect(result).toEqual(data);
+      expect(result!.version).toBe(data.version);
+      expect(result!.packages).toEqual(data.packages);
     });
 
-    it('preserves managed_files on roundtrip', () => {
+    it('preserves files on roundtrip', () => {
       const data: LockfileData = {
-        lockfileVersion: 1,
-        packages: { 'pkg@^1': { ref: '1.0.0' } },
-        // eslint-disable-next-line camelcase
-        managed_files: {
+        version: 1,
+        packages: { 'pkg@^1': '1.0.0' },
+        files: {
           output: ['file.md|pkg|1.0.0|file|abc123|0'],
         },
       };
       writeLockfile(tmpDir, data);
       const result = readLockfile(tmpDir);
-
-      expect(result?.managed_files).toEqual(data.managed_files);
+      expect(result?.files).toEqual(data.files);
     });
   });
 });
@@ -145,7 +201,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
   });
 
   it('returns empty array when managed_files key is absent', () => {
-    writeLockfile(tmpDir, { lockfileVersion: 1, packages: {} });
+    writeLockfile(tmpDir, { version: 1, packages: {} });
     expect(readManagedFilesForDir(tmpDir, outputDir)).toEqual([]);
   });
 
@@ -169,7 +225,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
   });
 
   it('preserves packages when writing managed files', () => {
-    writeLockfile(tmpDir, { lockfileVersion: 1, packages: { 'my-pkg': { ref: '1.0.0' } } });
+    writeLockfile(tmpDir, { version: 1, packages: { 'my-pkg': '1.0.0' } });
     writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'a.md',
@@ -181,7 +237,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
       },
     ]);
     const lock = readLockfile(tmpDir);
-    expect(lock?.packages['my-pkg']?.ref).toBe('1.0.0');
+    expect(lock?.packages['my-pkg']).toBe('1.0.0');
   });
 
   it('round-trips checksum and mutable fields', () => {
@@ -228,10 +284,10 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
     ]);
     writeManagedFilesForDir(tmpDir, outputDir, []);
     const lock = readLockfile(tmpDir);
-    expect(lock?.managed_files).toBeUndefined();
+    expect(lock?.files).toBeUndefined();
   });
 
-  it('uses relative path as key in managed_files', () => {
+  it('uses relative path as key in files', () => {
     writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'a.md',
@@ -243,7 +299,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
       },
     ]);
     const lock = readLockfile(tmpDir);
-    expect(lock?.managed_files?.['output']).toBeDefined();
+    expect(lock?.files?.['output']).toBeDefined();
   });
 });
 
@@ -263,20 +319,20 @@ describe('readSetsFromLockfile', () => {
   });
 
   it('returns undefined when lockfile has no sets key', () => {
-    const data: LockfileData = { lockfileVersion: 1, packages: {} };
+    const data: LockfileData = { version: 1, packages: {} };
     writeLockfile(tmpDir, data);
     expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
   });
 
   it('returns undefined when lockfile has empty sets array', () => {
-    const data: LockfileData = { lockfileVersion: 1, packages: {}, sets: [] };
+    const data: LockfileData = { version: 1, packages: {}, sets: [] };
     writeLockfile(tmpDir, data);
     expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
   });
 
   it('returns sets when lockfile has non-empty sets', () => {
     const sets = [{ package: 'pkg@1.0.0', output: { path: './out', gitignore: false } }];
-    const data: LockfileData = { lockfileVersion: 1, packages: {}, sets };
+    const data: LockfileData = { version: 1, packages: {}, sets };
     writeLockfile(tmpDir, data);
     const result = readSetsFromLockfile(tmpDir);
     expect(result).not.toBeUndefined();
