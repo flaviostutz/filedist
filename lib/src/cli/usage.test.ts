@@ -48,11 +48,10 @@ describe('printUsage', () => {
     expect(lines.join('\n')).toMatch(/currently managed/i);
   });
 
-  it('prints purge usage when command is "purge"', () => {
-    printUsage('purge');
-    expect(lines.join('\n')).toMatch(/filedist purge/i);
-    expect(lines.join('\n')).toMatch(/--all/);
-    expect(lines.join('\n')).toMatch(/remove/i);
+  it('prints update usage when command is "update"', () => {
+    printUsage('update');
+    expect(lines.join('\n')).toMatch(/filedist update/i);
+    expect(lines.join('\n')).toMatch(/latest/i);
   });
 
   it('prints init usage when command is "init"', () => {

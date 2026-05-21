@@ -1,7 +1,4 @@
 sets:
   - package: example-files-package
-    selector:
-      presets:
-        - special
     output:
       path: output

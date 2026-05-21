@@ -6,8 +6,8 @@ import path from 'node:path';
 import { ResolvedFile, DiffResult, ManagedFileMetadata } from '../types';
 import { readManagedGitignoreEntries } from '../fileset/gitignore';
 import { hashFile, isBinaryFile, formatDisplayPath, shortenChecksum } from '../utils';
-import { readOutputDirMarker } from '../fileset/markers';
 
+import { readManagedFilesForDir } from './lockfile';
 import { applyContentReplacementsToBuffer } from './content-replacements';
 import { collectManagedSymlinkTargets } from './symlinks';
 
@@ -56,6 +56,7 @@ export async function calculateDiff(
       result,
       relevantPackagesByOutputDir?.get(outputDir),
       compareWithSource,
+      cwd,
     );
 
     if (verbose) {
@@ -76,8 +77,9 @@ async function appendOutputDirDiff(
   result: DiffResult,
   relevantPackages?: Set<string>,
   compareWithSource?: boolean,
+  cwd?: string,
 ): Promise<void> {
-  const existingMarker = await readOutputDirMarker(outputDir);
+  const existingMarker = cwd ? readManagedFilesForDir(cwd, outputDir) : [];
   const managedByPath = new Map<string, ManagedFileMetadata>(
     existingMarker.map((m) => [m.path, m]),
   );
@@ -147,7 +149,7 @@ function classifyDesiredSymlink(
     }
   }
 
-  if (!existingEntry || (existingEntry.kind ?? 'file') !== 'symlink') {
+  if (!existingEntry || existingEntry.kind !== 'symlink') {
     conflictReasons.push('managed');
   }
 
@@ -197,7 +199,7 @@ async function classifyDesiredFile(
     return;
   }
 
-  const conflictReasons: Array<'content' | 'managed' | 'gitignore' | 'no-checksum'> = [];
+  const conflictReasons: Array<'content' | 'managed' | 'gitignore'> = [];
   const existingEntry = managedByPath.get(desired.relPath);
 
   if (compareWithSource) {
@@ -214,15 +216,11 @@ async function classifyDesiredFile(
   } else {
     // Check mode: compare disk against stored checksum (no source package needed).
     // Mutable files are allowed to change locally — skip content verification.
-    // Files with no stored checksum cannot be verified — reported as no-checksum conflict.
     if (existingEntry?.mutable) {
       // File is intentionally mutable (e.g. extracted with mutable option); skip content check
-    } else if (existingEntry?.checksum) {
-      const destHash = shortenChecksum(await hashFile(destPath));
-      if (existingEntry.checksum !== destHash) conflictReasons.push('content');
     } else {
-      // No stored checksum: marker is from an old extraction; re-extract to repair
-      conflictReasons.push('no-checksum');
+      const destHash = shortenChecksum(await hashFile(destPath));
+      if (existingEntry?.checksum !== destHash) conflictReasons.push('content');
     }
   }
 

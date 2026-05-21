@@ -20,7 +20,8 @@ export async function runList(
 
   const parsed = parseArgv(argv);
 
-  const files = await actionList({
+  const files = actionList({
+    cwd,
     outputDir: parsed.output ?? cwd,
     verbose: parsed.verbose,
   });

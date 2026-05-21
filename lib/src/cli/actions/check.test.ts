@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-/* eslint-disable unicorn/no-null */
 
 import { actionCheck } from '../../package/action-check';
 import { FiledistConfig } from '../../types';
@@ -15,7 +14,7 @@ jest.mock('../../package/action-check', () => ({
 const mockPrintUsage = printUsage as jest.MockedFunction<typeof printUsage>;
 const mockActionCheck = actionCheck as jest.MockedFunction<typeof actionCheck>;
 
-const NO_DRIFT = { missing: [], conflict: [], extra: [] };
+const NO_DRIFT = { ok: 0, missing: [], conflict: [], extra: [] };
 
 const CONFIG: FiledistConfig = {
   sets: [{ package: 'my-pkg@1.0.0', output: { path: './out', gitignore: false } }],
@@ -35,39 +34,6 @@ describe('runCheck — --help', () => {
   it('prints usage and returns without calling actionCheck', async () => {
     await runCheck(CONFIG, ['--help'], '/cwd');
     expect(mockPrintUsage).toHaveBeenCalledWith('check');
-    expect(mockActionCheck).not.toHaveBeenCalled();
-  });
-});
-
-describe('runCheck — config validation', () => {
-  it('throws when config is null and no --packages given', async () => {
-    await expect(runCheck(null, [], '/cwd')).rejects.toThrow('No packages specified');
-    expect(mockActionCheck).not.toHaveBeenCalled();
-  });
-
-  it('throws when config has empty sets and no --packages given', async () => {
-    await expect(runCheck({ sets: [] }, [], '/cwd')).rejects.toThrow('No packages specified');
-    expect(mockActionCheck).not.toHaveBeenCalled();
-  });
-
-  it('calls actionCheck with entries from --packages when config is null', async () => {
-    await runCheck(
-      null,
-      ['--packages', 'my-pkg@1.0.0', '--output', './out', '--no-gitignore'],
-      '/cwd',
-    );
-    expect(mockActionCheck).toHaveBeenCalled();
-    const callArg = mockActionCheck.mock.calls[0][0];
-    expect(callArg.entries).toHaveLength(1);
-    expect(callArg.entries[0].package).toBe('my-pkg@1.0.0');
-  });
-});
-
-describe('runCheck — argv validation', () => {
-  it('throws on invalid argv and skips actionCheck (--force + --mutable)', async () => {
-    await expect(runCheck(CONFIG, ['--force', '--mutable'], '/cwd')).rejects.toThrow(
-      '--force and --mutable are mutually exclusive',
-    );
     expect(mockActionCheck).not.toHaveBeenCalled();
   });
 });
@@ -95,7 +61,7 @@ describe('runCheck — no drift', () => {
 
 describe('runCheck — drift detected', () => {
   it('throws when missing files found', async () => {
-    mockActionCheck.mockResolvedValue({ missing: ['docs/a.md'], conflict: [], extra: [] });
+    mockActionCheck.mockResolvedValue({ ok: 0, missing: ['docs/a.md'], conflict: [], extra: [] });
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     await expect(runCheck(CONFIG, [], '/cwd')).rejects.toThrow(
       'Check failed: some managed files are out of sync',
@@ -104,7 +70,7 @@ describe('runCheck — drift detected', () => {
   });
 
   it('throws when conflict files found', async () => {
-    mockActionCheck.mockResolvedValue({ missing: [], conflict: ['docs/b.md'], extra: [] });
+    mockActionCheck.mockResolvedValue({ ok: 0, missing: [], conflict: ['docs/b.md'], extra: [] });
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     await expect(runCheck(CONFIG, [], '/cwd')).rejects.toThrow(
       'Check failed: some managed files are out of sync',
@@ -113,7 +79,7 @@ describe('runCheck — drift detected', () => {
   });
 
   it('throws when extra files found', async () => {
-    mockActionCheck.mockResolvedValue({ missing: [], conflict: [], extra: ['docs/c.md'] });
+    mockActionCheck.mockResolvedValue({ ok: 0, missing: [], conflict: [], extra: ['docs/c.md'] });
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     await expect(runCheck(CONFIG, [], '/cwd')).rejects.toThrow(
       'Check failed: some managed files are out of sync',
@@ -123,6 +89,7 @@ describe('runCheck — drift detected', () => {
 
   it('logs each missing file prefixed with "missing:"', async () => {
     mockActionCheck.mockResolvedValue({
+      ok: 0,
       missing: ['docs/a.md', 'docs/b.md'],
       conflict: [],
       extra: [],
@@ -139,6 +106,7 @@ describe('runCheck — drift detected', () => {
 
   it('logs each conflict file prefixed with "conflict:"', async () => {
     mockActionCheck.mockResolvedValue({
+      ok: 0,
       missing: [],
       conflict: ['docs/c.md'],
       extra: [],
@@ -154,6 +122,7 @@ describe('runCheck — drift detected', () => {
 
   it('logs each extra file prefixed with "extra:"', async () => {
     mockActionCheck.mockResolvedValue({
+      ok: 0,
       missing: [],
       conflict: [],
       extra: ['docs/d.md'],
@@ -169,31 +138,27 @@ describe('runCheck — drift detected', () => {
 });
 
 describe('runCheck — options forwarding', () => {
-  it('passes cwd and config to actionCheck', async () => {
+  it('passes cwd to actionCheck', async () => {
     await runCheck(CONFIG, [], '/my/cwd');
     const callArg = mockActionCheck.mock.calls[0][0];
     expect(callArg.cwd).toBe('/my/cwd');
   });
 
-  it('passes entries (config sets) to actionCheck', async () => {
+  it('passes frozenLockfile=true to actionCheck', async () => {
     await runCheck(CONFIG, [], '/cwd');
     const callArg = mockActionCheck.mock.calls[0][0];
-    expect(callArg.entries).toHaveLength(1);
-    expect(callArg.entries[0].package).toBe('my-pkg@1.0.0');
+    expect(callArg.frozenLockfile).toBe(true);
+  });
+
+  it('passes empty entries to actionCheck (lockfile provides entries)', async () => {
+    await runCheck(CONFIG, [], '/cwd');
+    const callArg = mockActionCheck.mock.calls[0][0];
+    expect(callArg.entries).toHaveLength(0);
   });
 
   it('passes verbose=true when --verbose flag given', async () => {
     await runCheck(CONFIG, ['--verbose'], '/cwd');
     expect(mockActionCheck.mock.calls[0][0].verbose).toBe(true);
-  });
-
-  it('--managed=false sets managed=false on all entries (filtering handled via entry.output.managed)', async () => {
-    await runCheck(CONFIG, ['--managed=false'], '/cwd');
-    const calledEntries = mockActionCheck.mock.calls[0][0].entries as Array<{
-      output?: { managed?: boolean };
-    }>;
-    // All entries should have managed=false applied
-    expect(calledEntries.every((e) => e.output?.managed === false)).toBe(true);
   });
 });
 

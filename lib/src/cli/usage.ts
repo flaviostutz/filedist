@@ -47,20 +47,14 @@ Exit codes: 0 success | 1 error
       console.log(`
 Usage: filedist check [options]
 
-Verify that locally extracted files match their package sources.
+Verify that locally installed files match the pinned state in .filedist.lock.
+Reads set definitions and pinned package versions exclusively from .filedist.lock.
+Fails if the lock file does not exist. The configuration file is not used.
 
 Options:
-  --packages <specs>      Comma-separated package specs. Overrides config sets.
-  --output, -o <dir>      Output directory path.
-  --files <globs>         Glob patterns for file selection.
-  --content-regex <re>    Regex strings for content filtering.
-  --managed [bool]        Silently skip unmanaged entries. Use --managed=false.
   --local-only            Skip all package installs/git clones. Verify only against
                           .filedist marker checksums (including marker self-integrity check).
                           Extra-file detection is skipped. Useful for offline/CI environments.
-  --presets <tags>        Comma-separated preset tags; only matching entries are checked. Overrides config defaultPresets.
-  --all                   Ignore config defaultPresets and check all configured entries.
-  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
   --verbose, -v           Print detailed comparison information.
   --help                  Print this help text.
 
@@ -85,24 +79,48 @@ Exit codes: 0 always
 `);
       break;
 
-    case 'purge':
+    case 'remove':
       console.log(`
-Usage: filedist purge [options]
+Usage: filedist remove <package> [options]
 
-Remove all managed files from the output directory.
+Remove a package from the filedist configuration and delete its managed files.
+The version/ref part of <package> is ignored during matching, so both
+"xdrs-core" and "xdrs-core@1.0.0" match any config entry for xdrs-core.
+After updating the config, a full install is run with the remaining entries
+so orphaned files are deleted from output directories and the lockfile is updated.
+
+Arguments:
+  <package>               Package name to remove (e.g. xdrs-core, @scope/pkg).
 
 Options:
-  --packages <specs>      Comma-separated package specs. Limits purge to matching entries.
-  --output, -o <dir>      Output directory to purge.
-  --presets <tags>        Comma-separated preset tags; only matching entries are purged. Overrides config defaultPresets.
-  --all                   Ignore config defaultPresets and purge all configured entries.
-  --dry-run               Print what would be removed without deleting.
-  --config <file>         Path to a config file (overrides auto-discovered .filedistrc / package.json).
-  --silent                Suppress per-file output.
-  --verbose, -v           Print detailed deletion steps.
+  --output, -o <dir>      Only remove entries whose output.path matches this value.
+                          When omitted, all entries for the package are removed.
+  --dry-run               Report what would change without modifying config or disk.
+  --config <file>         Path to a config file (overrides auto-discovered .filedistrc).
+  --silent                Suppress per-file output; print only the final summary line.
+  --verbose, -v           Print detailed step information.
   --help                  Print this help text.
 
-Exit codes: 0 purge complete | 1 error during deletion
+Exit codes: 0 success | 1 error
+`);
+      break;
+
+    case 'update':
+      console.log(`
+Usage: filedist update [options]
+
+Update installed files to the latest available package versions.
+Reads set definitions from .filedist.lock, resolves the newest matching versions,
+runs a full install and writes an updated lockfile.
+Fails if no lock file exists (run 'filedist install' first).
+
+Options:
+  --dry-run               Report what would change without writing to disk.
+  --silent                Suppress per-file output; print only final summary.
+  --verbose, -v           Print detailed step information.
+  --help                  Print this help text.
+
+Exit codes: 0 success | 1 error
 `);
       break;
 
@@ -145,9 +163,10 @@ Usage: filedist [command] [options]
 
 Commands:
   install (default)  Install files from npm packages; writes .filedist.lock
-  check              Verify installed files match package sources
+  update             Bump packages to latest versions; re-installs and updates lock file
+  remove             Remove a package from config and delete its managed files
+  check              Verify installed files match the pinned state in .filedist.lock
   list               List all managed files
-  purge              Remove managed files
   init               Scaffold a publishable data package
   presets            List all preset tags defined in configuration
 

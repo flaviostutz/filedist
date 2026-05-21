@@ -196,7 +196,14 @@ describe('execute', () => {
     const srcPath = writeFile(pkgDir, 'new.md', 'new');
     const destPath = path.join(outputDir, 'new.md');
     const existingMarker: ManagedFileMetadata[] = [
-      { path: 'other.md', packageName: 'other-pkg', packageVersion: '1.0.0' },
+      {
+        path: 'other.md',
+        packageName: 'other-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ];
     const map = makeMap({
       toAdd: [{ relPath: 'new.md', sourcePath: srcPath, destPath, hash: 'abc' }],

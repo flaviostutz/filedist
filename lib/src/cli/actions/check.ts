@@ -1,11 +1,15 @@
 /* eslint-disable no-console */
 import { FiledistConfig } from '../../types';
-import { parseArgv, resolveEntriesFromConfigAndArgs } from '../argv';
+import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { actionCheck } from '../../package/action-check';
 
 /**
  * `check` CLI action handler.
+ *
+ * Always operates in frozen-lockfile mode: reads set definitions and pinned
+ * package versions from .filedist.lock. Fails if no lock file is found.
+ * The user configuration file is not used.
  */
 export async function runCheck(
   config: FiledistConfig | null,
@@ -18,13 +22,13 @@ export async function runCheck(
   }
 
   const parsed = parseArgv(argv);
-  const entries = resolveEntriesFromConfigAndArgs(config, argv);
 
   const summary = await actionCheck({
-    entries,
+    entries: [],
     cwd,
     verbose: parsed.verbose,
     localOnly: parsed.localOnly,
+    frozenLockfile: true,
   });
 
   const hasDrift =

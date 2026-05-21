@@ -206,3 +206,86 @@ export async function upsertFiledistConfigEntries(
   if (!changed) return;
   fs.writeFileSync(filePath, yaml.dump(existing, { indent: 2 }), 'utf8');
 }
+
+/**
+ * Strip the version/ref from a package spec string, leaving only the package name.
+ *
+ * Examples:
+ *   "my-pkg@^1.2.3"                      → "my-pkg"
+ *   "@scope/pkg@1.0.0"                   → "@scope/pkg"
+ *   "git:github.com/org/repo.git@main"   → "git:github.com/org/repo.git"
+ *   "my-pkg"                             → "my-pkg"
+ */
+export function packageNameWithoutRef(spec: string): string {
+  if (!spec) return spec;
+  if (spec.startsWith('git:')) {
+    // git:url@ref — strip trailing @ref
+    const atIdx = spec.lastIndexOf('@');
+    return atIdx > 4 ? spec.slice(0, atIdx) : spec;
+  }
+  if (spec.startsWith('@')) {
+    // @scope/name@version — find the @ that comes after the slash
+    const slashIdx = spec.indexOf('/');
+    if (slashIdx !== -1) {
+      const atIdx = spec.indexOf('@', slashIdx);
+      return atIdx !== -1 ? spec.slice(0, atIdx) : spec;
+    }
+  }
+  // unscoped npm: name@version → name
+  const atIdx = spec.indexOf('@');
+  return atIdx !== -1 ? spec.slice(0, atIdx) : spec;
+}
+
+/**
+ * Remove entries from the filedist YAML config file that match the given package name.
+ *
+ * - `packageSpec` is matched against each entry's `package` field after stripping
+ *   the version/ref from both sides, so "xdrs-core@1.0.0" and "xdrs-core" both
+ *   match entries whose package field starts with "xdrs-core".
+ * - When `outputPath` is supplied, only entries whose `output.path` equals
+ *   `outputPath` are removed (allows targeting a specific entry when the same
+ *   package is installed to multiple output directories).
+ * - Returns the number of entries removed.  Zero means the config was unchanged.
+ * - When `configFilePath` is not supplied, defaults to `.filedistrc.yml` in `directory`.
+ * - Throws if the config file exists but cannot be parsed.
+ */
+export function removeFiledistConfigEntries(
+  directory: string,
+  packageSpec: string,
+  outputPath?: string,
+  configFilePath?: string,
+): number {
+  const filePath = configFilePath ?? path.join(directory, RC_FILENAME);
+
+  let existing: { sets: FiledistExtractEntry[] } = { sets: [] };
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const parsed = yaml.load(raw) as { sets?: FiledistExtractEntry[] } | null;
+    if (parsed && Array.isArray(parsed.sets)) {
+      existing = { sets: parsed.sets };
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return 0;
+    }
+    throw error;
+  }
+
+  const targetName = packageNameWithoutRef(packageSpec);
+
+  const before = existing.sets.length;
+  existing.sets = existing.sets.filter((entry) => {
+    if (!entry.package) return true; // self-package entries are never removed
+    const entryName = packageNameWithoutRef(entry.package);
+    if (entryName !== targetName) return true; // different package — keep
+    // eslint-disable-next-line no-undefined
+    if (outputPath !== undefined && entry.output?.path !== outputPath) return true; // output filter
+    return false; // matches — remove
+  });
+
+  const removed = before - existing.sets.length;
+  if (removed === 0) return 0;
+
+  fs.writeFileSync(filePath, yaml.dump(existing, { indent: 2 }), 'utf8');
+  return removed;
+}

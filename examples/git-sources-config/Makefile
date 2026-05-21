@@ -45,18 +45,17 @@ test: clean install prepare-repos
 	pnpm exec filedist install
 	test -e output/docs/guide.md
 	test -e output/nested/child/data.json
-	test -e output/.filedist
-	test -e output/nested/.filedist
+	test -e .filedist.lock
 	test ! -e output/.git
 	test ! -e output/.filedistrc
 	test ! -e output/nested/.git
 	test ! -e output/nested/.filedistrc
-	grep -F "file://$$(pwd)/repos/parent-repo" output/.filedist
-	grep -F "file://$$(pwd)/repos/child-repo" output/nested/.filedist
+	grep -F "file://$$(pwd)/repos/parent-repo" .filedist.lock
+	grep -F "file://$$(pwd)/repos/child-repo" .filedist.lock
 	test ! -e .filedist-tmp
 	grep -Fx ".filedist-tmp" .gitignore
 	pnpm exec filedist check
-	pnpm exec filedist purge
+	pnpm exec filedist remove
 	test ! -e output/docs/guide.md
 	test ! -e output/nested/child/data.json
 	test ! -e .filedist-tmp
@@ -68,14 +67,13 @@ test: clean install prepare-repos
 	pnpm exec filedist install
 	test -e output/docs/guide.md
 	test -e output/nested/child/data.json
-	test -e output/.filedist
-	test -e output/nested/.filedist
+	test -e .filedist.lock
 	test ! -e output/.git
 	test ! -e output/.filedistrc
 	test ! -e output/nested/.git
 	test ! -e output/nested/.filedistrc
 	pnpm exec filedist check
-	pnpm exec filedist purge
+	pnpm exec filedist remove
 	test ! -e output/docs/guide.md
 	test ! -e output/nested/child/data.json
 
@@ -92,4 +90,5 @@ clean:
 	@rm -rf .filedist-tmp
 	@rm -f pnpm-lock.yaml
 	@rm -f .filedistrc
+	@rm -f .filedist.lock
 	@cp -f package.json.orig package.json

@@ -102,8 +102,9 @@ For a local Windows path, use the same `file://` form with a drive letter, for e
 
 ```sh
 npx filedist install   # reads config, extracts all sets or only defaultPresets when defined
-npx filedist check     # verifies files are in sync for the same effective set selection
-npx filedist purge     # removes managed files for the same effective set selection
+npx filedist check     # verifies files are in sync using .filedist.lock (no config needed)
+npx filedist purge     # removes managed files using .filedist.lock (no config needed)
+npx filedist update    # bumps packages to latest, updates lockfile, and re-extracts
 ```
 
 After `extract`, the output directory will contain the selected files alongside a `.filedist` marker file that tracks ownership and enables safe updates:

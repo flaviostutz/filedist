@@ -3,7 +3,14 @@
 export { actionInstall } from './package/action-install';
 export type { InstallOptions, InstallResult } from './package/action-install';
 
-export { readLockfile, writeLockfile, buildLockfileData } from './package/lockfile';
+export {
+  readLockfile,
+  writeLockfile,
+  buildLockfileData,
+  readManagedFilesForDir,
+  writeManagedFilesForDir,
+  outputDirKey,
+} from './package/lockfile';
 export type { LockfileData, LockfilePackageEntry } from './package/lockfile';
 
 export { actionCheck } from './package/action-check';

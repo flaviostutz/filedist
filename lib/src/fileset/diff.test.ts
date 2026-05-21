@@ -43,7 +43,14 @@ describe('diff', () => {
     writeFile(pkgDir, 'guide.md', 'new content');
     writeFile(outputDir, 'guide.md', 'old content');
     const marker: ManagedFileMetadata[] = [
-      { path: 'guide.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
+      {
+        path: 'guide.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ];
     const result = await diff(pkgDir, outputDir, { files: ['**'] }, { path: '.' }, marker, []);
     expect(result.toModify).toHaveLength(1);
@@ -55,7 +62,14 @@ describe('diff', () => {
   it('classifies removed managed file as toDelete', async () => {
     writeFile(outputDir, 'old.md', 'old content');
     const marker: ManagedFileMetadata[] = [
-      { path: 'old.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
+      {
+        path: 'old.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ];
     const result = await diff(pkgDir, outputDir, { files: ['**'] }, { path: '.' }, marker, []);
     expect(result.toDelete).toContain('old.md');
@@ -144,7 +158,14 @@ describe('diff', () => {
     writeFile(pkgDir, 'guide.md', 'same content');
     writeFile(outputDir, 'guide.md', 'same content');
     const marker: ManagedFileMetadata[] = [
-      { path: 'guide.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
+      {
+        path: 'guide.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ];
     const result = await diff(pkgDir, outputDir, { files: ['**'] }, { path: '.' }, marker, []);
     expect(result.toSkip).toHaveLength(1);
@@ -160,8 +181,22 @@ describe('diff', () => {
     writeFile(outputDir, 'file-a.md', 'a content');
     writeFile(outputDir, 'file-b.md', 'b content');
     const marker: ManagedFileMetadata[] = [
-      { path: 'file-a.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
-      { path: 'file-b.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
+      {
+        path: 'file-a.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+      {
+        path: 'file-b.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ];
     const result = await diff(
       pkgDir,

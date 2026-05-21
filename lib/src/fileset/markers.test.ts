@@ -30,24 +30,27 @@ describe('readMarker', () => {
 
   it('parses CSV rows into ManagedFileMetadata entries', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0\ndocs/guide.md|mypkg|1.0.0\n');
+    fs.writeFileSync(
+      mPath,
+      'README.md|mypkg|1.0.0|file|cksum1|0\ndocs/guide.md|mypkg|1.0.0|file|cksum2|0\n',
+    );
     const result = await readMarker(mPath);
     expect(result).toHaveLength(2);
     expect(result[0].path).toBe('README.md');
     expect(result[0].packageName).toBe('mypkg');
     expect(result[0].packageVersion).toBe('1.0.0');
     expect(result[0].kind).toBe('file');
-    expect(result[0].checksum).toBeUndefined();
-    expect(result[0].mutable).toBeUndefined();
+    expect(result[0].checksum).toBe('cksum1');
+    expect(result[0].mutable).toBe(false);
     expect(result[1].path).toBe('docs/guide.md');
     expect(result[1].kind).toBe('file');
-    expect(result[1].checksum).toBeUndefined();
-    expect(result[1].mutable).toBeUndefined();
+    expect(result[1].checksum).toBe('cksum2');
+    expect(result[1].mutable).toBe(false);
   });
 
   it('skips blank lines in marker file', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'a.md|pkg|1.0.0\n\nb.md|pkg|1.0.0\n');
+    fs.writeFileSync(mPath, 'a.md|pkg|1.0.0|file|ck1|0\n\nb.md|pkg|1.0.0|file|ck2|0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(2);
   });
@@ -67,7 +70,7 @@ describe('readMarker', () => {
   it('correctly parses file paths that contain commas', async () => {
     // Pipe separator means commas in file paths are never ambiguous.
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'src/my,util.ts|mypkg|1.0.0\n');
+    fs.writeFileSync(mPath, 'src/my,util.ts|mypkg|1.0.0|file|abc123|0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(1);
     expect(result[0].path).toBe('src/my,util.ts');
@@ -78,25 +81,25 @@ describe('readMarker', () => {
 
   it('parses symlink entries with a kind field', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'links/guide.md|mypkg|1.0.0|symlink\n');
+    fs.writeFileSync(mPath, 'links/guide.md|mypkg|1.0.0|symlink|abc123|0\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(1);
     expect(result[0].path).toBe('links/guide.md');
     expect(result[0].packageName).toBe('mypkg');
     expect(result[0].packageVersion).toBe('1.0.0');
     expect(result[0].kind).toBe('symlink');
-    expect(result[0].checksum).toBeUndefined();
-    expect(result[0].mutable).toBeUndefined();
+    expect(result[0].checksum).toBe('abc123');
+    expect(result[0].mutable).toBe(false);
   });
 
   it('parses checksum field for regular files', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0||abc123\n');
+    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0|file|abc123\n');
     const result = await readMarker(mPath);
     expect(result).toHaveLength(1);
     expect(result[0].checksum).toBe('abc123');
     expect(result[0].kind).toBe('file');
-    expect(result[0].mutable).toBeUndefined();
+    expect(result[0].mutable).toBe(false);
   });
 
   it('parses checksum field for symlink entries', async () => {
@@ -105,12 +108,12 @@ describe('readMarker', () => {
     const result = await readMarker(mPath);
     expect(result[0].kind).toBe('symlink');
     expect(result[0].checksum).toBe('deadbeef');
-    expect(result[0].mutable).toBeUndefined();
+    expect(result[0].mutable).toBe(false);
   });
 
   it('parses mutable flag', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0||abc123|1\n');
+    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0|file|abc123|1\n');
     const result = await readMarker(mPath);
     expect(result[0].checksum).toBe('abc123');
     expect(result[0].mutable).toBe(true);
@@ -118,18 +121,9 @@ describe('readMarker', () => {
 
   it('parses mutable=0 as not mutable', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0||abc123|0\n');
+    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0|file|abc123|0\n');
     const result = await readMarker(mPath);
-    expect(result[0].mutable).toBeUndefined();
-  });
-
-  it('treats missing checksum and mutable columns as undefined', async () => {
-    const mPath = path.join(tmpDir, '.filedist');
-    // Legacy format with only 3 fields
-    fs.writeFileSync(mPath, 'README.md|mypkg|1.0.0\n');
-    const result = await readMarker(mPath);
-    expect(result[0].checksum).toBeUndefined();
-    expect(result[0].mutable).toBeUndefined();
+    expect(result[0].mutable).toBe(false);
   });
 });
 
@@ -137,7 +131,14 @@ describe('writeMarker', () => {
   it('creates a marker file with pipe-separated rows and makes it read-only', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
-      { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3' },
+      {
+        path: 'README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     expect(fs.existsSync(mPath)).toBe(true);
     const content = fs.readFileSync(mPath, 'utf8');
@@ -151,7 +152,14 @@ describe('writeMarker', () => {
   it('writes symlink entries with an explicit kind field', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
-      { path: 'links/README.md', packageName: 'mypkg', packageVersion: '1.2.3', kind: 'symlink' },
+      {
+        path: 'links/README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'symlink',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
 
     const content = fs.readFileSync(mPath, 'utf8');
@@ -161,10 +169,17 @@ describe('writeMarker', () => {
   it('writes checksum column for regular files', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
-      { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3', checksum: 'abc123' },
+      {
+        path: 'README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     const content = fs.readFileSync(mPath, 'utf8');
-    expect(content).toContain('README.md|mypkg|1.2.3||abc123');
+    expect(content).toContain('README.md|mypkg|1.2.3|file|abc123');
   });
 
   it('writes checksum column for symlink entries', async () => {
@@ -176,6 +191,7 @@ describe('writeMarker', () => {
         packageVersion: '1.2.3',
         kind: 'symlink',
         checksum: 'deadbeef',
+        mutable: false,
       },
     ]);
     const content = fs.readFileSync(mPath, 'utf8');
@@ -189,38 +205,62 @@ describe('writeMarker', () => {
         path: 'README.md',
         packageName: 'mypkg',
         packageVersion: '1.2.3',
+        kind: 'file',
         checksum: 'abc123',
         mutable: true,
       },
     ]);
     const content = fs.readFileSync(mPath, 'utf8');
-    expect(content).toContain('README.md|mypkg|1.2.3||abc123|1');
+    expect(content).toContain('README.md|mypkg|1.2.3|file|abc123|1');
   });
 
   it('writes mutable=0 when not set but checksum is present', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
-      { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3', checksum: 'abc123' },
+      {
+        path: 'README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     const content = fs.readFileSync(mPath, 'utf8');
-    expect(content).toContain('README.md|mypkg|1.2.3||abc123|0');
+    expect(content).toContain('README.md|mypkg|1.2.3|file|abc123|0');
   });
 
-  it('omits trailing empty columns for plain files without checksum', async () => {
+  it('always writes all 6 fields', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     await writeMarker(mPath, [
-      { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3' },
+      {
+        path: 'README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     const content = fs.readFileSync(mPath, 'utf8');
-    // Entry row has no checksum so no trailing columns; self-checksum row is appended
-    expect(content).toContain('README.md|mypkg|1.2.3\n');
+    // All 6 fields always written; self-checksum row is appended
+    expect(content).toContain('README.md|mypkg|1.2.3|file|abc123|0\n');
     expect(content).toMatch(/\.\|[\da-f]{12}/);
   });
 
   it('removes existing marker file when writing empty entries', async () => {
     const mPath = path.join(tmpDir, '.filedist');
     // Create the file first
-    await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     expect(fs.existsSync(mPath)).toBe(true);
 
     // Writing empty entries should delete the file
@@ -236,8 +276,26 @@ describe('writeMarker', () => {
 
   it('overwrites existing marker file with new entries', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    await writeMarker(mPath, [{ path: 'old.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
-    await writeMarker(mPath, [{ path: 'new.md', packageName: 'pkg', packageVersion: '2.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'old.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    await writeMarker(mPath, [
+      {
+        path: 'new.md',
+        packageName: 'pkg',
+        packageVersion: '2.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     const content = fs.readFileSync(mPath, 'utf8');
     expect(content).toContain('new.md');
     expect(content).not.toContain('old.md');
@@ -245,7 +303,16 @@ describe('writeMarker', () => {
 
   it('creates intermediate directories if they do not exist', async () => {
     const mPath = path.join(tmpDir, 'nested', 'dir', '.filedist');
-    await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     expect(fs.existsSync(mPath)).toBe(true);
   });
 });
@@ -258,7 +325,16 @@ describe('readOutputDirMarker', () => {
 
   it('reads entries from the output dir marker file', async () => {
     const mPath = markerPath(tmpDir);
-    await writeMarker(mPath, [{ path: 'doc.md', packageName: 'p', packageVersion: '0.1.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'doc.md',
+        packageName: 'p',
+        packageVersion: '0.1.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     const result = await readOutputDirMarker(tmpDir);
     expect(result).toHaveLength(1);
     expect(result[0].path).toBe('doc.md');
@@ -268,16 +344,39 @@ describe('readOutputDirMarker', () => {
 describe('self-checksum (writeMarker + readMarker round-trip)', () => {
   it('appends a .|<hash> self-checksum row after entry rows', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     const raw = fs.readFileSync(mPath, 'utf8');
     expect(raw).toMatch(/\.\|[\da-f]{12}/);
   });
 
   it('round-trips correctly: readMarker returns original entries', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    const entries = [
-      { path: 'README.md', packageName: 'mypkg', packageVersion: '1.2.3', checksum: 'abc123' },
-      { path: 'docs/guide.md', packageName: 'mypkg', packageVersion: '1.2.3' },
+    const entries: import('../types').ManagedFileMetadata[] = [
+      {
+        path: 'README.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+      {
+        path: 'docs/guide.md',
+        packageName: 'mypkg',
+        packageVersion: '1.2.3',
+        kind: 'file',
+        checksum: 'def456',
+        mutable: false,
+      },
     ];
     await writeMarker(mPath, entries);
     const result = await readMarker(mPath);
@@ -285,11 +384,21 @@ describe('self-checksum (writeMarker + readMarker round-trip)', () => {
     expect(result[0].path).toBe('README.md');
     expect(result[0].checksum).toBe('abc123');
     expect(result[1].path).toBe('docs/guide.md');
+    expect(result[1].checksum).toBe('def456');
   });
 
   it('throws when the self-checksum row is tampered', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     // Make writable so we can tamper
     fs.chmodSync(mPath, 0o644);
     const raw = fs.readFileSync(mPath, 'utf8');
@@ -303,7 +412,16 @@ describe('self-checksum (writeMarker + readMarker round-trip)', () => {
 
   it('throws when entry lines are tampered (checksum no longer matches)', async () => {
     const mPath = path.join(tmpDir, '.filedist');
-    await writeMarker(mPath, [{ path: 'a.md', packageName: 'pkg', packageVersion: '1.0.0' }]);
+    await writeMarker(mPath, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
     fs.chmodSync(mPath, 0o644);
     const raw = fs.readFileSync(mPath, 'utf8');
     // Replace entry content to simulate tampering

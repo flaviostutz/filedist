@@ -35,8 +35,8 @@ test: clean install
 	pnpm exec filedist install
 	node ../../.github/scripts/check-cli-config-symlinks.cjs
 
-	# purge without --packages: reads entries from package.json
-	pnpm exec filedist purge
+	# remove without --packages: reads entries from lockfile
+	pnpm exec filedist remove
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/data-symlink/user1.json
@@ -55,7 +55,7 @@ test: clean install
 
 	pnpm exec filedist check
 	test -e output/docs/README.md
-	pnpm exec filedist purge
+	pnpm exec filedist remove
 	test ! -e output/docs/README.md
 	test ! -e output/data-symlink/user1.json
 	test ! -e output/data-symlink/users-dataset
@@ -73,7 +73,7 @@ test: clean install
 	test ! -e output/data/users-dataset/user1.json
 	test -e output/lastUpdated
 	pnpm exec filedist check --presets "nested-eslint"
-	pnpm exec filedist purge --presets "nested-eslint"
+	pnpm exec filedist remove
 	test ! -e output/nested-eslint/conf/globals.js
 
 	# --- Test 4: presets command lists all preset tags ---
@@ -88,7 +88,7 @@ test: clean install
 	test -e output/eslint/conf/globals.js
 	test -e output/nested-eslint/conf/globals.js
 	pnpm exec filedist check --all
-	pnpm exec filedist purge --all
+	pnpm exec filedist remove
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/data-symlink/user1.json
@@ -102,4 +102,5 @@ clean:
 	@rm -rf output
 	@rm -f pnpm-lock.yaml
 	@rm -f .filedistrc
+	@rm -f .filedist.lock
 	@cp -f package.json.orig package.json

@@ -16,7 +16,8 @@ test: clean install
 
 	# Test 1
 	rm -rf output
-	pnpm exec example-files-package extract --output output
+	rm -f .filedist.lock
+	pnpm exec example-files-package install --output output
 	test -e output/.configs/app.config.json
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
@@ -25,33 +26,33 @@ test: clean install
 	# user1 should be managed and in .gitignore
 	test -e output/data/users-dataset/user1.json
 	grep -e "data/users-dataset/user1.json" output/.gitignore
-	grep -e "data/users-dataset/user1.json" output/.filedist
+	grep -e "data/users-dataset/user1.json" .filedist.lock
 
 	# user2 should be unmanaged and not in .gitignore
 	test -e output/data/users-dataset/user2.json
-	! grep -e "data/users-dataset/user2.json" output/.filedist
+	! grep -e "data/users-dataset/user2.json" .filedist.lock
 	! grep -e "data/users-dataset/user2.json" output/.gitignore
 
 	# user3 was excluded, so it should not be extracted at all
 	test ! -e output/data/users-dataset/user3.json
 
-	! grep -e "conf/config-schema.js" output/.filedist
+	! grep -e "conf/config-schema.js" .filedist.lock
 
 	pnpm exec example-files-package check --output output
 
 	pnpm exec example-files-package list --output output
 
-	pnpm exec example-files-package purge --output output
+	pnpm exec example-files-package remove --output output
 	test ! -e output/.configs/app.config.json
 	test ! -e output/docs/adrs/adr-001-sample1.md
 
-	# unmanaged files survive purge because they are not tracked in .filedist
+	# unmanaged files survive purge because they are not tracked in .filedist.lock
 	test $$(find output -type f | wc -l) -eq 2
 	test -e output/data/users-dataset/user2.json
 	test -e output/conf/config-schema.js
 
 	# Test 2 - basic preset
-	pnpm exec example-files-package extract --output output --presets basic
+	pnpm exec example-files-package install --output output --presets basic
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/data/users-dataset/user1.json
 	# user2 is not in the basic preset, but it remains because it is unmanaged
@@ -63,21 +64,21 @@ test: clean install
 
 	# Test 3 - eslint preset
 	rm -rf output
-	pnpm exec example-files-package extract --output output --presets eslint
+	pnpm exec example-files-package install --output output --presets eslint
 	test ! -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
 	# Test 4
 	rm -rf output
-	pnpm exec example-files-package extract --output output --presets "eslint,basic"
+	pnpm exec example-files-package install --output output --presets "eslint,basic"
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
 	# Test 5 - existing managed files that are not part of a profile are removed
-	pnpm exec example-files-package extract --output output
-	pnpm exec example-files-package extract --output output --presets special --verbose
+	pnpm exec example-files-package install --output output
+	pnpm exec example-files-package install --output output --presets special --verbose
 	# part of the special profile
 	test -e output/data/users-dataset/user2.json
 	test ! -e output/docs/adrs/adr-001-sample1.md
@@ -90,3 +91,4 @@ test: clean install
 clean:
 	@rm -rf node_modules
 	@rm -rf output
+	@rm -f .filedist.lock

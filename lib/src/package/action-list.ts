@@ -1,15 +1,17 @@
-import { readOutputDirMarker } from '../fileset';
 import { ManagedFileMetadata } from '../types';
 
+import { readManagedFilesForDir } from './lockfile';
+
 export type ListOptions = {
+  cwd: string;
   outputDir: string;
   verbose?: boolean;
 };
 
 /**
- * Aggregate all managed files across unique output directories.
+ * List all managed files for an output directory from the central lock file.
  * Note: list always ignores --presets; reports all managed files.
  */
-export async function actionList(options: ListOptions): Promise<ManagedFileMetadata[]> {
-  return readOutputDirMarker(options.outputDir);
+export function actionList(options: ListOptions): ManagedFileMetadata[] {
+  return readManagedFilesForDir(options.cwd, options.outputDir);
 }

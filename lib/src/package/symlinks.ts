@@ -4,7 +4,7 @@ import path from 'node:path';
 import { minimatch } from 'minimatch';
 
 import { ManagedFileMetadata, ResolvedFile, SymlinkConfig } from '../types';
-import { ensureDir } from '../utils';
+import { ensureDir, hashBuffer, shortenChecksum } from '../utils';
 
 export type ManagedSymlinkTarget = ManagedFileMetadata & {
   targetPath: string;
@@ -71,6 +71,8 @@ export function collectManagedSymlinkEntries(
     packageName: entry.packageName,
     packageVersion: entry.packageVersion,
     kind: entry.kind,
+    checksum: entry.checksum,
+    mutable: entry.mutable,
   }));
 }
 
@@ -106,11 +108,14 @@ export function collectManagedSymlinkTargets(
       const linkPath = path.join(targetDir, path.basename(relPath));
       const linkRelPath = path.relative(outputDir, linkPath);
       if (!byPath.has(linkRelPath)) {
+        const linkTarget = getLinkTarget(targetDir, sourcePath);
         byPath.set(linkRelPath, {
           path: linkRelPath,
           packageName,
           packageVersion,
           kind: 'symlink',
+          checksum: shortenChecksum(hashBuffer(linkTarget)),
+          mutable: false,
           targetPath: sourcePath,
         });
       }
@@ -130,7 +135,7 @@ export async function removeStaleSymlinks(
   const seen = new Set<string>();
 
   for (const entry of managedEntries) {
-    if ((entry.kind ?? 'file') !== 'symlink' || seen.has(entry.path)) continue;
+    if (entry.kind !== 'symlink' || seen.has(entry.path)) continue;
     seen.add(entry.path);
     if (desiredPaths.has(entry.path)) continue;
 
@@ -151,11 +156,11 @@ export async function removeStaleSymlinks(
 }
 
 export function isManagedSymlinkEntry(entry: ManagedFileMetadata): boolean {
-  return (entry.kind ?? 'file') === 'symlink';
+  return entry.kind === 'symlink';
 }
 
 export function isManagedFileEntry(entry: ManagedFileMetadata): boolean {
-  return (entry.kind ?? 'file') !== 'symlink';
+  return entry.kind !== 'symlink';
 }
 
 export function findManagedSymlinkEntries(

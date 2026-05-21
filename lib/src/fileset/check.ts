@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 import { SelectorConfig, ManagedFileMetadata, CheckResult } from '../types';
-import { hashFile, shortenChecksum } from '../utils';
+import { hashFile, hashBuffer, shortenChecksum } from '../utils';
 
 import { enumeratePackageFiles } from './package-files';
 
@@ -12,7 +12,6 @@ import { enumeratePackageFiles } from './package-files';
  * Uses the checksum stored in each .filedist marker entry to verify file integrity
  * without requiring access to the original source package.
  * Mutable marker entries (extracted with mutable option) are excluded from the check.
- * Entries without a stored checksum are reported as modified (re-extract to repair).
  *
  * @param pkgPath       Absolute path to the installed package directory, or null.
  *                      Used only for extra-file detection; not for content comparison.
@@ -42,14 +41,14 @@ export async function checkFileset(
     // Mutable files are allowed to change locally; skip content check
     if (m.mutable) continue;
 
-    if (m.checksum) {
-      // Compare local file against stored checksum (no source needed)
-      const destHash = shortenChecksum(await hashFile(destPath));
-      if (m.checksum !== destHash) {
-        result.modified.push(m.path);
-      }
+    // Compare local file against stored checksum (no source needed)
+    let destHash: string;
+    if (m.kind === 'symlink') {
+      destHash = shortenChecksum(hashBuffer(fs.readlinkSync(destPath)));
     } else {
-      // No stored checksum: marker is from an old extraction; re-extract to repair
+      destHash = shortenChecksum(await hashFile(destPath));
+    }
+    if (m.checksum !== destHash) {
       result.modified.push(m.path);
     }
   }

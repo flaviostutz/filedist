@@ -221,7 +221,7 @@ export type ExtractionMap = {
 
 /**
  * One row in a .filedist CSV marker file.
- * Format: path|packageName|packageVersion[|kind[|checksum[|mutable]]]
+ * Format: path|packageName|packageVersion|kind|checksum|mutable
  * Pipe is used as separator so file paths containing commas are handled safely.
  */
 export type ManagedFileMetadata = {
@@ -231,18 +231,19 @@ export type ManagedFileMetadata = {
   packageName: string;
   /** Installed version at extraction time. */
   packageVersion: string;
-  /** Managed path type. Omitted in marker files for regular files. */
-  kind?: 'file' | 'symlink';
+  /** Managed path type. */
+  kind: 'file' | 'symlink';
   /**
    * SHA-256 hash of the file content at extraction time (after content replacements).
+   * For symlinks, the hash is computed from the link target path string.
    * Used by check to detect local tampering without re-downloading the source package.
    */
-  checksum?: string;
+  checksum: string;
   /**
    * When true the file is allowed to change locally (e.g. extracted with mutable=true).
    * The check command skips content verification for mutable files.
    */
-  mutable?: boolean;
+  mutable: boolean;
 };
 
 /**
@@ -353,7 +354,7 @@ export type DiffEntry = {
   /** Existing marker entry (absent for 'missing' entries and unmanaged conflicts). */
   existing?: ManagedFileMetadata;
   /** Reasons for conflict (only set for 'conflict' status). */
-  conflictReasons?: Array<'content' | 'managed' | 'gitignore' | 'no-checksum'>;
+  conflictReasons?: Array<'content' | 'managed' | 'gitignore'>;
 };
 
 /**

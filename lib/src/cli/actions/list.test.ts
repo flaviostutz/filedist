@@ -19,14 +19,28 @@ const CONFIG: FiledistConfig = {
 };
 
 const SAMPLE_FILES: ManagedFileMetadata[] = [
-  { path: 'docs/guide.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
-  { path: 'docs/api.md', packageName: 'my-pkg', packageVersion: '1.0.0' },
+  {
+    path: 'docs/guide.md',
+    packageName: 'my-pkg',
+    packageVersion: '1.0.0',
+    kind: 'file',
+    checksum: 'abc123',
+    mutable: false,
+  },
+  {
+    path: 'docs/api.md',
+    packageName: 'my-pkg',
+    packageVersion: '1.0.0',
+    kind: 'file',
+    checksum: 'abc123',
+    mutable: false,
+  },
 ];
 
 beforeEach(() => {
   jest.clearAllMocks();
   delete process.exitCode;
-  mockActionList.mockResolvedValue([]);
+  mockActionList.mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -43,7 +57,7 @@ describe('runList — --help', () => {
 
 describe('runList — file listing', () => {
   it('logs each managed file with path and package@version', async () => {
-    mockActionList.mockResolvedValue(SAMPLE_FILES);
+    mockActionList.mockReturnValue(SAMPLE_FILES);
     const logs: string[] = [];
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       logs.push(args.join(' '));
@@ -55,7 +69,7 @@ describe('runList — file listing', () => {
   });
 
   it('logs "No managed files found." when result is empty', async () => {
-    mockActionList.mockResolvedValue([]);
+    mockActionList.mockReturnValue([]);
     const logs: string[] = [];
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       logs.push(args.join(' '));
@@ -68,7 +82,7 @@ describe('runList — file listing', () => {
 
 describe('runList — exit code', () => {
   it('does not set exitCode on success (even with files)', async () => {
-    mockActionList.mockResolvedValue(SAMPLE_FILES);
+    mockActionList.mockReturnValue(SAMPLE_FILES);
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     await runList(CONFIG, [], '/cwd');
     spy.mockRestore();
@@ -76,7 +90,7 @@ describe('runList — exit code', () => {
   });
 
   it('does not set exitCode on success with empty result', async () => {
-    mockActionList.mockResolvedValue([]);
+    mockActionList.mockReturnValue([]);
     await runList(CONFIG, [], '/cwd');
     expect(process.exitCode).toBeUndefined();
   });
@@ -84,12 +98,16 @@ describe('runList — exit code', () => {
 
 describe('runList — error handling', () => {
   it('propagates error when actionList throws', async () => {
-    mockActionList.mockRejectedValue(new Error('list failed'));
+    mockActionList.mockImplementation(() => {
+      throw new Error('list failed');
+    });
     await expect(runList(CONFIG, [], '/cwd')).rejects.toThrow('list failed');
   });
 
   it('propagates error message when actionList throws', async () => {
-    mockActionList.mockRejectedValue(new Error('something went wrong'));
+    mockActionList.mockImplementation(() => {
+      throw new Error('something went wrong');
+    });
     await expect(runList(CONFIG, [], '/cwd')).rejects.toThrow('something went wrong');
   });
 });

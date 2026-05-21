@@ -21,6 +21,9 @@ const makeEntry = (relPath: string): ManagedFileMetadata => ({
   path: relPath,
   packageName: 'mypkg',
   packageVersion: '1.0.0',
+  kind: 'file',
+  checksum: 'abc123',
+  mutable: false,
 });
 
 describe('purgeFileset', () => {
@@ -111,11 +114,17 @@ describe('purgeFileset', () => {
       path: 'pkgA.md',
       packageName: 'pkgA',
       packageVersion: '1.0.0',
+      kind: 'file',
+      checksum: 'abc123',
+      mutable: false,
     };
     const entryB: ManagedFileMetadata = {
       path: 'pkgB.md',
       packageName: 'pkgB',
       packageVersion: '1.0.0',
+      kind: 'file',
+      checksum: 'abc123',
+      mutable: false,
     };
 
     const mPath = markerPath(outputDir);

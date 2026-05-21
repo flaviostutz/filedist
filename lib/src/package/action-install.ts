@@ -17,7 +17,6 @@ import {
   hashFileSync,
   shortenChecksum,
 } from '../utils';
-import { writeMarker, readOutputDirMarker, markerPath } from '../fileset/markers';
 import { addToGitignore, readManagedGitignoreEntries } from '../fileset/gitignore';
 
 import {
@@ -32,7 +31,14 @@ import { applyContentReplacements } from './content-replacements';
 import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 import { createSourceRuntime } from './source';
-import { readLockfile, writeLockfile, buildLockfileData } from './lockfile';
+import {
+  readLockfile,
+  writeLockfile,
+  buildLockfileData,
+  readManagedFilesForDir,
+  outputDirKey,
+  LOCKFILE_NAME,
+} from './lockfile';
 
 export type InstallOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
@@ -62,38 +68,66 @@ export type InstallResult = {
  *  3. Apply disk changes: delete extra, add missing, resolve conflicts.
  *
  * Lock file behaviour:
- *  - Without frozenLockfile (and CI env not set): resolve normally, then write/update .filedist.lock.
- *  - With frozenLockfile (or when process.env.CI is set): read .filedist.lock (error if missing),
- *    use pinned versions, skip lock file update.
+ *  - Without frozenLockfile (and CI env not set): resolve with latest package versions,
+ *    then write/update .filedist.lock (packages + sets + managed files).
+ *  - With frozenLockfile (or when process.env.CI is set): read .filedist.lock (error if
+ *    missing), use pinned versions and set definitions from lockfile, validate that the
+ *    resolved managed-files list matches the lockfile — fail on any difference.
  */
+function mergePackagesFromLockfile(
+  cwd: string,
+  relevantPackagesByOutputDir: Map<string, Set<string>>,
+  managedFiles: Record<string, string[]>,
+): void {
+  for (const [relKey, lines] of Object.entries(managedFiles)) {
+    const outputDir = path.resolve(cwd, relKey);
+    const existing = relevantPackagesByOutputDir.get(outputDir) ?? new Set<string>();
+    for (const line of lines) {
+      const pkg = line.split('|')[1];
+      if (pkg) existing.add(pkg);
+    }
+    relevantPackagesByOutputDir.set(outputDir, existing);
+  }
+}
+
 // eslint-disable-next-line complexity
 export async function actionInstall(options: InstallOptions): Promise<InstallResult> {
-  const { entries, cwd, verbose = false, onProgress, dryRun } = options;
+  const { cwd, verbose = false, onProgress, dryRun, entries: configEntries } = options;
   // Auto-enable frozen lockfile in CI environments
   const frozenLockfile = options.frozenLockfile ?? (!!process.env.CI && process.env.CI !== 'false');
-  const isDryRun = dryRun ?? entries.some((e) => e.output?.dryRun === true);
   const sourceRuntime = createSourceRuntime(cwd, verbose);
 
-  // ── Lock file handling — resolve locked versions before resolution phase ────
+  // ── Lock file handling — resolve locked versions and entries before resolution phase ────
   let lockedVersions: Map<string, string> | undefined;
+  let entries = configEntries;
   if (frozenLockfile) {
     const lockfileData = readLockfile(cwd);
     if (!lockfileData) {
       throw new Error(
-        `Lock file ${'.filedist.lock'} not found. ` +
+        `Lock file ${LOCKFILE_NAME} not found. ` +
           `Run 'filedist install' without --frozen-lockfile first.`,
       );
     }
     lockedVersions = new Map(
       Object.entries(lockfileData.packages).map(([spec, entry]) => [spec, entry.ref]),
     );
+    // Use set definitions from lockfile if available
+    if (lockfileData.sets && lockfileData.sets.length > 0) {
+      entries = lockfileData.sets;
+      if (verbose) {
+        console.log(
+          `[verbose] actionInstall: frozen mode — using ${entries.length} set(s) from lock file`,
+        );
+      }
+    }
     if (verbose) {
       console.log(
-        `[verbose] actionInstall: using frozen lock file (${lockedVersions.size} entries)`,
+        `[verbose] actionInstall: using frozen lock file (${lockedVersions.size} package(s))`,
       );
     }
   }
 
+  const isDryRun = dryRun ?? entries.some((e) => e.output?.dryRun === true);
   const result: InstallResult = { added: 0, modified: 0, deleted: 0, skipped: 0 };
   try {
     // ── Phase 1: Resolve desired files ──────────────────────────────────────
@@ -109,6 +143,19 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
 
     if (verbose) {
       console.log(`[verbose] actionInstall: resolved ${resolvedFiles.length} desired file(s)`);
+    }
+
+    // ── Supplement output dirs from lockfile for orphan cleanup ──────────────
+    // When entries shrink (e.g. after `remove`), output directories that were
+    // previously managed may no longer be fully referenced by the current entries.
+    // Merge all packages from the lockfile's managed_files into
+    // relevantPackagesByOutputDir so calculateDiff identifies files from removed
+    // packages as "extra" and cleans them up. Skip in frozen mode.
+    if (!frozenLockfile) {
+      const existingLock = readLockfile(cwd);
+      if (existingLock?.managed_files) {
+        mergePackagesFromLockfile(cwd, relevantPackagesByOutputDir, existingLock.managed_files);
+      }
     }
 
     // ── Phase 2: Calculate diff ──────────────────────────────────────────────
@@ -130,6 +177,22 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     const fileMissingEntries = diff.missing.filter((entry) => entry.desired);
     const fileOkEntries = diff.ok.filter((entry) => entry.desired);
     const fileConflictEntries = diff.conflict.filter((entry) => entry.desired);
+
+    // ── Frozen managed-files validation ───────────────────────────────────
+    // In frozen mode the managed files list must not change. Fail early if the
+    // desired file set differs from what is recorded in the lock file.
+    if (frozenLockfile && !isDryRun) {
+      const frozenLockData = readLockfile(cwd);
+      if (frozenLockData?.managed_files) {
+        const outputDirs = new Set<string>([
+          ...resolvedFiles.map((f) => f.outputDir),
+          ...relevantPackagesByOutputDir.keys(),
+        ]);
+        for (const outputDir of outputDirs) {
+          validateFrozenManagedFiles(cwd, outputDir, resolvedFiles, frozenLockData.managed_files);
+        }
+      }
+    }
 
     // ── Pre-flight conflict check ──────────────────────────────────────────
     // Detect unmanaged-file conflicts before any disk writes.
@@ -265,10 +328,11 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     if (verbose) {
       console.log(`[verbose] actionInstall: applying symlinks and content replacements...`);
     }
+    const managedFilesByOutputDir = new Map<string, ManagedFileMetadata[]>();
     for (const outputDir of outputDirs) {
       const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
       const relevantPackages = relevantPackagesByOutputDir.get(outputDir);
-      const existingMarker = await readOutputDirMarker(outputDir);
+      const existingMarker = readManagedFilesForDir(cwd, outputDir);
       const desiredSymlinkEntries = collectManagedSymlinkEntries(outputDir, dirFiles);
       const desiredSymlinkPaths = new Set(desiredSymlinkEntries.map((entry) => entry.path));
       const managedSymlinks = findManagedSymlinkEntries(existingMarker, relevantPackages);
@@ -300,7 +364,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         await applyContentReplacements(outputDir, contentReplacements);
       }
 
-      await updateOutputDirMetadata(
+      const updatedEntries = await updateOutputDirMetadata(
         outputDir,
         diff,
         dirFiles,
@@ -310,6 +374,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         cwd,
         verbose,
       );
+      managedFilesByOutputDir.set(outputDir, updatedEntries);
     }
 
     if (verbose) {
@@ -319,13 +384,37 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
       );
     }
 
-    // ── Write/update lock file (only when not frozen) ───────────────────────
+    // ── Write/update lock file ───────────────────────────────────────────────
+    // Skip all lock file writes when dry-run or frozen.
     if (!isDryRun && !frozenLockfile) {
-      const lockfileData = buildLockfileData(resolvedPackages);
-      writeLockfile(cwd, lockfileData);
+      const existingLock = readLockfile(cwd) ?? { lockfileVersion: 1, packages: {} };
+      const managedFilesMap: Record<string, string[]> = {};
+      for (const [outputDir, entries] of managedFilesByOutputDir) {
+        if (entries.length > 0) {
+          const key = outputDirKey(cwd, outputDir);
+          // Serialize using the same format as lockfile helpers
+          managedFilesMap[key] = serializeManagedEntries(entries);
+        }
+      }
+      const { packages } = buildLockfileData(resolvedPackages);
+      const updatedLock = {
+        ...existingLock,
+        packages,
+        // Store the set definitions so check/purge/frozen-install can operate without config
+        sets: configEntries,
+        // Always override managed_files with the freshly computed map so entries
+        // from removed sets are not carried over from the existingLock spread.
+        // writeLockfile deletes the key when the map is empty.
+        // eslint-disable-next-line camelcase
+        managed_files: managedFilesMap,
+      };
+      writeLockfile(cwd, updatedLock);
       if (verbose) {
+        const pkgCount = Object.keys(updatedLock.packages).length;
+        const dirCount = Object.keys(managedFilesMap).length;
         console.log(
-          `[verbose] actionInstall: lock file updated (${Object.keys(lockfileData.packages).length} package(s))`,
+          `[verbose] actionInstall: lock file updated (${pkgCount} package(s), ` +
+            `${updatedLock.sets?.length ?? 0} set(s), ${dirCount} managed dir(s))`,
         );
       }
     }
@@ -345,9 +434,20 @@ function writeFileToOutput(srcPath: string, destPath: string, managed: boolean):
   if (managed) fs.chmodSync(destPath, 0o444);
 }
 
+/** Serialize ManagedFileMetadata entries to pipe-separated strings for the lock file. */
+function serializeManagedEntries(entries: ManagedFileMetadata[]): string[] {
+  return entries.map((e) => {
+    const kindField = e.kind === 'symlink' ? 'symlink' : 'file';
+    const checksumField = e.checksum;
+    const mutableField = e.mutable ? '1' : '0';
+    return `${e.path}|${e.packageName}|${e.packageVersion}|${kindField}|${checksumField}|${mutableField}`;
+  });
+}
+
 /**
- * Update the .filedist marker and .gitignore for one output directory after
- * disk changes have been applied.
+ * Update managed file metadata and .gitignore for one output directory after
+ * disk changes have been applied. Returns the updated entries (to be stored
+ * in .filedist.lock by the caller).
  */
 async function updateOutputDirMetadata(
   outputDir: string,
@@ -358,8 +458,8 @@ async function updateOutputDirMetadata(
   noSync: boolean,
   cwd: string,
   verbose?: boolean,
-): Promise<void> {
-  const existingMarker = await readOutputDirMarker(outputDir);
+): Promise<ManagedFileMetadata[]> {
+  const existingMarker = readManagedFilesForDir(cwd, outputDir);
 
   // Paths removed by this run (extra files that were deleted)
   const deletedPaths = new Set(
@@ -382,8 +482,8 @@ async function updateOutputDirMetadata(
           packageName: e.desired!.packageName,
           packageVersion: e.desired!.packageVersion,
           kind: 'file' as const,
-          ...(checksumValue ? { checksum: checksumValue } : {}),
-          ...(e.desired!.mutable ? { mutable: true as const } : {}),
+          checksum: checksumValue,
+          mutable: e.desired!.mutable,
         };
       }),
     ...diff.conflict
@@ -400,8 +500,8 @@ async function updateOutputDirMetadata(
           packageName: e.desired!.packageName,
           packageVersion: e.desired!.packageVersion,
           kind: 'file' as const,
-          ...(checksumValue ? { checksum: checksumValue } : {}),
-          ...(e.desired!.mutable ? { mutable: true as const } : {}),
+          checksum: checksumValue,
+          mutable: e.desired!.mutable,
         };
       }),
   ];
@@ -417,7 +517,7 @@ async function updateOutputDirMetadata(
           !deletedPaths.has(m.path) &&
           !addedEntries.some((e) => e.path === m.path) &&
           !(
-            (m.kind ?? 'file') === 'symlink' &&
+            m.kind === 'symlink' &&
             currentRelevantPackages.has(m.packageName) &&
             !desiredSymlinkEntries.some((entry) => entry.path === m.path)
           ),
@@ -429,7 +529,7 @@ async function updateOutputDirMetadata(
     const existingEntry = updatedByPath.get(entry.path);
     if (
       existingEntry &&
-      (existingEntry.kind ?? 'file') === 'symlink' &&
+      existingEntry.kind === 'symlink' &&
       existingEntry.packageName === entry.packageName
     ) {
       continue;
@@ -438,11 +538,10 @@ async function updateOutputDirMetadata(
   }
 
   const updatedEntries = [...updatedByPath.values()];
-  await writeMarker(markerPath(outputDir), updatedEntries);
 
   if (verbose) {
     console.log(
-      `[verbose] updateOutputDirMetadata: ${formatDisplayPath(outputDir, cwd)}: marker updated (${updatedEntries.length} entries)`,
+      `[verbose] updateOutputDirMetadata: ${formatDisplayPath(outputDir, cwd)}: marker prepared (${updatedEntries.length} entries)`,
     );
   }
 
@@ -451,7 +550,7 @@ async function updateOutputDirMetadata(
     resolvedFiles.filter((f) => f.outputDir === outputDir).map((f) => [f.relPath, f]),
   );
   const gitignorePaths = updatedEntries
-    .filter((e) => (e.kind ?? 'file') !== 'symlink')
+    .filter((e) => e.kind !== 'symlink')
     .filter((e) => {
       const resolved = resolvedByPath.get(e.path);
       // For files resolved in this run, honour their gitignore setting.
@@ -461,4 +560,37 @@ async function updateOutputDirMetadata(
     .map((e) => e.path);
 
   await addToGitignore(outputDir, gitignorePaths);
+  return updatedEntries;
+}
+
+/**
+ * Validate that the desired managed-file paths for an output directory match
+ * what is recorded in the lock file's managed_files map.
+ * Throws a descriptive error when files have been added or removed.
+ */
+function validateFrozenManagedFiles(
+  cwd: string,
+  outputDir: string,
+  resolvedFiles: ResolvedFile[],
+  managedFilesRecord: Record<string, string[]>,
+): void {
+  const key = outputDirKey(cwd, outputDir);
+  const lockedPaths = new Set<string>();
+  for (const line of managedFilesRecord[key] ?? []) {
+    const relPath = line.split('|')[0];
+    if (relPath) lockedPaths.add(relPath);
+  }
+  const desiredPaths = new Set(
+    resolvedFiles.filter((f) => f.outputDir === outputDir && f.managed).map((f) => f.relPath),
+  );
+  const missingInLock = [...desiredPaths].filter((p) => !lockedPaths.has(p));
+  const extraInLock = [...lockedPaths].filter((p) => !desiredPaths.has(p));
+  if (missingInLock.length > 0 || extraInLock.length > 0) {
+    throw new Error(
+      `Frozen lockfile violation: managed file list changed for "${key}".\n` +
+        (missingInLock.length > 0 ? `  New files not in lock: ${missingInLock.join(', ')}\n` : '') +
+        (extraInLock.length > 0 ? `  Files removed from source: ${extraInLock.join(', ')}\n` : '') +
+        `Run 'filedist install' without --frozen-lockfile to update the lock file.`,
+    );
+  }
 }

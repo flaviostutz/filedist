@@ -11,9 +11,8 @@ const SELF_CHECKSUM_PATH = '.';
 
 /**
  * Read all managed file entries from a .filedist marker file.
- * Format: path|packageName|packageVersion[|kind[|checksum[|mutable]]]
+ * Format: path|packageName|packageVersion|kind|checksum|mutable
  * Pipe is used as separator so file paths containing commas are handled safely.
- * Fields beyond the first three are optional for backward compatibility.
  * mutable column: '1' = mutable, '0' or absent = not mutable.
  *
  * A trailing self-checksum row `.|<sha256hex>` covers all entry rows.
@@ -47,8 +46,8 @@ export async function readMarker(markerFilePath: string): Promise<ManagedFileMet
       packageName: fields[1] ?? '',
       packageVersion: fields[2] ?? '',
       kind: fields[3] === 'symlink' ? 'symlink' : 'file',
-      ...(fields[4] ? { checksum: fields[4] } : {}),
-      ...(fields[5] === '1' ? { mutable: true as const } : {}),
+      checksum: fields[4] ?? '',
+      mutable: fields[5] === '1',
     };
   });
 }
@@ -78,18 +77,10 @@ export async function writeMarker(
     return;
   }
   const rows = entries.map((e) => {
-    const kindField = e.kind === 'symlink' ? 'symlink' : '';
-    const checksumField = e.checksum ?? '';
+    const kindField = e.kind === 'symlink' ? 'symlink' : 'file';
+    const checksumField = e.checksum;
     const mutableField = e.mutable ? '1' : '0';
-
-    // Always include mutable (0/1) when a checksum is present; otherwise omit trailing empty columns
-    if (checksumField) {
-      return `${e.path}|${e.packageName}|${e.packageVersion}|${kindField}|${checksumField}|${mutableField}`;
-    }
-    if (kindField) {
-      return `${e.path}|${e.packageName}|${e.packageVersion}|${kindField}`;
-    }
-    return `${e.path}|${e.packageName}|${e.packageVersion}`;
+    return `${e.path}|${e.packageName}|${e.packageVersion}|${kindField}|${checksumField}|${mutableField}`;
   });
   const entryContent = `${rows.join('\n')}\n`;
   const selfChecksum = shortenChecksum(hashBuffer(entryContent));

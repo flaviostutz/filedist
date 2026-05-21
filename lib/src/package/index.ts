@@ -8,7 +8,10 @@ export type { CheckOptions, CheckSummary } from './action-check';
 export { actionList } from './action-list';
 export type { ListOptions } from './action-list';
 
-export { actionPurge } from './action-purge';
-export type { PurgeOptions, PurgeSummary } from './action-purge';
+export { actionRemove } from './action-remove';
+export type { RemoveOptions, RemoveSummary } from './action-remove';
+
+export { actionUpdate } from './action-update';
+export type { UpdateOptions } from './action-update';
 
 export { mergeSelectorConfig, mergeOutputConfig } from './config-merge';

@@ -5,12 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { createMockGitRepo, installMockPackage } from '../fileset/test-utils';
-import { readMarker, writeMarker } from '../fileset/markers';
-import { MARKER_FILE } from '../fileset/constants';
 import { ProgressEvent } from '../types';
 
 import { actionCheck } from './action-check';
 import { actionInstall } from './action-install';
+import { readManagedFilesForDir, writeManagedFilesForDir } from './lockfile';
 
 describe('actionInstall', () => {
   let tmpDir: string;
@@ -73,7 +72,7 @@ describe('actionInstall', () => {
       cwd: tmpDir,
     });
 
-    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    const marker = readManagedFilesForDir(tmpDir, outputDir);
     expect(marker.length).toBeGreaterThan(0);
     expect(marker[0].packageName).toBe('marker-pkg');
   }, 60000);
@@ -96,7 +95,7 @@ describe('actionInstall', () => {
       cwd: tmpDir,
     });
 
-    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    const marker = readManagedFilesForDir(tmpDir, outputDir);
     expect(marker).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: 'docs/guide.md', kind: 'file' }),
@@ -142,7 +141,7 @@ describe('actionInstall', () => {
     });
 
     const after = fs.lstatSync(linkPath);
-    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    const marker = readManagedFilesForDir(tmpDir, outputDir);
     const symlinkEntry = marker.find((entry) => entry.path === 'links/guide.md');
 
     expect(after.ino).toBe(before.ino);
@@ -165,12 +164,14 @@ describe('actionInstall', () => {
     fs.writeFileSync(path.join(outputDir, 'docs-guide-placeholder.txt'), 'placeholder');
     fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-managed.md'));
     fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-unmanaged.md'));
-    await writeMarker(path.join(outputDir, MARKER_FILE), [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'links/stale-managed.md',
         packageName: 'symlink-stale-pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: 'abc123',
+        mutable: false,
       },
     ]);
 
@@ -190,7 +191,7 @@ describe('actionInstall', () => {
 
     expect(fs.existsSync(path.join(linksDir, 'stale-managed.md'))).toBe(false);
     expect(fs.existsSync(path.join(linksDir, 'stale-unmanaged.md'))).toBe(true);
-    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    const marker = readManagedFilesForDir(tmpDir, outputDir);
     expect(marker.some((entry) => entry.path === 'links/stale-managed.md')).toBe(false);
     expect(
       marker.some((entry) => entry.path === 'links/guide.md' && entry.kind === 'symlink'),
@@ -210,7 +211,7 @@ describe('actionInstall', () => {
     });
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(false);
-    expect(fs.existsSync(path.join(outputDir, MARKER_FILE))).toBe(false);
+    expect(readManagedFilesForDir(tmpDir, outputDir)).toHaveLength(0);
   }, 60000);
 
   it('force overwrites unmanaged files', async () => {
@@ -294,7 +295,7 @@ describe('actionInstall', () => {
     expect(fs.existsSync(path.join(outputDir, 'keep.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'stale.md'))).toBe(true);
 
-    const marker = await readMarker(path.join(outputDir, MARKER_FILE));
+    const marker = readManagedFilesForDir(tmpDir, outputDir);
     expect(marker).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: 'keep.md' }),
@@ -405,8 +406,8 @@ describe('actionInstall', () => {
     expect(fs.existsSync(path.join(outputDir, 'nested', 'child', 'data.json'))).toBe(true);
     // git clone temp dir is in the OS temp dir, not in the workspace
 
-    const parentMarker = await readMarker(path.join(outputDir, MARKER_FILE));
-    const childMarker = await readMarker(path.join(outputDir, 'nested', MARKER_FILE));
+    const parentMarker = readManagedFilesForDir(tmpDir, outputDir);
+    const childMarker = readManagedFilesForDir(tmpDir, path.join(outputDir, 'nested'));
     expect(parentMarker.map((entry) => entry.packageName)).toEqual(
       expect.arrayContaining([parentRepo.repoUrl]),
     );
@@ -1779,5 +1780,114 @@ describe('actionInstall — lock file', () => {
     expect(lockData.packages[MAIN].ref).toBe('1.0.0');
     expect(lockData.packages[DEP]).toBeDefined();
     expect(lockData.packages[DEP].ref).toBe('2.1.0');
+  }, 90_000);
+});
+
+describe('actionInstall — frozenLockfile', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-install-frozen-'));
+  });
+
+  afterEach(() => {
+    const makeWritable = (dir: string): void => {
+      if (!fs.existsSync(dir)) return;
+      for (const entry of fs.readdirSync(dir)) {
+        const fullPath = path.join(dir, entry);
+        try {
+          const stat = fs.lstatSync(fullPath);
+          if (!stat.isSymbolicLink()) {
+            fs.chmodSync(fullPath, 0o755);
+            if (stat.isDirectory()) makeWritable(fullPath);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    makeWritable(tmpDir);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it('uses lockfile sets instead of caller entries when frozenLockfile=true', async () => {
+    await installMockPackage('frozen-pkg-a', '1.0.0', { 'a.md': '# A' }, tmpDir);
+    await installMockPackage('frozen-pkg-b', '1.0.0', { 'b.md': '# B' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'out');
+
+    // Normal install with pkg-a — writes lockfile.sets=[pkg-a]
+    await actionInstall({
+      entries: [{ package: 'frozen-pkg-a', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    expect(fs.existsSync(path.join(outputDir, 'a.md'))).toBe(true);
+
+    // Frozen install with pkg-b passed as entries — lockfile sets (pkg-a) must win
+    await actionInstall({
+      entries: [{ package: 'frozen-pkg-b', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+      frozenLockfile: true,
+    });
+
+    // pkg-a file is still present (lockfile set used), pkg-b was ignored
+    expect(fs.existsSync(path.join(outputDir, 'a.md'))).toBe(true);
+    expect(fs.existsSync(path.join(outputDir, 'b.md'))).toBe(false);
+  }, 90_000);
+
+  it('fails when frozenLockfile=true and no lockfile exists', async () => {
+    const outputDir = path.join(tmpDir, 'out');
+    await expect(
+      actionInstall({
+        entries: [{ package: 'any-pkg', output: { path: outputDir } }],
+        cwd: tmpDir,
+        frozenLockfile: true,
+      }),
+    ).rejects.toThrow('.filedist.lock');
+  });
+
+  it('fails when frozenLockfile=true and managed files differ from lockfile', async () => {
+    await installMockPackage('frozen-validate-pkg', '1.0.0', { 'file.md': '# file' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'out');
+
+    // Normal install — writes lockfile with managed_files
+    await actionInstall({
+      entries: [{ package: 'frozen-validate-pkg', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    // Manually add an extra untracked file to the output dir, then forcibly update the marker
+    // so the lockfile managed_files list diverges from what a fresh resolve would produce
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'file.md',
+        packageName: 'frozen-validate-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'aaa',
+        mutable: false,
+      },
+      {
+        path: 'ghost.md',
+        packageName: 'frozen-validate-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'bbb',
+        mutable: false,
+      },
+    ]);
+
+    // Frozen install must detect the discrepancy and throw
+    await expect(
+      actionInstall({
+        entries: [
+          { package: 'frozen-validate-pkg', output: { path: outputDir, gitignore: false } },
+        ],
+        cwd: tmpDir,
+        frozenLockfile: true,
+      }),
+    ).rejects.toThrow();
   }, 90_000);
 });

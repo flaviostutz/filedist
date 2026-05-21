@@ -164,14 +164,14 @@ describe('cli', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       lines.push(args.join(' '));
     });
-    await cli(['node', 'filedist', 'list'], outputDir);
+    await cli(['node', 'filedist', 'list', '--output', outputDir], tmpDir);
     spy.mockRestore();
 
     expect(lines.some((l) => l.includes('docs/guide.md'))).toBe(true);
   }, 60_000);
 
-  it('routes to purge command — removes managed files', async () => {
-    const outputDir = path.join(tmpDir, 'output-purge');
+  it('routes to remove command — removes managed files', async () => {
+    const outputDir = path.join(tmpDir, 'output-remove');
 
     await cli(
       [
@@ -196,7 +196,7 @@ describe('cli', () => {
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
 
-    await cli(['node', 'filedist', 'purge'], tmpDir);
+    await cli(['node', 'filedist', 'remove', PKG_NAME], tmpDir);
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(false);
   }, 60_000);
@@ -389,6 +389,17 @@ describe('cli', () => {
     expect(fs.existsSync(path.join(defaultOutput, 'docs/guide.md'))).toBe(true);
     expect(fs.existsSync(path.join(allOutput, 'docs/api.md'))).toBe(true);
   }, 60_000);
+
+  it('returns error exit code for unknown command', async () => {
+    const errors: string[] = [];
+    const spy = jest.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(args.join(' '));
+    });
+    const code = await cli(['node', 'filedist', 'purge'], tmpDir);
+    spy.mockRestore();
+    expect(code).toBe(1);
+    expect(errors.join('\n')).toContain('Unknown command: "purge"');
+  });
 
   it('returns a clear error when config still uses legacy postExtractScript', async () => {
     const configFile = path.join(tmpDir, 'legacy-post-extract.json');

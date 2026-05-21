@@ -136,8 +136,9 @@ export async function execute(
         path: op.relPath,
         packageName: pkg.name,
         packageVersion: pkgVersion,
+        kind: 'file' as const,
         checksum,
-        ...(outputConfig.mutable === true ? { mutable: true as const } : {}),
+        mutable: outputConfig.mutable === true,
       });
     }
 

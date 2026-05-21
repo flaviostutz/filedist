@@ -128,7 +128,16 @@ describe('removeStaleSymlinks', () => {
 
     const removed = await removeStaleSymlinks(
       outputDir,
-      [{ path: 'links/old.md', packageName: 'pkg', packageVersion: '1.0.0', kind: 'symlink' }],
+      [
+        {
+          path: 'links/old.md',
+          packageName: 'pkg',
+          packageVersion: '1.0.0',
+          kind: 'symlink',
+          checksum: 'abc123',
+          mutable: false,
+        },
+      ],
       new Set(),
     );
 
@@ -152,7 +161,16 @@ describe('removeStaleSymlinks', () => {
 
     const removed = await removeStaleSymlinks(
       outputDir,
-      [{ path: 'links/keep.md', packageName: 'pkg', packageVersion: '1.0.0', kind: 'symlink' }],
+      [
+        {
+          path: 'links/keep.md',
+          packageName: 'pkg',
+          packageVersion: '1.0.0',
+          kind: 'symlink',
+          checksum: 'abc123',
+          mutable: false,
+        },
+      ],
       new Set(['links/keep.md']),
     );
 
@@ -204,6 +222,8 @@ describe('collectManagedSymlinkEntries', () => {
         packageName: 'pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: expect.any(String),
+        mutable: false,
       },
     ]);
   });

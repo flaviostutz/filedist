@@ -388,15 +388,14 @@ Example with multiple options:
 
 ### 3. Check files are in sync
 
-Verifies that every file in the output directory matches what is currently in the published package. When the target package itself declares `filedist.sets`, check recurses into those transitive dependencies — reporting drift at every level of the hierarchy without downloading anything new beyond what is already installed. Use `selector.presets` on an entry to restrict which of the target's sets are checked.
+Verifies that every file in the output directory matches what was installed. `check` reads exclusively from `.filedist.lock` — it does **not** read your `package.json` / `.filedistrc` configuration and does **not** require `--packages`. The lockfile must exist (run `filedist install` first).
 
 ```sh
-npx filedist check --packages my-shared-assets --output ./data
+npx filedist check
 # exit 0 = in sync, exit 1 = drift or error
-
-# check multiple packages
-npx filedist check --packages "my-shared-assets,another-pkg" --output ./data
 ```
+
+`check` uses the pinned package versions recorded in `.filedist.lock` so results are fully reproducible without any network access beyond what is already cached.
 
 The check command reports differences per package:
 
@@ -409,7 +408,7 @@ The check command reports differences per package:
 
 #### Offline / local-only check
 
-By default `check` installs packages (or uses an already-installed version) to detect *extra* files — files that exist in the package source but were never extracted. If you want a fast, fully offline check that skips all network and install steps, use `--local-only`:
+By default `check` compares local files against the package versions pinned in `.filedist.lock` to also detect *extra* files — files that exist in the package source but were never extracted. If you want a fast, fully offline check that skips all network and install steps, use `--local-only`:
 
 ```sh
 npx filedist check --local-only
@@ -445,20 +444,52 @@ another-pkg@1.0.0
 
 ### 5. Purge managed files
 
-Remove all files previously extracted by one or more packages without touching any other files in the output directory. No network access or package installation is required — only the local `.filedist` marker state is used. When the target package itself declares `filedist.sets`, purge recurses into those transitive dependencies and removes their managed files too, mirroring what extract originally created.
+Remove all files previously extracted by filedist without touching any other files in the output directory. `purge` reads exclusively from `.filedist.lock` — it does **not** read your `package.json` / `.filedistrc` configuration and does **not** require `--packages`. The lockfile must exist.
 
 ```sh
-# remove all files managed by a package
-npx filedist purge --packages my-shared-assets --output ./data
-
-# purge multiple packages at once
-npx filedist purge --packages "my-shared-assets,another-pkg" --output ./data
+npx filedist purge
 
 # preview what would be deleted without removing anything
-npx filedist purge --packages my-shared-assets --output ./data --dry-run
+npx filedist purge --dry-run
 ```
 
-After a purge, the corresponding entries are removed from the `.filedist` marker file and any empty directories are cleaned up. `.gitignore` sections written by `extract` are also removed.
+After a purge, the corresponding entries are removed from the `.filedist` marker file and any empty directories are cleaned up. `.gitignore` sections written by `install` are also removed.
+
+### 6. Remove a package set
+
+Remove one or more set entries from your config file and delete their managed files from disk. `remove` reads your `.filedistrc` / `package.json` config — **not** `.filedist.lock`. It deletes the matching entries from the config file, then runs a full install with the remaining entries so the lockfile is updated and orphaned files are deleted. This is equivalent to manually deleting the sets from your config and running `filedist install`.
+
+```sh
+# remove all entries for a package (version is ignored during matching)
+npx filedist remove my-shared-assets
+
+# remove only the entry pointing to a specific output directory
+npx filedist remove my-shared-assets --output ./data
+
+# remove every set entry from the config (clears all managed files)
+npx filedist remove --all
+
+# preview changes without modifying config or disk
+npx filedist remove my-shared-assets --dry-run
+```
+
+After the config is updated, `remove` calls `install` internally (without `--frozen-lockfile`) so:
+- The lockfile is rewritten with the remaining sets.
+- Files that were managed by the removed package are deleted from disk.
+- Files managed by other packages are left untouched.
+
+### 7. Update to latest versions
+
+Bumps all packages to their latest available versions, updates `.filedist.lock`, and re-extracts the files.
+
+```sh
+npx filedist update
+
+# preview what would change without writing anything
+npx filedist update --dry-run
+```
+
+`update` reads the current `sets` recorded in `.filedist.lock` (falling back to your config file if no lockfile exists), forces a fresh install of every package, and writes the new resolved versions back to `.filedist.lock`.
 
 ## Hierarchical package resolution
 
@@ -525,14 +556,16 @@ If a package chain references itself (directly or transitively), the command sto
 
 ```
 Usage:
-  npx filedist [init|extract|check|list|purge] [options]
+  npx filedist [init|install|check|list|purge|remove|update] [options]
 
 Commands:
   init      Set up publishing configuration in a package
-  extract   Extract files from a published package into a local directory
-  check     Verify local files are in sync with the published package
+  install   Extract files from a published package into a local directory (alias: extract)
+  check     Verify local files are in sync with the lockfile (reads .filedist.lock)
   list      List all files managed by filedist in an output directory
-  purge     Remove all managed files previously extracted by given packages
+  purge     Remove all managed files recorded in the lockfile (reads .filedist.lock)
+  remove    Remove a package set from config and delete its managed files (reads .filedistrc)
+  update    Bump packages to latest versions, update lockfile, and re-extract
 
 Global options:
   --help, -h       Show help
@@ -578,16 +611,28 @@ Extract options:
                            the CI environment variable is set.
 
 Check options:
-  --packages <specs>       Same format as extract.
-                           When omitted, reads from a configuration file (see Pattern 3).
-  --output, -o <dir>       Output directory to check (default: current directory)
+  (no extra options — reads exclusively from .filedist.lock)
+  --local-only             Skip package install; verify only file checksums from .filedist markers
+  --verbose, -v            Print detailed progress information
 
 Purge options:
-  --packages <specs>       Comma-separated package names whose managed files should be removed.
-                           When omitted, reads from a configuration file (see Pattern 3).
-  --output, -o <dir>       Output directory to purge from (default: current directory)
+  (no extra options — reads exclusively from .filedist.lock)
   --dry-run                Simulate purge without removing any files
   --silent                 Suppress per-file output
+  --verbose, -v            Print detailed progress information
+
+Update options:
+  --dry-run                Preview changes without writing any files
+  --verbose, -v            Print detailed progress information
+
+Remove options:
+  <package>                Package name to remove (version/ref is ignored during matching)
+  --output, -o <dir>       Only remove entries whose output.path equals this value
+  --all                    Remove every set entry from the config
+  --dry-run                Preview changes without modifying config or disk
+  --config <file>          Path to a config file (overrides auto-discovered .filedistrc)
+  --silent                 Suppress per-file output
+  --verbose, -v            Print detailed progress information
 
 List options:
   --output, -o <dir>       Output directory to inspect (default: current directory)
@@ -598,7 +643,7 @@ List options:
 `filedist` also exports a programmatic API:
 
 ```typescript
-import { actionInstall, actionCheck, actionList, actionPurge } from 'filedist';
+import { actionInstall, actionCheck, actionList, actionPurge, actionRemove, actionUpdate } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
 
 const entries: FiledistExtractEntry[] = [
@@ -629,8 +674,8 @@ await actionInstall({
 const frozenResult = await actionInstall({ entries, cwd, frozenLockfile: true });
 console.log(frozenResult.added, frozenResult.modified);
 
-// check sync status
-const summary = await actionCheck({ entries, cwd });
+// check sync status (reads .filedist.lock; pass entries:[] to let lockfile drive)
+const summary = await actionCheck({ entries: [], cwd, frozenLockfile: true });
 const hasDrift = summary.missing.length > 0 || summary.modified.length > 0 || summary.extra.length > 0;
 if (hasDrift) {
   console.log('Missing:', summary.missing);
@@ -638,8 +683,19 @@ if (hasDrift) {
   console.log('Extra:', summary.extra);
 }
 
-// remove all managed files (no network required)
-await actionPurge({ entries, config: null, cwd });
+// remove all managed files recorded in lockfile
+await actionPurge({ entries: [], cwd, frozenLockfile: true });
+
+// remove a specific package set from config and delete its managed files
+const removeResult = await actionRemove({ cwd, packageSpec: 'my-shared-assets' });
+console.log('Removed entries:', removeResult.removedEntries, 'deleted files:', removeResult.install.deleted);
+
+// remove all sets from config (clears all managed files)
+await actionRemove({ cwd, all: true });
+
+// update all packages to latest versions
+const updateResult = await actionUpdate({ cwd });
+console.log('Updated:', updateResult.added, 'added,', updateResult.modified, 'modified,', updateResult.deleted, 'deleted');
 
 // list all files managed by filedist in an output directory
 const managed = await actionList({ entries, config: null, cwd });
@@ -667,7 +723,11 @@ See the root [README.md](../README.md) for the full documentation.
 
 ## Lock file
 
-Each `install` run writes a `.filedist.lock` file in the working directory that records the exact resolved version for every package in the dependency graph, including transitive sub-packages declared in nested `filedist.sets` blocks.
+Each `install` run writes a `.filedist.lock` file in the working directory that records:
+
+- **`packages`** — the exact resolved version for every package in the dependency graph
+- **`sets`** — the full entry definitions (package specs, selectors, output paths) that were used for this install
+- **`managed_files`** — the list of all files managed after the install
 
 ```json
 {
@@ -675,11 +735,19 @@ Each `install` run writes a `.filedist.lock` file in the working directory that 
   "packages": {
     "my-shared-assets": { "source": "npm", "spec": "my-shared-assets", "resolvedVersion": "2.3.1" },
     "git:github.com/org/repo.git@main": { "source": "git", "spec": "git:github.com/org/repo.git@main", "resolvedVersion": "abc123def456" }
-  }
+  },
+  "sets": [
+    { "package": "my-shared-assets@^2.0.0", "output": { "path": "./data" } }
+  ],
+  "managed_files": ["data/user1.json", "data/configs/app.config.json"]
 }
 ```
 
 This file makes installs **reproducible** — even if a newer version of a package is published between runs, repeating `install` will fetch exactly the versions that were used the first time.
+
+`check` and `purge` read **exclusively from `.filedist.lock`** (using the `sets` stored there) and do not read your `package.json` / `.filedistrc` configuration. This ensures they always operate on the same entry definitions that were used during install, regardless of any local config changes.
+
+When `--frozen-lockfile` is passed to `install`, it also validates that the current managed files match the list stored in the lockfile, failing if they differ.
 
 ### `--frozen-lockfile`
 

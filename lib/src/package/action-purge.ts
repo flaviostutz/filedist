@@ -4,16 +4,23 @@ import path from 'node:path';
 
 import { ProgressEvent, BasicPackageOptions, DiffEntry } from '../types';
 import { cleanupTempPackageJson, formatDisplayPath } from '../utils';
-import { writeMarker, readOutputDirMarker, markerPath } from '../fileset/markers';
 import { removeFromGitignore, readManagedGitignoreEntries } from '../fileset/gitignore';
 
 import { removeAllSymlinks } from './symlinks';
 import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 import { createSourceRuntime } from './source';
+import { readManagedFilesForDir, writeManagedFilesForDir } from './lockfile';
+import { resolveFrozenLockfileContext } from './action-check';
 
 export type PurgeOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
+  /**
+   * When true (default for CLI), read set definitions and package versions exclusively
+   * from .filedist.lock. Fails if no lock file is found.
+   * When false, use the entries and versions passed via options (library/direct callers).
+   */
+  frozenLockfile?: boolean;
 };
 
 export type PurgeSummary = {
@@ -25,13 +32,32 @@ export type PurgeSummary = {
 /**
  * Purge all managed files for the given entries.
  *
+ * When frozenLockfile=true (the CLI default): reads set definitions and pinned
+ * package versions exclusively from .filedist.lock. Fails if no lock file found.
+ *
  * Uses resolveFiles() to build the desired file list (installing packages as needed),
  * then calculateDiff() to find the managed files on disk. Deletes ok, conflict,
  * and extra files (i.e. everything currently managed by filedist for these packages).
  * Updates .filedist markers and .gitignore entries for affected output directories.
  */
 export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> {
-  const { entries, cwd, dryRun = false, verbose = false, onProgress } = options;
+  const {
+    cwd,
+    dryRun = false,
+    verbose = false,
+    onProgress,
+    frozenLockfile = false,
+    entries: initialEntries,
+  } = options;
+  let entries = initialEntries;
+  let lockedVersions: Map<string, string> | undefined;
+
+  // ── Frozen mode: read entries and locked versions from lockfile ──────────
+  if (frozenLockfile) {
+    const resolved = resolveFrozenLockfileContext(cwd, initialEntries, verbose, 'actionPurge');
+    ({ entries, lockedVersions } = resolved);
+  }
+
   const summary: PurgeSummary = { deleted: 0, symlinksRemoved: 0, dirsRemoved: 0 };
   const sourceRuntime = createSourceRuntime(cwd, verbose);
 
@@ -44,6 +70,7 @@ export async function actionPurge(options: PurgeOptions): Promise<PurgeSummary> 
       cwd,
       verbose,
       sourceRuntime,
+      lockedVersions,
       onProgress: (e) => {
         if (e.type === 'package-start' || e.type === 'package-end') onProgress?.(e);
       },
@@ -129,7 +156,7 @@ async function purgeOutputDir(
   if (!dryRun && relPaths.length > 0) {
     summary.symlinksRemoved += await removeAllSymlinks(outputDir);
     summary.dirsRemoved += removeEmptyDirs(outputDir);
-    await updateMarkerAfterPurge(outputDir, new Set(relPaths));
+    await updateMarkerAfterPurge(outputDir, new Set(relPaths), cwd);
     await removeFromGitignore(outputDir, relPaths);
   }
 
@@ -140,10 +167,14 @@ async function purgeOutputDir(
   }
 }
 
-async function updateMarkerAfterPurge(outputDir: string, purgedPaths: Set<string>): Promise<void> {
-  const current = await readOutputDirMarker(outputDir);
+async function updateMarkerAfterPurge(
+  outputDir: string,
+  purgedPaths: Set<string>,
+  cwd: string,
+): Promise<void> {
+  const current = readManagedFilesForDir(cwd, outputDir);
   const updated = current.filter((m) => !purgedPaths.has(m.path));
-  await writeMarker(markerPath(outputDir), updated);
+  writeManagedFilesForDir(cwd, outputDir, updated);
 }
 
 function removeEmptyDirs(dir: string): number {

@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { readLockfile, writeLockfile, buildLockfileData, LockfileData } from './lockfile';
+import {
+  readLockfile,
+  writeLockfile,
+  buildLockfileData,
+  readManagedFilesForDir,
+  writeManagedFilesForDir,
+  LockfileData,
+} from './lockfile';
 
 describe('lockfile', () => {
   let tmpDir: string;
@@ -101,5 +108,140 @@ describe('lockfile', () => {
       const result = readLockfile(tmpDir);
       expect(result).toEqual(data);
     });
+
+    it('preserves managed_files on roundtrip', () => {
+      const data: LockfileData = {
+        lockfileVersion: 1,
+        packages: { 'pkg@^1': { ref: '1.0.0' } },
+        // eslint-disable-next-line camelcase
+        managed_files: {
+          output: ['file.md|pkg|1.0.0|file|abc123|0'],
+        },
+      };
+      writeLockfile(tmpDir, data);
+      const result = readLockfile(tmpDir);
+
+      expect(result?.managed_files).toEqual(data.managed_files);
+    });
+  });
+});
+
+describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
+  let tmpDir: string;
+  let outputDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'filedist-managed-files-test-'));
+    outputDir = path.join(tmpDir, 'output');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it('returns empty array when lock file does not exist', () => {
+    expect(readManagedFilesForDir(tmpDir, outputDir)).toEqual([]);
+  });
+
+  it('returns empty array when managed_files key is absent', () => {
+    writeLockfile(tmpDir, { lockfileVersion: 1, packages: {} });
+    expect(readManagedFilesForDir(tmpDir, outputDir)).toEqual([]);
+  });
+
+  it('writes and reads back managed file entries', () => {
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'docs/guide.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    const result = readManagedFilesForDir(tmpDir, outputDir);
+    expect(result).toHaveLength(1);
+    expect(result[0].path).toBe('docs/guide.md');
+    expect(result[0].packageName).toBe('my-pkg');
+    expect(result[0].packageVersion).toBe('1.0.0');
+    expect(result[0].kind).toBe('file');
+  });
+
+  it('preserves packages when writing managed files', () => {
+    writeLockfile(tmpDir, { lockfileVersion: 1, packages: { 'my-pkg': { ref: '1.0.0' } } });
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'a.md',
+        packageName: 'my-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    const lock = readLockfile(tmpDir);
+    expect(lock?.packages['my-pkg']?.ref).toBe('1.0.0');
+  });
+
+  it('round-trips checksum and mutable fields', () => {
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'file.ts',
+        packageName: 'pkg',
+        packageVersion: '2.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: true,
+      },
+    ]);
+    const result = readManagedFilesForDir(tmpDir, outputDir);
+    expect(result[0].checksum).toBe('abc123');
+    expect(result[0].mutable).toBe(true);
+  });
+
+  it('round-trips symlink kind', () => {
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'links/guide.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'symlink',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    const result = readManagedFilesForDir(tmpDir, outputDir);
+    expect(result[0].kind).toBe('symlink');
+  });
+
+  it('removes entry when entries is empty', () => {
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    writeManagedFilesForDir(tmpDir, outputDir, []);
+    const lock = readLockfile(tmpDir);
+    expect(lock?.managed_files).toBeUndefined();
+  });
+
+  it('uses relative path as key in managed_files', () => {
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'a.md',
+        packageName: 'pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
+    ]);
+    const lock = readLockfile(tmpDir);
+    expect(lock?.managed_files?.['output']).toBeDefined();
   });
 });

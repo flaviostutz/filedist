@@ -7,9 +7,9 @@ import { jest } from '@jest/globals';
 
 import { installMockPackage } from '../fileset/test-utils';
 import { FiledistExtractEntry } from '../types';
-import { writeMarker, markerPath } from '../fileset/markers';
 import { filterEntriesByPresets } from '../utils';
 
+import { writeManagedFilesForDir } from './lockfile';
 import { actionCheck } from './action-check';
 import { actionInstall } from './action-install';
 
@@ -30,6 +30,7 @@ afterEach(() => {
 describe('actionCheck', () => {
   it('returns empty summary when entries array is empty', async () => {
     const result = await actionCheck({ entries: [], cwd: tmpDir });
+    expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -43,10 +44,15 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(outputDir, 'guide.md'), content);
 
     const checksum = crypto.createHash('sha256').update(content).digest('hex').slice(18, 30);
-    const markerFile = markerPath(outputDir);
-    fs.mkdirSync(path.dirname(markerFile), { recursive: true });
-    await writeMarker(markerFile, [
-      { path: 'guide.md', packageName: 'check-action-pkg', packageVersion: '1.0.0', checksum },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'guide.md',
+        packageName: 'check-action-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum,
+        mutable: false,
+      },
     ]);
 
     const entries: FiledistExtractEntry[] = [
@@ -54,6 +60,7 @@ describe('actionCheck', () => {
     ];
 
     const result = await actionCheck({ entries, cwd: tmpDir });
+    expect(result.ok).toBe(1);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -70,6 +77,7 @@ describe('actionCheck', () => {
       cwd: tmpDir,
     });
 
+    expect(result.ok).toBe(0);
     expect(result.missing).toContain('guide.md');
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -82,9 +90,15 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
 
     // Write a marker for a file
-    const markerFile = markerPath(outputDir);
-    await writeMarker(markerFile, [
-      { path: 'src/index.ts', packageName: 'not-installed-pkg', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'src/index.ts',
+        packageName: 'not-installed-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     // Deliberately do NOT write src/index.ts to outputDir → it will appear as missing
 
@@ -94,6 +108,7 @@ describe('actionCheck', () => {
 
     const result = await actionCheck({ entries, cwd: tmpDir });
     // File is not on disk → missing
+    expect(result.ok).toBe(0);
     expect(result.missing.length).toBeGreaterThan(0);
   }, 60000);
 
@@ -133,6 +148,8 @@ describe('actionCheck', () => {
       cwd: tmpDir,
     });
 
+    // keep.md is in sync — counted as ok
+    expect(result.ok).toBeGreaterThan(0);
     expect(result.extra).toContain('stale.md');
     expect(fs.existsSync(path.join(outputDir, 'stale.md'))).toBe(true);
   }, 60000);
@@ -143,6 +160,7 @@ describe('actionCheck', () => {
     ];
 
     const result = await actionCheck({ entries, cwd: tmpDir });
+    expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -155,9 +173,15 @@ describe('actionCheck', () => {
     // Don't extract the file → it will be "modified" (hash mismatch) or "missing"
 
     // Write a marker entry with wrong hash (will cause modified detection)
-    const markerFile = markerPath(outputDir);
-    await writeMarker(markerFile, [
-      { path: 'a.md', packageName: 'multi-pkg', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'a.md',
+        packageName: 'multi-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     // Write the file with different content
     fs.writeFileSync(path.join(outputDir, 'a.md'), 'different content');
@@ -168,6 +192,7 @@ describe('actionCheck', () => {
 
     const result = await actionCheck({ entries, cwd: tmpDir });
     // Since hash differs, should be in modified
+    expect(result.ok).toBe(0);
     expect(result.conflict).toContain('a.md');
   }, 60000);
 
@@ -192,9 +217,15 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-nv');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    const markerFile = markerPath(outputDir);
-    await writeMarker(markerFile, [
-      { path: 'a.txt', packageName: 'no-version-pkg', packageVersion: '2.0.0' },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'a.txt',
+        packageName: 'no-version-pkg',
+        packageVersion: '2.0.0',
+        kind: 'file',
+        checksum: sha256('hello'),
+        mutable: false,
+      },
     ]);
     fs.writeFileSync(path.join(outputDir, 'a.txt'), 'hello');
 
@@ -204,7 +235,7 @@ describe('actionCheck', () => {
       { package: 'no-version-pkg', output: { path: outputDir } },
     ];
 
-    await actionCheck({
+    const result = await actionCheck({
       entries,
       cwd: tmpDir,
       onProgress: (e) => {
@@ -218,6 +249,8 @@ describe('actionCheck', () => {
     const endEvent = events.find((e) => e.type === 'package-end');
     expect(endEvent).toBeDefined();
     expect(endEvent?.version).toBe('2.0.0');
+    expect(result.ok).toBe(1);
+    expect(result.missing).toHaveLength(0);
   }, 60000);
 
   it('uses provided selector when checking', async () => {
@@ -225,13 +258,14 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-sel');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    const markerFile = markerPath(outputDir);
-    await writeMarker(markerFile, [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'docs/api.md',
         packageName: 'sel-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('# API'),
+        mutable: false,
       },
     ]);
     fs.mkdirSync(path.join(outputDir, 'docs'), { recursive: true });
@@ -247,6 +281,7 @@ describe('actionCheck', () => {
 
     const result = await actionCheck({ entries, cwd: tmpDir });
     // With selector matching all files, should be clean
+    expect(result.ok).toBeGreaterThan(0);
     expect(result.conflict).toHaveLength(0);
   }, 60000);
 
@@ -277,24 +312,30 @@ describe('actionCheck', () => {
       path.join(outputDir, 'data-symlink', 'user1.json'),
     );
 
-    await writeMarker(markerPath(outputDir), [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'data/users-dataset/user1.json',
         packageName: 'check-symlink-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('{"id":1}'),
+        mutable: false,
       },
       {
         path: 'data-symlink/users-dataset',
         packageName: 'check-symlink-pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: sha256('../data/users-dataset'),
+        mutable: false,
       },
       {
         path: 'data-symlink/user1.json',
         packageName: 'check-symlink-pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: sha256('../data/users-dataset/user1.json'),
+        mutable: false,
       },
     ]);
 
@@ -346,23 +387,30 @@ describe('actionCheck', () => {
       path.join(outputDir, 'data-symlink', 'user1.json'),
     );
 
-    await writeMarker(markerPath(outputDir), [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'data/users-dataset/user1.json',
         packageName: 'check-symlink-drift-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('{"id":1}'),
+        mutable: false,
       },
       {
         path: 'data-symlink/users-dataset',
         packageName: 'check-symlink-drift-pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: sha256('../data/users-dataset'),
+        mutable: false,
       },
       {
         path: 'data-symlink/user1.json',
         packageName: 'check-symlink-drift-pkg',
         packageVersion: '1.0.0',
         kind: 'symlink',
+        checksum: sha256('../data/users-dataset/user1.json'),
+        mutable: false,
       },
     ]);
 
@@ -395,23 +443,27 @@ describe('actionCheck', () => {
     // Set up marker and matching files for both packages so check passes when run
     fs.mkdirSync(path.join(docsOutput, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(docsOutput, 'docs/guide.md'), '# Guide');
-    await writeMarker(markerPath(docsOutput), [
+    writeManagedFilesForDir(tmpDir, docsOutput, [
       {
         path: 'docs/guide.md',
         packageName: 'presets-docs-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('# Guide'),
+        mutable: false,
       },
     ]);
 
     fs.mkdirSync(path.join(dataOutput, 'data'), { recursive: true });
     fs.writeFileSync(path.join(dataOutput, 'data/sample.csv'), 'a,b');
-    await writeMarker(markerPath(dataOutput), [
+    writeManagedFilesForDir(tmpDir, dataOutput, [
       {
         path: 'data/sample.csv',
         packageName: 'presets-data-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('a,b'),
+        mutable: false,
       },
     ]);
 
@@ -424,6 +476,7 @@ describe('actionCheck', () => {
     const filteredEntries = filterEntriesByPresets(entries, ['docs']);
 
     const resultDocs = await actionCheck({ entries: filteredEntries, cwd: tmpDir });
+    expect(resultDocs.ok).toBeGreaterThan(0);
     expect(resultDocs.missing).toHaveLength(0);
     expect(resultDocs.conflict).toHaveLength(0);
     expect(resultDocs.extra).toHaveLength(0);
@@ -453,12 +506,14 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-all');
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'file.md'), '# File');
-    await writeMarker(markerPath(outputDir), [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'file.md',
         packageName: 'all-presets-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('# File'),
+        mutable: false,
       },
     ]);
 
@@ -468,6 +523,7 @@ describe('actionCheck', () => {
 
     // presets=[] means no filtering — all entries pass through
     const result = await actionCheck({ entries, cwd: tmpDir });
+    expect(result.ok).toBeGreaterThan(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
   }, 60000);
@@ -506,15 +562,29 @@ describe('actionCheck', () => {
     const parentOutputDir = path.join(tmpDir, 'parent-out');
     fs.mkdirSync(parentOutputDir, { recursive: true });
     fs.writeFileSync(path.join(parentOutputDir, 'parent.md'), 'parent content');
-    await writeMarker(markerPath(parentOutputDir), [
-      { path: 'parent.md', packageName: 'recurse-parent', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, parentOutputDir, [
+      {
+        path: 'parent.md',
+        packageName: 'recurse-parent',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('parent content'),
+        mutable: false,
+      },
     ]);
 
     // Child output dir (parent output + child path) — child.md is MISSING on disk
     const childOutputDir = path.join(tmpDir, 'parent-out', 'child-out');
     fs.mkdirSync(childOutputDir, { recursive: true });
-    await writeMarker(markerPath(childOutputDir), [
-      { path: 'child.md', packageName: 'recurse-child', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, childOutputDir, [
+      {
+        path: 'child.md',
+        packageName: 'recurse-child',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     // Deliberately do NOT write child.md → should appear as missing after check
 
@@ -562,12 +632,14 @@ describe('actionCheck', () => {
     fs.mkdirSync(path.join(outputDir, 'conf'), { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'docs/guide.md'), '# Guide');
     fs.writeFileSync(path.join(outputDir, 'conf/config-schema.js'), 'custom local content');
-    await writeMarker(markerPath(outputDir), [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'docs/guide.md',
         packageName: 'nested-parent',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('# Guide'),
+        mutable: false,
       },
     ]);
 
@@ -576,6 +648,7 @@ describe('actionCheck', () => {
       cwd: tmpDir,
     });
 
+    expect(result.ok).toBe(1);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -587,13 +660,14 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'readme.md'), '# hello');
 
-    const markerFile = markerPath(outputDir);
-    await writeMarker(markerFile, [
+    writeManagedFilesForDir(tmpDir, outputDir, [
       {
         path: 'readme.md',
         packageName: 'verbose-check-pkg',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('# hello'),
+        mutable: false,
       },
     ]);
 
@@ -604,6 +678,7 @@ describe('actionCheck', () => {
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn());
     try {
       const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+      expect(result.ok).toBe(1);
       expect(result.missing).toHaveLength(0);
       expect(result.conflict).toHaveLength(0);
 
@@ -622,8 +697,15 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-vnp');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    await writeMarker(markerPath(outputDir), [
-      { path: 'file.md', packageName: 'missing-verbose-pkg', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'file.md',
+        packageName: 'missing-verbose-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
     // Deliberately do NOT write file.md to outputDir → it will be missing
 
@@ -632,6 +714,7 @@ describe('actionCheck', () => {
     ];
 
     const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+    expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(1);
   }, 60000);
 
@@ -648,8 +731,15 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'readme.md'), '# hi');
 
-    await writeMarker(markerPath(outputDir), [
-      { path: 'readme.md', packageName: 'spy-corrupt-parent', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, outputDir, [
+      {
+        path: 'readme.md',
+        packageName: 'spy-corrupt-parent',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('# hi'),
+        mutable: false,
+      },
     ]);
 
     const origReadFileSync = fs.readFileSync;
@@ -720,15 +810,29 @@ describe('actionCheck', () => {
     const parentOutputDir = path.join(tmpDir, 'verbose-parent-out');
     fs.mkdirSync(parentOutputDir, { recursive: true });
     fs.writeFileSync(path.join(parentOutputDir, 'parent.md'), 'parent content');
-    await writeMarker(markerPath(parentOutputDir), [
-      { path: 'parent.md', packageName: 'verbose-recurse-parent', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, parentOutputDir, [
+      {
+        path: 'parent.md',
+        packageName: 'verbose-recurse-parent',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('parent content'),
+        mutable: false,
+      },
     ]);
 
     const childOutputDir = path.join(tmpDir, 'verbose-parent-out', 'child-out');
     fs.mkdirSync(childOutputDir, { recursive: true });
     fs.writeFileSync(path.join(childOutputDir, 'child.md'), 'child content');
-    await writeMarker(markerPath(childOutputDir), [
-      { path: 'child.md', packageName: 'verbose-recurse-child', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, childOutputDir, [
+      {
+        path: 'child.md',
+        packageName: 'verbose-recurse-child',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('child content'),
+        mutable: false,
+      },
     ]);
 
     const entries: FiledistExtractEntry[] = [
@@ -755,18 +859,22 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(sharedOutput, 'b.md'), 'BBB');
 
     // Both packages share the same output directory and marker file
-    await writeMarker(markerPath(sharedOutput), [
+    writeManagedFilesForDir(tmpDir, sharedOutput, [
       {
         path: 'a.md',
         packageName: 'shared-pkg-a',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('AAA'),
+        mutable: false,
       },
       {
         path: 'b.md',
         packageName: 'shared-pkg-b',
         packageVersion: '1.0.0',
+        kind: 'file',
         checksum: sha256('BBB'),
+        mutable: false,
       },
     ]);
 
@@ -797,9 +905,23 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(sharedOutput, 'a.md'), 'AAA');
     // Deliberately do NOT write b.md (absent-pkg's file is missing from output)
 
-    await writeMarker(markerPath(sharedOutput), [
-      { path: 'a.md', packageName: 'present-pkg', packageVersion: '1.0.0' },
-      { path: 'b.md', packageName: 'absent-pkg', packageVersion: '1.0.0' },
+    writeManagedFilesForDir(tmpDir, sharedOutput, [
+      {
+        path: 'a.md',
+        packageName: 'present-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: sha256('AAA'),
+        mutable: false,
+      },
+      {
+        path: 'b.md',
+        packageName: 'absent-pkg',
+        packageVersion: '1.0.0',
+        kind: 'file',
+        checksum: 'abc123',
+        mutable: false,
+      },
     ]);
 
     const entries: FiledistExtractEntry[] = [
@@ -811,4 +933,61 @@ describe('actionCheck', () => {
     // a.md belongs to present-pkg — must NOT be reported as missing
     expect(result.missing).not.toContain('a.md');
   }, 60000);
+});
+
+describe('actionCheck — frozenLockfile', () => {
+  it('uses lockfile sets instead of caller entries when frozenLockfile=true', async () => {
+    // Install pkg-a so it ends up in node_modules and the lockfile records its sets
+    await installMockPackage('frozen-check-a', '1.0.0', { 'a.md': '# A' }, tmpDir);
+    await installMockPackage('frozen-check-b', '1.0.0', { 'b.md': '# B' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'out-frozen-check');
+
+    // Normal install with pkg-a — writes lockfile.sets=[pkg-a]
+    await actionInstall({
+      entries: [{ package: 'frozen-check-a', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    // Modify a.md to create drift
+    fs.chmodSync(path.join(outputDir, 'a.md'), 0o644);
+    fs.writeFileSync(path.join(outputDir, 'a.md'), 'tampered');
+
+    // Frozen check with pkg-b as entries — lockfile sets (pkg-a) must win
+    // Drift in a.md should be detected; pkg-b is irrelevant (ignored)
+    const result = await actionCheck({
+      entries: [{ package: 'frozen-check-b', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+      frozenLockfile: true,
+    });
+
+    expect(result.ok).toBe(0);
+    expect(result.conflict).toContain('a.md');
+    // b.md was never extracted and its entry was never in lockfile sets → not reported
+    expect(result.missing).not.toContain('b.md');
+  }, 90_000);
+
+  it('returns clean summary when files match what lockfile sets describe', async () => {
+    await installMockPackage('frozen-check-clean', '1.0.0', { 'doc.md': '# doc' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out-frozen-clean');
+
+    await actionInstall({
+      entries: [{ package: 'frozen-check-clean', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+    });
+
+    // Pass empty entries — frozen mode reads lockfile sets and checks pkg
+    const result = await actionCheck({ entries: [], cwd: tmpDir, frozenLockfile: true });
+
+    expect(result.ok).toBeGreaterThan(0);
+    expect(result.missing).toHaveLength(0);
+    expect(result.conflict).toHaveLength(0);
+    expect(result.extra).toHaveLength(0);
+  }, 90_000);
+
+  it('fails when frozenLockfile=true and no lockfile exists', async () => {
+    await expect(actionCheck({ entries: [], cwd: tmpDir, frozenLockfile: true })).rejects.toThrow(
+      '.filedist.lock',
+    );
+  });
 });

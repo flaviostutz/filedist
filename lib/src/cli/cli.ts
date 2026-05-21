@@ -13,12 +13,13 @@ import { printUsage, printVersion } from './usage';
 import { runInstall } from './actions/install';
 import { runCheck } from './actions/check';
 import { runList } from './actions/list';
-import { runPurge } from './actions/purge';
+import { runRemove } from './actions/remove';
 import { runInit } from './actions/init';
 import { runPresets } from './actions/presets';
+import { runUpdate } from './actions/update';
 import { parseArgv, buildEntriesFromArgv } from './argv';
 
-const KNOWN_COMMANDS = new Set(['install', 'check', 'list', 'purge', 'init', 'presets']);
+const KNOWN_COMMANDS = new Set(['install', 'check', 'list', 'remove', 'init', 'presets', 'update']);
 
 /**
  * Top-level CLI router.
@@ -48,13 +49,16 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
   let cmdArgs: string[];
 
   const firstArg = args[0];
-  if (firstArg && KNOWN_COMMANDS.has(firstArg)) {
+  if (!firstArg || firstArg.startsWith('-')) {
+    // No command given, or first arg is a flag: default to install
+    action = 'install';
+    cmdArgs = args;
+  } else if (KNOWN_COMMANDS.has(firstArg)) {
     action = firstArg;
     cmdArgs = args.slice(1);
   } else {
-    // Default to install
-    action = 'install';
-    cmdArgs = args;
+    action = firstArg;
+    cmdArgs = args.slice(1);
   }
 
   const effectiveCwd = cwd ?? process.cwd();
@@ -64,7 +68,12 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
   const packagesSpecified = args.includes('--packages');
 
   try {
-    const config = await resolveConfig(
+    if (!KNOWN_COMMANDS.has(action)) {
+      throw new Error(
+        `Unknown command: "${action}". Run 'filedist --help' for available commands.`,
+      );
+    }
+    const { config, configFilePath } = await resolveConfig(
       args,
       cmdArgs,
       effectiveCwd,
@@ -73,7 +82,7 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
       packagesSpecified,
     );
 
-    await dispatch(action, config, cmdArgs, effectiveCwd);
+    await dispatch(action, config, cmdArgs, effectiveCwd, configFilePath);
     return 0;
   } catch (error) {
     console.error((error as Error).message);
@@ -88,7 +97,7 @@ async function resolveConfig(
   effectiveConfigSearchCwd: string,
   ignoreConfig: boolean,
   packagesSpecified: boolean,
-): Promise<FiledistConfig | null> {
+): Promise<{ config: FiledistConfig | null; configFilePath: string | undefined }> {
   const configFlagIdx = args.indexOf('--config');
   const configFilePath =
     configFlagIdx !== -1 && configFlagIdx + 1 < args.length
@@ -130,7 +139,7 @@ async function resolveConfig(
     }
   }
 
-  return config;
+  return { config, configFilePath };
 }
 
 async function dispatch(
@@ -138,6 +147,7 @@ async function dispatch(
   config: FiledistConfig | null,
   cmdArgs: string[],
   cwd: string,
+  configFilePath?: string,
 ): Promise<void> {
   switch (action) {
     case 'install':
@@ -149,8 +159,11 @@ async function dispatch(
     case 'list':
       await runList(config, cmdArgs, cwd);
       break;
-    case 'purge':
-      await runPurge(config, cmdArgs, cwd);
+    case 'remove':
+      await runRemove(config, cmdArgs, cwd, configFilePath);
+      break;
+    case 'update':
+      await runUpdate(config, cmdArgs, cwd);
       break;
     case 'init':
       await runInit(config, cmdArgs, cwd);
