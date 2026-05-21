@@ -573,6 +573,9 @@ Extract options:
                            By default, when --packages is provided the run is saved to
                            .filedistrc.yml so future `filedist install` calls (without
                            --packages) reuse the same config automatically.
+  --frozen-lockfile        Use .filedist.lock exclusively; fail if the lock file does not
+                           exist. Does not update the lock file. Automatically enabled when
+                           the CI environment variable is set.
 
 Check options:
   --packages <specs>       Same format as extract.
@@ -622,6 +625,10 @@ await actionInstall({
   },
 });
 
+// use frozen lockfile (reads .filedist.lock, fails if missing, does not update it)
+const frozenResult = await actionInstall({ entries, cwd, frozenLockfile: true });
+console.log(frozenResult.added, frozenResult.modified);
+
 // check sync status
 const summary = await actionCheck({ entries, cwd });
 const hasDrift = summary.missing.length > 0 || summary.modified.length > 0 || summary.extra.length > 0;
@@ -657,6 +664,48 @@ Set `postExtractCmd` at the top level of your config to run a command after a su
 Use an argv array such as `["node", "scripts/post-extract.js"]`; shell strings are rejected so common quoting mistakes fail clearly.
 
 See the root [README.md](../README.md) for the full documentation.
+
+## Lock file
+
+Each `install` run writes a `.filedist.lock` file in the working directory that records the exact resolved version for every package in the dependency graph, including transitive sub-packages declared in nested `filedist.sets` blocks.
+
+```json
+{
+  "lockfileVersion": 1,
+  "packages": {
+    "my-shared-assets": { "source": "npm", "spec": "my-shared-assets", "resolvedVersion": "2.3.1" },
+    "git:github.com/org/repo.git@main": { "source": "git", "spec": "git:github.com/org/repo.git@main", "resolvedVersion": "abc123def456" }
+  }
+}
+```
+
+This file makes installs **reproducible** — even if a newer version of a package is published between runs, repeating `install` will fetch exactly the versions that were used the first time.
+
+### `--frozen-lockfile`
+
+Pass `--frozen-lockfile` to enforce that the lock file is used as-is without any resolution or update:
+
+```sh
+# use exactly the versions from .filedist.lock, fail if it does not exist
+npx filedist install --frozen-lockfile
+```
+
+Behaviour:
+- Reads `.filedist.lock` and pins every package to its recorded version.
+- Fails immediately if `.filedist.lock` does not exist.
+- Does **not** write or update `.filedist.lock`.
+
+### CI auto-detection
+
+`--frozen-lockfile` is enabled automatically when the `CI` environment variable is set (as it is on GitHub Actions, GitLab CI, CircleCI, and most other CI platforms). This prevents accidental version bumps on CI and makes pipelines reproducible with no extra flags required.
+
+To opt out on CI, pass `--frozen-lockfile=false` explicitly.
+
+### Commit `.filedist.lock`
+
+Commit `.filedist.lock` alongside `.filedistrc.yml` so that everyone on the team and all CI jobs install identical file versions.
+
+---
 
 ## Managed file tracking
 

@@ -2,9 +2,7 @@
   "lockfileVersion": 1,
   "packages": {
     "example-files-package": {
-      "source": "npm",
-      "spec": "example-files-package",
-      "resolvedVersion": "1.0.0"
+      "ref": "1.0.0"
     }
   }
 }

@@ -24,14 +24,14 @@ describe('lockfile', () => {
       const data: LockfileData = {
         lockfileVersion: 1,
         packages: {
-          'eslint@^8': { source: 'npm', spec: 'eslint@^8', resolvedVersion: '8.57.0' },
+          'eslint@^8': { ref: '8.57.0' },
         },
       };
       fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), JSON.stringify(data));
       const result = readLockfile(tmpDir);
       expect(result).not.toBeUndefined();
       expect(result!.lockfileVersion).toBe(1);
-      expect(result!.packages['eslint@^8'].resolvedVersion).toBe('8.57.0');
+      expect(result!.packages['eslint@^8'].ref).toBe('8.57.0');
     });
 
     it('throws when lock file contains invalid JSON', () => {
@@ -50,7 +50,7 @@ describe('lockfile', () => {
       const data: LockfileData = {
         lockfileVersion: 1,
         packages: {
-          'my-pkg@^1': { source: 'npm', spec: 'my-pkg@^1', resolvedVersion: '1.2.3' },
+          'my-pkg@^1': { ref: '1.2.3' },
         },
       };
       writeLockfile(tmpDir, data);
@@ -59,7 +59,7 @@ describe('lockfile', () => {
       const raw = fs.readFileSync(lockPath);
       const parsed = JSON.parse(raw.toString()) as LockfileData;
       expect(parsed.lockfileVersion).toBe(1);
-      expect(parsed.packages['my-pkg@^1'].resolvedVersion).toBe('1.2.3');
+      expect(parsed.packages['my-pkg@^1'].ref).toBe('1.2.3');
     });
 
     it('ends with a newline', () => {
@@ -78,8 +78,8 @@ describe('lockfile', () => {
       const data = buildLockfileData(resolved);
       expect(data.lockfileVersion).toBe(1);
       expect(Object.keys(data.packages)).toHaveLength(2);
-      expect(data.packages['eslint@^8'].resolvedVersion).toBe('8.57.0');
-      expect(data.packages['git:github.com/org/repo.git@main'].source).toBe('git');
+      expect(data.packages['eslint@^8'].ref).toBe('8.57.0');
+      expect(data.packages['git:github.com/org/repo.git@main'].ref).toBe('abc123');
     });
 
     it('returns empty packages for empty map', () => {
@@ -93,12 +93,8 @@ describe('lockfile', () => {
       const data: LockfileData = {
         lockfileVersion: 1,
         packages: {
-          'pkg-a@^2': { source: 'npm', spec: 'pkg-a@^2', resolvedVersion: '2.1.0' },
-          'git:host/repo.git@v3': {
-            source: 'git',
-            spec: 'git:host/repo.git@v3',
-            resolvedVersion: 'dead1234beef',
-          },
+          'pkg-a@^2': { ref: '2.1.0' },
+          'git:host/repo.git@v3': { ref: 'dead1234beef' },
         },
       };
       writeLockfile(tmpDir, data);

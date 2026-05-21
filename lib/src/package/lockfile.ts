@@ -5,9 +5,7 @@ export const LOCKFILE_NAME = '.filedist.lock';
 const LOCKFILE_VERSION = 1;
 
 export type LockfilePackageEntry = {
-  source: 'npm' | 'git';
-  spec: string;
-  resolvedVersion: string;
+  ref: string;
 };
 
 export type LockfileData = {
@@ -67,7 +65,7 @@ export function buildLockfileData(
 ): LockfileData {
   const packages: Record<string, LockfilePackageEntry> = {};
   for (const [spec, info] of resolvedPackages) {
-    packages[spec] = { source: info.source, spec, resolvedVersion: info.resolvedVersion };
+    packages[spec] = { ref: info.resolvedVersion };
   }
   return { lockfileVersion: LOCKFILE_VERSION, packages };
 }

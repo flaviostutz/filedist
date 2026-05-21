@@ -268,6 +268,7 @@ npx filedist install --packages my-pkg --output ./data --dry-run  # preview only
 npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
 npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run  # preview only
 npx filedist install --packages my-pkg --output ./data --nosync  # keep stale managed files on disk
+npx filedist install --packages my-pkg --output ./data --frozen-lockfile  # use .filedist.lock exclusively
 ```
 
 `extract` logs every file change:
@@ -476,9 +477,13 @@ const entries: FiledistExtractEntry[] = [
 ];
 const cwd = process.cwd();
 
-// extract files
+// extract files (resolves and locks versions into .filedist.lock)
 const result = await actionInstall({ entries, cwd });
 console.log(result.added, result.modified, result.deleted);
+
+// reproducible install: use exact versions from .filedist.lock (fails if missing)
+const frozenResult = await actionInstall({ entries, cwd, frozenLockfile: true });
+console.log(frozenResult.added, frozenResult.modified);
 
 // track progress
 await actionInstall({
@@ -549,6 +554,37 @@ Set `defaultPresets` at the top level of your config to make `extract`, `check`,
 ```
 
 Running `npx filedist install` with that config behaves the same as `npx filedist install --presets prod,reports`. Passing `--presets` explicitly overrides `defaultPresets` for that command.
+
+---
+
+## Lock file
+
+Each `install` run writes a `.filedist.lock` file in the working directory recording the exact resolved version for every package in the full dependency graph, including transitive sub-packages declared in nested `filedist.sets` blocks.
+
+```json
+{
+  "lockfileVersion": 1,
+  "packages": {
+    "my-shared-assets": { "source": "npm", "spec": "my-shared-assets", "resolvedVersion": "2.3.1" },
+    "git:github.com/org/repo.git@main": { "source": "git", "spec": "git:github.com/org/repo.git@main", "resolvedVersion": "abc123def456" }
+  }
+}
+```
+
+### `--frozen-lockfile`
+
+Pass `--frozen-lockfile` to pin every package to the version recorded in `.filedist.lock`:
+
+```sh
+# reproducible install — uses exact versions from .filedist.lock
+npx filedist install --frozen-lockfile
+```
+
+- Fails immediately if `.filedist.lock` does not exist.
+- Does **not** update the lock file.
+- Automatically enabled when the `CI` environment variable is set (GitHub Actions, GitLab CI, CircleCI, etc.).
+
+Commit `.filedist.lock` alongside your config file so all team members and CI jobs install identical versions.
 
 ---
 
