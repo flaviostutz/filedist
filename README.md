@@ -103,7 +103,6 @@ For a local Windows path, use the same `file://` form with a drive letter, for e
 ```sh
 npx filedist install   # reads config, extracts all sets or only defaultPresets when defined
 npx filedist check     # verifies files are in sync using .filedist.lock (no config needed)
-npx filedist purge     # removes managed files using .filedist.lock (no config needed)
 npx filedist update    # bumps packages to latest, updates lockfile, and re-extracts
 ```
 
@@ -119,7 +118,7 @@ After `extract`, the output directory will contain the selected files alongside 
 
 Config is resolved looking at files: `package.json` (`"filedist"` key), `.filedistrc`, `.filedistrc.json`, `.filedistrc.yaml`, or `filedist.config.js`. Pass `--config <file>` to point to an explicit config file and skip auto-discovery.
 
-When `defaultPresets` is defined at the root of the config, `extract`, `check`, and `purge` behave the same as if `--presets <tags>` had been passed. An explicit `--presets` flag overrides the configured default for that invocation.
+When `defaultPresets` is defined at the root of the config, `extract` and `check` behave the same as if `--presets <tags>` had been passed. An explicit `--presets` flag overrides the configured default for that invocation.
 Use `--all` to ignore `defaultPresets` for one command and process every configured entry.
 
 The same config file can mix npm packages and git repositories. Use the `git:` prefix for git entries. A git repository source can also provide its own `.filedistrc` or `package.json#filedist` with `sets`, and those nested sets participate in the same hierarchical resolution.
@@ -281,9 +280,9 @@ D  data/old-file.json
 
 ---
 
-## Check, list, purge and presets
+## Check, list, and presets
 
-`check`, `purge`, and `extract` are all **hierarchy-aware**: when a target package carries its own `filedist.sets` block, the command automatically recurses into those transitive dependencies. See [Hierarchical package resolution](#hierarchical-package-resolution) for the full details.
+`check` and `extract` are all **hierarchy-aware**: when a target package carries its own `filedist.sets` block, the command automatically recurses into those transitive dependencies. See [Hierarchical package resolution](#hierarchical-package-resolution) for the full details.
 
 ```sh
 # verify files are in sync (exit 0 = ok, exit 1 = drift or error)
@@ -292,15 +291,11 @@ npx filedist check --packages my-shared-assets --output ./data
 # list all managed files grouped by package
 npx filedist list --output ./data
 
-# remove managed files (no network required)
-npx filedist purge --packages my-shared-assets --output ./data
-npx filedist purge --packages my-shared-assets --output ./data --dry-run
-
 # list all preset tags defined in your configuration
 npx filedist presets
 ```
 
-In config-file mode you can define a root-level `defaultPresets` array so `extract`, `check`, and `purge` automatically run the same filtered subset without requiring `--presets` every time.
+In config-file mode you can define a root-level `defaultPresets` array so `extract` and `check` automatically run the same filtered subset without requiring `--presets` every time.
 Use `--all` when you want to bypass that default and process the full configured set.
 
 ---
@@ -332,7 +327,7 @@ Top-level config fields:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract`, `check`, and `purge` behave as if `--presets <tags>` had been passed when the flag is omitted |
+| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted |
 | `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `extract`. The first array item is the executable and the remaining items are its arguments. Full extract argv is appended |
 
 ### SymlinkConfig
@@ -358,7 +353,7 @@ Applies regex replacements to workspace files after extraction.
 
 ## Hierarchical package resolution
 
-`extract`, `check`, and `purge` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
+`extract` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -370,7 +365,7 @@ consumer project
             └─ raw-assets     (leaf package)
 ```
 
-Running `npx filedist install --packages my-org-configs --output ./data` extracts files from every package in the chain, not just `my-org-configs` itself. Running `check` or `purge` with the same arguments mirrors what `extract` originally covered.
+Running `npx filedist install --packages my-org-configs --output ./data` extracts files from every package in the chain, not just `my-org-configs` itself. Running `check` with the same arguments mirrors what `extract` originally covered.
 
 For git sources, filedist clones each repository into `.filedist-tmp` under the working directory, adds that path to `.gitignore` if needed, reads nested `filedist` config from the cloned repository, and removes `.filedist-tmp` after the command finishes.
 
@@ -395,7 +390,7 @@ Settings that are undefined on the caller are left as-is so the transitive packa
 
 ### Filtering transitive sets with `selector.presets`
 
-Set `selector.presets` on an entry to control which sets inside the target package are recursed into (applies to `extract`, `check`, and `purge`). Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
+Set `selector.presets` on an entry to control which sets inside the target package are recursed into (applies to `extract` and `check`). Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
 
 ```json
 {
@@ -421,7 +416,7 @@ If a package chain references itself, the command stops immediately with an erro
 
 ```
 Usage:
-  npx filedist [init|extract|check|list|purge|presets] [options]
+  npx filedist [init|extract|check|list|presets] [options]
 
 Init:     --files <patterns>    Glob patterns of files to publish
           --packages <specs>    Additional upstream packages to bundle
@@ -449,14 +444,6 @@ Check:    --packages <specs>    Same format as extract
           --all                 Ignore config defaultPresets and check all configured entries
           --config <file>       Explicit config file path (overrides auto-discovery)
 
-Purge:    --packages <specs>    Package names to purge
-          --output, -o <dir>    Directory to purge from
-          --dry-run             Preview without deleting
-          --presets <tags>      Only purge entries matching these preset tags
-          --all                 Ignore config defaultPresets and purge all configured entries
-          --config <file>       Explicit config file path (overrides auto-discovery)
-          --silent              Suppress per-file output
-
 List:     --output, -o <dir>    Directory to inspect
           --config <file>       Explicit config file path (overrides auto-discovery)
 
@@ -470,7 +457,7 @@ Presets:  --config <file>       Explicit config file path (overrides auto-discov
 ## Programmatic API
 
 ```typescript
-import { actionInstall, actionCheck, actionList, actionPurge } from 'filedist';
+import { actionInstall, actionCheck, actionList, actionRemove } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
 
 const entries: FiledistExtractEntry[] = [
@@ -506,8 +493,8 @@ if (hasDrift) {
   console.log('Extra:', summary.extra);
 }
 
-// remove managed files (no network required)
-await actionPurge({ entries, config: null, cwd });
+// remove a package set from config and delete its managed files
+await actionRemove({ cwd, packageSpec: 'my-shared-assets' });
 
 // list managed files
 const managed = await actionList({ entries, config: null, cwd });
@@ -543,7 +530,7 @@ Set `postExtractCmd` at the top level of your config to run a command after a su
 
 ### defaultPresets
 
-Set `defaultPresets` at the top level of your config to make `extract`, `check`, and `purge` default to the same preset filter you would otherwise pass through `--presets`.
+Set `defaultPresets` at the top level of your config to make `extract` and `check` default to the same preset filter you would otherwise pass through `--presets`.
 
 ```json
 {

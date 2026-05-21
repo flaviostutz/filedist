@@ -150,7 +150,6 @@ Then run any command without `--packages`:
 npx filedist           # same as 'npx filedist install'
 npx filedist install   # reads config, extracts all entries or only defaultPresets when defined
 npx filedist check     # checks the same effective set selection
-npx filedist purge     # purges the same effective set selection
 ```
 
 Config is resolved using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig). Sources searched in order from the current directory:
@@ -167,7 +166,7 @@ Config is resolved using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfi
 When `.filedistrc.local.yml` is present in the current directory it takes full priority over all other config sources. This is useful when you are developing a package that already ships its own filedist config (e.g. in `package.json`) but you need to run extra extractions locally — for example to pull other packages into your workspace — without those entries being part of the published package config.
 
 All runner flags (`--dry-run`, `--silent`, `--verbose`, `--gitignore=false`, `--managed=false`, `--presets`, `--output`) work as usual.
-When `filedist.defaultPresets` is defined, `extract`, `check`, and `purge` behave as if `--presets <tags>` had been passed automatically. Passing `--presets` explicitly overrides that configured default for the current invocation.
+When `filedist.defaultPresets` is defined, `extract` and `check` behave as if `--presets <tags>` had been passed automatically. Passing `--presets` explicitly overrides that configured default for the current invocation.
 Use `--all` to ignore `defaultPresets` for one run and process every configured entry.
 
 Config-file mode can mix npm packages and git repositories in the same `sets` array. Use the `git:` prefix for git entries.
@@ -323,7 +322,7 @@ Top-level config fields:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract`, `check`, and `purge` behave as if `--presets <tags>` had been passed when the flag is omitted. |
+| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted. |
 | `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `extract`. The first array item is the executable and the remaining items are its arguments. Full extract argv is appended. |
 
 #### SymlinkConfig
@@ -442,20 +441,7 @@ another-pkg@1.0.0
   data/other-file.txt
 ```
 
-### 5. Purge managed files
-
-Remove all files previously extracted by filedist without touching any other files in the output directory. `purge` reads exclusively from `.filedist.lock` — it does **not** read your `package.json` / `.filedistrc` configuration and does **not** require `--packages`. The lockfile must exist.
-
-```sh
-npx filedist purge
-
-# preview what would be deleted without removing anything
-npx filedist purge --dry-run
-```
-
-After a purge, the corresponding entries are removed from the `.filedist` marker file and any empty directories are cleaned up. `.gitignore` sections written by `install` are also removed.
-
-### 6. Remove a package set
+### 5. Remove a package set
 
 Remove one or more set entries from your config file and delete their managed files from disk. `remove` reads your `.filedistrc` / `package.json` config — **not** `.filedist.lock`. It deletes the matching entries from the config file, then runs a full install with the remaining entries so the lockfile is updated and orphaned files are deleted. This is equivalent to manually deleting the sets from your config and running `filedist install`.
 
@@ -478,7 +464,7 @@ After the config is updated, `remove` calls `install` internally (without `--fro
 - Files that were managed by the removed package are deleted from disk.
 - Files managed by other packages are left untouched.
 
-### 7. Update to latest versions
+### 6. Update to latest versions
 
 Bumps all packages to their latest available versions, updates `.filedist.lock`, and re-extracts the files.
 
@@ -493,7 +479,7 @@ npx filedist update --dry-run
 
 ## Hierarchical package resolution
 
-`extract`, `check`, and `purge` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
+`extract` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -546,7 +532,7 @@ Set `selector.presets` on an entry to control which sets inside the target packa
 }
 ```
 
-The same filtering is applied during `check` and `purge` so they stay in sync with what `extract` originally wrote.
+The same filtering is applied during `check` so they stay in sync with what `extract` originally wrote.
 
 ### Circular dependency detection
 
@@ -556,14 +542,13 @@ If a package chain references itself (directly or transitively), the command sto
 
 ```
 Usage:
-  npx filedist [init|install|check|list|purge|remove|update] [options]
+  npx filedist [init|install|check|list|remove|update] [options]
 
 Commands:
   init      Set up publishing configuration in a package
   install   Extract files from a published package into a local directory (alias: extract)
   check     Verify local files are in sync with the lockfile (reads .filedist.lock)
   list      List all files managed by filedist in an output directory
-  purge     Remove all managed files recorded in the lockfile (reads .filedist.lock)
   remove    Remove a package set from config and delete its managed files (reads .filedistrc)
   update    Bump packages to latest versions, update lockfile, and re-extract
 
@@ -615,12 +600,6 @@ Check options:
   --local-only             Skip package install; verify only file checksums from .filedist markers
   --verbose, -v            Print detailed progress information
 
-Purge options:
-  (no extra options — reads exclusively from .filedist.lock)
-  --dry-run                Simulate purge without removing any files
-  --silent                 Suppress per-file output
-  --verbose, -v            Print detailed progress information
-
 Update options:
   --dry-run                Preview changes without writing any files
   --verbose, -v            Print detailed progress information
@@ -643,7 +622,7 @@ List options:
 `filedist` also exports a programmatic API:
 
 ```typescript
-import { actionInstall, actionCheck, actionList, actionPurge, actionRemove, actionUpdate } from 'filedist';
+import { actionInstall, actionCheck, actionList, actionRemove, actionUpdate } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
 
 const entries: FiledistExtractEntry[] = [
@@ -682,9 +661,6 @@ if (hasDrift) {
   console.log('Modified:', summary.modified);
   console.log('Extra:', summary.extra);
 }
-
-// remove all managed files recorded in lockfile
-await actionPurge({ entries: [], cwd, frozenLockfile: true });
 
 // remove a specific package set from config and delete its managed files
 const removeResult = await actionRemove({ cwd, packageSpec: 'my-shared-assets' });
@@ -745,7 +721,7 @@ Each `install` run writes a `.filedist.lock` file in the working directory that 
 
 This file makes installs **reproducible** — even if a newer version of a package is published between runs, repeating `install` will fetch exactly the versions that were used the first time.
 
-`check` and `purge` read **exclusively from `.filedist.lock`** (using the `sets` stored there) and do not read your `package.json` / `.filedistrc` configuration. This ensures they always operate on the same entry definitions that were used during install, regardless of any local config changes.
+`check` reads **exclusively from `.filedist.lock`** (using the `sets` stored there) and does not read your `package.json` / `.filedistrc` configuration. This ensures it always operates on the same entry definitions that were used during install, regardless of any local config changes.
 
 When `--frozen-lockfile` is passed to `install`, it also validates that the current managed files match the list stored in the lockfile, failing if they differ.
 
@@ -794,7 +770,7 @@ Multiple packages can coexist in the same output directory; each owns its own fi
 | Folder / file | Purpose |
 |---|---|
 | `src/cli/` | CLI entry-points: argument parsing, help text, config loading, per-command handlers |
-| `src/package/` | Package-level orchestration: config resolution, fileset iteration, purge and init coordination |
+| `src/package/` | Package-level orchestration: config resolution, fileset iteration, and init coordination |
 | `src/fileset/` | File-level extraction, diff, check, and sync logic |
 | `src/types.ts` | Shared TypeScript types |
 | `src/utils.ts` | Low-level utilities: package install, glob/hash helpers, package manager detection |
