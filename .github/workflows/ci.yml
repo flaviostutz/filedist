@@ -38,10 +38,11 @@ jobs:
         working-directory: examples/mypackage
       - run: |
           Copy-Item -Force package.json.orig package.json
+          Copy-Item -Force .filedist.yml.orig .filedist.yml
           pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
           pnpm add mypackage@file:../mypackage/dist/mypackage-1.0.0.tgz
           pnpm install --no-frozen-lockfile
           pnpm exec filedist install
           node ../../.github/scripts/check-cli-config-symlinks.cjs
           pnpm exec filedist check
-        working-directory: examples/cli-config-simple
+        working-directory: examples/cli-config

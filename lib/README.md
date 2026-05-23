@@ -5,7 +5,7 @@ Publish folders as npm packages or git repositories and extract them in any work
 ## How it works
 
 - **Publisher**: a project that has folders to share. Running `init` prepares its `package.json` so those folders are included when the package is published.
-- **Consumer**: any project that installs that package and runs `extract` to download the files locally. A `.filedist` marker file is written alongside the managed files to track ownership and enable safe updates.
+- **Consumer**: any project that installs that package and runs `install` to download the files locally. A `.filedist` marker file is written alongside the managed files to track ownership and enable safe updates.
 
 ## Extraction patterns
 
@@ -16,21 +16,21 @@ There are three ways to extract data with `filedist`. Choose the one that fits y
 Use `npx filedist install` directly from the command line whenever you need to pull files from a package without any prior setup.
 
 ```sh
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets@^2.0.0 --output ./data
 
 # or use a git repository as the source
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
 
 #### Auto-save to `.filedist.yml`
 
-Whenever `--packages` is used, filedist automatically creates or updates a `.filedist.yml` file in the current directory with the packages and selectors from that run. This means subsequent updates can be done with a single command — no flags needed:
+Whenever a package argument is supplied, filedist automatically creates or updates a `.filedist.yml` file in the current directory with the package and selectors from that run. This means subsequent updates can be done with a single command — no flags needed:
 
 ```sh
 # First run: extract and save to .filedist.yml automatically
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets@^2.0.0 --output ./data
 
 # .filedist.yml is now created:
 # sets:
@@ -38,18 +38,18 @@ npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
 #     output:
 #       path: ./data
 
-# Future bumps: just run extract (reads .filedist.yml)
+# Future bumps: just run install (reads .filedist.yml)
 npx filedist install
 
 # Or bump to a newer version
-npx filedist install --packages my-shared-assets@^3.0.0 --output ./data
+npx filedist install my-shared-assets@^3.0.0 --output ./data
 # .filedist.yml is updated in place (same entry, new version)
 ```
 
 If the entry already exists in `.filedist.yml` with identical content, the file is left unchanged. Use `--no-save` to run a one-off extraction without reading or updating `.filedist.yml`:
 
 ```sh
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./tmp --no-save
+npx filedist install my-shared-assets@^2.0.0 --output ./tmp --no-save
 ```
 
 ### Pattern 2 — Data packages with embedded configuration
@@ -96,7 +96,7 @@ No knowledge of the upstream packages or transformation rules is required.
 
 ### Pattern 3 — Config file mode
 
-Add a `.filedist.yml` file to your project and run `filedist install` without `--packages`. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
+Add a `.filedist.yml` file to your project and run `filedist install` without a package argument. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
 
 **Consumer** — create a `.filedist.yml` in the project root:
 
@@ -121,7 +121,7 @@ sets:
 
 For a local git repository, use the `file://` form with an absolute path, for example `git:file:///absolute/path/to/local-repo@v2.0.0`. On Windows use a drive letter: `git:file:///C:/work/local-repo@v2.0.0`.
 
-Then run any command without `--packages`:
+Then run any command without a package argument:
 
 ```sh
 npx filedist           # same as 'npx filedist install'
@@ -132,7 +132,7 @@ npx filedist check     # checks the same effective set selection
 filedist reads only `.filedist.yml` from the current working directory. No parent-directory traversal is performed.
 
 All runner flags (`--dry-run`, `--silent`, `--verbose`, `--gitignore=false`, `--managed=false`, `--presets`, `--output`) work as usual.
-When `filedist.defaultPresets` is defined, `extract` and `check` behave as if `--presets <tags>` had been passed automatically. Passing `--presets` explicitly overrides that configured default for the current invocation.
+When `filedist.defaultPresets` is defined, `install` and `check` behave as if `--presets <tags>` had been passed automatically. Passing `--presets` explicitly overrides that configured default for the current invocation.
 Use `--all` to ignore `defaultPresets` for one run and process every configured entry.
 
 Config-file mode can mix npm packages and git repositories in the same `sets` array. Use the `git:` prefix for git entries.
@@ -151,11 +151,9 @@ In the project whose folders you want to share:
 # share specific folders by glob pattern (required)
 pnpm dlx filedist init --files "docs/**,data/**,configs/**"
 
-# also bundle an additional package so consumers get data from both sources
-pnpm dlx filedist init --files "docs/**" --packages shared-configs@^1.0.0
-
-# share multiple upstream sources, including git
-pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,git:github.com/flaviostutz/xdrs-core@1.3.0"
+# to also bundle upstream packages, add them manually to .filedist-package.yml after init
+pnpm dlx filedist init --files "docs/**"
+# then edit .filedist-package.yml and add entries for shared-configs@^1.0.0, git sources, etc.
 
 ```
 
@@ -169,42 +167,41 @@ npm publish
 
 ```sh
 # npm package examples
-npx filedist install --packages my-shared-assets --output ./data
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
-npx filedist install --packages "my-shared-assets@^2.0.0,another-pkg@1.x" --output ./data
-npx filedist install --packages my-shared-assets --files "**/*.md" --output ./docs
-npx filedist install --packages my-shared-assets --content-regex "env: production" --output ./configs
-npx filedist install --packages my-shared-assets --output ./data --force
-npx filedist install --packages my-shared-assets --output ./data --gitignore=false
-npx filedist install --packages my-shared-assets --output ./data --managed=false
-npx filedist install --packages my-shared-assets --output ./data --dry-run
-npx filedist install --packages my-shared-assets@latest --output ./data --upgrade
+npx filedist install my-shared-assets --output ./data
+npx filedist install my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets --files "**/*.md" --output ./docs
+npx filedist install my-shared-assets --content-regex "env: production" --output ./configs
+npx filedist install my-shared-assets --output ./data --force
+npx filedist install my-shared-assets --output ./data --gitignore=false
+npx filedist install my-shared-assets --output ./data --managed=false
+npx filedist install my-shared-assets --output ./data --dry-run
+npx filedist install my-shared-assets@latest --output ./data --upgrade
 
 # git source examples
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs
-npx filedist install --packages "https://github.com/org/repo-a@v1.0.0,file:///tmp/repo-b@main" --output ./git-data
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@main --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
+npx filedist install git:github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade
+# For multiple packages at once, use a config file (.filedistrc) and run: npx filedist install
 ```
 
-`extract` logs every file change as it happens:
+`install` logs every file change as it happens:
 
 ```
-A	data/users-dataset/user1.json
-M	data/configs/app.config.json
-D	data/old-file.json
+  + data/users-dataset/user1.json (M,I)
+  ~ data/configs/app.config.json (M,I)
+  - data/old-file.json
 ```
 
 If the published package includes its own bin script (normally when it's prepared using "init") you can also call it directly so it extracts data that is inside the package itself:
 
 ```sh
-npx my-shared-assets extract --output ./data
+npx my-shared-assets install --output ./data
 npx my-shared-assets check  --output ./data
 ```
 
@@ -292,8 +289,8 @@ Top-level config fields:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted. |
-| `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `extract`. The first array item is the executable and the remaining items are its arguments. Full extract argv is appended. |
+| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `install` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted. |
+| `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `install`. The first array item is the executable and the remaining items are its arguments. Full install argv is appended. |
 
 #### SymlinkConfig
 

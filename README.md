@@ -57,7 +57,7 @@ Package specs support optional source prefixes. Use `git:` for git repositories 
 ## How it works
 
 - **Publisher**: a project, npm package, or plain git repository whose folders you want to share. Running `init` prepares its `package.json` so those folders are included when published.
-- **Consumer**: any project that installs that package and runs `extract` to pull the files locally. A `.filedist` marker file tracks ownership and enables safe updates.
+- **Consumer**: any project that installs that package and runs `install` to pull the files locally. A `.filedist` marker file tracks ownership and enables safe updates.
 
 Publishers can also carry their own `filedist` config in `package.json` or `.filedistrc`, including `sets` entries. That works the same whether the publisher is consumed from npm or directly from git.
 
@@ -85,7 +85,7 @@ npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs 
 
 ## Scenario 2 — Config file in your project
 
-Declare sources in `.filedistrc` (or `package.json`) and run `extract` without `--packages`:
+Declare sources in `.filedistrc` (or `package.json`) and run `install` without a package argument:
 
 ```json
 {
@@ -123,7 +123,7 @@ npx filedist check     # verifies files are in sync using .filedist.lock (no con
 npx filedist update    # bumps packages to latest, updates lockfile, and re-extracts
 ```
 
-After `extract`, the output directory will contain the selected files alongside a `.filedist` marker file that tracks ownership and enables safe updates:
+After `install`, the output directory will contain the selected files alongside a `.filedist` marker file that tracks ownership and enables safe updates:
 
 ```
 ./data/
@@ -135,7 +135,7 @@ After `extract`, the output directory will contain the selected files alongside 
 
 Config is resolved looking at files: `package.json` (`"filedist"` key), `.filedistrc`, `.filedistrc.json`, `.filedistrc.yaml`, or `filedist.config.js`. Pass `--config <file>` to point to an explicit config file and skip auto-discovery.
 
-When `defaultPresets` is defined at the root of the config, `extract` and `check` behave the same as if `--presets <tags>` had been passed. An explicit `--presets` flag overrides the configured default for that invocation.
+When `defaultPresets` is defined at the root of the config, `install` and `check` behave the same as if `--presets <tags>` had been passed. An explicit `--presets` flag overrides the configured default for that invocation.
 Use `--all` to ignore `defaultPresets` for one command and process every configured entry.
 
 The same config file can mix npm packages and git repositories. Use the `git:` prefix for git entries. A git repository source can also provide its own `.filedistrc` or `package.json#filedist` with `sets`, and those nested sets participate in the same hierarchical resolution.
@@ -182,8 +182,8 @@ shared-assets-repo/
 Commit and tag that repository, then consume it like any other source:
 
 ```sh
-npx filedist install --packages git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets
-npx filedist install --packages git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets --presets runtime
+npx filedist install git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets
+npx filedist install git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets --presets runtime
 ```
 
 In this setup, filedist clones the repository, reads the root `.filedistrc`, extracts the repo's own files from the self entries that omit `package`, and then follows any external `sets` entries recursively.
@@ -286,43 +286,45 @@ npx my-org-configs extract --output ./local-data --presets prod
 
 ---
 
-## All extract options
+## All install options
 
 ```sh
-npx filedist install --packages my-pkg@^2.0.0 --output ./data   # specific version
-npx filedist install --packages "pkg-a,pkg-b@1.x" --output ./data  # multiple packages
-npx filedist install --packages my-pkg --output ./data --force   # overwrite existing files
-npx filedist install --packages my-pkg --output ./data --managed=false  # skip tracking
-npx filedist install --packages my-pkg@latest --output ./data --upgrade  # force reinstall
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
-npx filedist install --packages "git:github.com/org/repo-a@v1.0.0,git:file:///tmp/repo-b@main" --output ./git-data  # multiple git sources
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force   # overwrite existing files
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false  # skip tracking
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade  # force a fresh clone/check-out
-npx filedist install --packages my-pkg --output ./data --gitignore=false  # skip .gitignore
-npx filedist install --packages my-pkg --output ./data --dry-run  # preview only
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run  # preview only
-npx filedist install --packages my-pkg --output ./data --nosync  # keep stale managed files on disk
-npx filedist install --packages my-pkg --output ./data --frozen-lockfile  # use .filedist.lock exclusively
+npx filedist install my-pkg@^2.0.0 --output ./data              # specific version
+npx filedist install my-pkg --output ./data --force              # overwrite existing files
+npx filedist install my-pkg --output ./data --managed=false      # skip tracking
+npx filedist install my-pkg@latest --output ./data --upgrade     # force reinstall
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --force        # overwrite existing files
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --managed=false # skip tracking
+npx filedist install git:github.com/flaviostutz/xdrs-core@main --output ./xdrs --upgrade        # force a fresh clone/check-out
+npx filedist install my-pkg --output ./data --gitignore=false    # skip .gitignore
+npx filedist install my-pkg --output ./data --dry-run            # preview only
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --gitignore=false  # skip .gitignore
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run          # preview only
+npx filedist install my-pkg --output ./data --nosync             # keep stale managed files on disk
+npx filedist install my-pkg --output ./data --frozen-lockfile    # use .filedist.lock exclusively
+# For multiple packages, use a config file (.filedistrc) and run: npx filedist install
 ```
 
-`extract` logs every file change:
+`install` logs every file change:
 ```
-A  data/users-dataset/user1.json
-M  data/configs/app.config.json
-D  data/old-file.json
+  + data/users-dataset/user1.json (M,I)
+  ~ data/configs/app.config.json (M,I)
+  - data/old-file.json
 ```
 
 ---
 
 ## Check, list, and presets
 
-`check` and `extract` are all **hierarchy-aware**: when a target package carries its own `filedist.sets` block, the command automatically recurses into those transitive dependencies. See [Hierarchical package resolution](#hierarchical-package-resolution) for the full details.
+`check` and `install` are all **hierarchy-aware**: when a target package carries its own `filedist.sets` block, the command automatically recurses into those transitive dependencies. See [Hierarchical package resolution](#hierarchical-package-resolution) for the full details.
 
 ```sh
-# verify files are in sync (exit 0 = ok, exit 1 = drift or error)
-npx filedist check --packages my-shared-assets --output ./data
+# verify files are in sync against .filedist.lock (exit 0 = ok, exit 1 = drift or error)
+npx filedist check
+
+# use --local-only to skip package downloads (offline/CI)
+npx filedist check --local-only
 
 # list all managed files grouped by package
 npx filedist list --output ./data
@@ -331,7 +333,7 @@ npx filedist list --output ./data
 npx filedist presets
 ```
 
-In config-file mode you can define a root-level `defaultPresets` array so `extract` and `check` automatically run the same filtered subset without requiring `--presets` every time.
+In config-file mode you can define a root-level `defaultPresets` array so `install` and `check` automatically run the same filtered subset without requiring `--presets` every time.
 Use `--all` when you want to bypass that default and process the full configured set.
 
 ---
@@ -363,8 +365,8 @@ Top-level config fields:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `extract` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted |
-| `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `extract`. The first array item is the executable and the remaining items are its arguments. Full extract argv is appended |
+| `defaultPresets` | `string[]` | none | CLI-only fallback for config-file mode. `install` and `check` behave as if `--presets <tags>` had been passed when the flag is omitted |
+| `postExtractCmd` | `string[]` | none | Command argv run after a successful non-dry-run `install`. The first array item is the executable and the remaining items are its arguments. Full install argv is appended |
 
 ### SymlinkConfig
 
@@ -389,7 +391,7 @@ Applies regex replacements to workspace files after extraction.
 
 ## Hierarchical package resolution
 
-`extract` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
+`install` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -401,7 +403,7 @@ consumer project
             └─ raw-assets     (leaf package)
 ```
 
-Running `npx filedist install --packages my-org-configs --output ./data` extracts files from every package in the chain, not just `my-org-configs` itself. Running `check` with the same arguments mirrors what `extract` originally covered.
+Running `npx filedist install my-org-configs --output ./data` extracts files from every package in the chain, not just `my-org-configs` itself. Running `check` (reads from `.filedist.lock`) verifies that exact set of files.
 
 For git sources, filedist clones each repository into `.filedist-tmp` under the working directory, adds that path to `.gitignore` if needed, reads nested `filedist` config from the cloned repository, and removes `.filedist-tmp` after the command finishes.
 
@@ -409,9 +411,9 @@ For git sources, filedist clones each repository into `.filedist-tmp` under the 
 
 Each level’s `output.path` is resolved relative to the caller’s own `output.path`. A package at depth 1 with `output.path: "./configs"` that has a transitive dependency with `output.path: "./shared"` will land at `./configs/shared`.
 
-### Caller overrides (extract only)
+### Caller overrides (install only)
 
-When `extract` recurses, the calling entry’s `output` flags are inherited by every transitive dependency, with caller-defined values always winning:
+When `install` recurses, the calling entry's `output` flags are inherited by every transitive dependency, with caller-defined values always winning:
 
 | Caller sets | Effect on transitive entries |
 |---|---|
@@ -426,7 +428,7 @@ Settings that are undefined on the caller are left as-is so the transitive packa
 
 ### Filtering transitive sets with `selector.presets`
 
-Set `selector.presets` on an entry to control which sets inside the target package are recursed into (applies to `extract` and `check`). Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
+Set `selector.presets` on an entry to control which sets inside the target package are recursed into (applies to `install` and `check`). Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
 
 ```json
 {
@@ -451,14 +453,18 @@ If a package chain references itself, the command stops immediately with an erro
 ## CLI reference
 
 ```
-Usage:
-  npx filedist [init|extract|check|list|presets] [options]
+Usage: filedist [command] [options]
 
-Init:     --files <patterns>    Glob patterns of files to publish
-          --packages <specs>    Additional upstream packages to bundle
-          --output, -o <dir>    Directory to scaffold into (default: cwd)
+Commands:
+  install (default)  Install files from npm packages; writes .filedist.lock
+  update             Bump packages to latest versions; re-installs and updates lock file
+  remove             Remove a package from config and delete its managed files
+  check              Verify installed files match the pinned state in .filedist.lock
+  list               List all managed files
+  init               Scaffold a publishable data package
+  presets            List all preset tags defined in configuration
 
-Extract:  --packages <specs>    Package specs (omit to read from config file)
+Install:  [<package>]           Package spec to add/install (positional; omit to use config file)
           --output, -o <dir>    Output directory (default: cwd)
           --files <patterns>    Filter files by glob
           --content-regex <rx>  Filter files by content
@@ -468,17 +474,28 @@ Extract:  --packages <specs>    Package specs (omit to read from config file)
           --managed [bool]      Write without tracking when set to false
           --dry-run             Preview without writing
           --upgrade             Reinstall even if present
+          --nosync [bool]       Keep stale managed files on disk when set to true
+          --frozen-lockfile     Use .filedist.lock exclusively; fail if missing
           --presets <tags>      Only process entries matching these preset tags
           --all                 Ignore config defaultPresets and process all configured entries
+          --no-save             Skip saving positional package to .filedist.yml
           --config <file>       Explicit config file path (overrides auto-discovery)
           --verbose, -v         Detailed progress output
           --silent              Final result line only
 
-Check:    --packages <specs>    Same format as extract
-          --output, -o <dir>    Directory to check
-          --presets <tags>      Only check entries matching these preset tags
-          --all                 Ignore config defaultPresets and check all configured entries
+Update:   --dry-run             Preview without writing
+          --verbose, -v         Detailed progress output
+          --silent              Final result line only
+
+Remove:   <package>             Package name to remove (version/ref is ignored during matching)
+          --output, -o <dir>    Restrict removal to entries matching this output path
+          --dry-run             Preview without writing
           --config <file>       Explicit config file path (overrides auto-discovery)
+          --verbose, -v         Detailed progress output
+          --silent              Final result line only
+
+Check:    --local-only          Verify only against .filedist markers; skip package downloads
+          --verbose, -v         Detailed comparison output
 
 List:     --output, -o <dir>    Directory to inspect
           --config <file>       Explicit config file path (overrides auto-discovery)
@@ -486,6 +503,9 @@ List:     --output, -o <dir>    Directory to inspect
 Presets:  --config <file>       Explicit config file path (overrides auto-discovery)
                                 Lists all preset tags defined in configuration,
                                 sorted alphabetically, one per line
+
+Init:     --files <patterns>    Glob patterns of files to publish
+          --output, -o <dir>    Directory to scaffold into (default: cwd)
 ```
 
 ---
@@ -495,6 +515,7 @@ Presets:  --config <file>       Explicit config file path (overrides auto-discov
 ```typescript
 import { actionInstall, actionCheck, actionList, actionRemove } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
+import path from 'node:path';
 
 const entries: FiledistExtractEntry[] = [
   { package: 'my-shared-assets@^2.0.0', output: { path: './data' } },
@@ -514,23 +535,29 @@ await actionInstall({
   entries,
   cwd,
   onProgress: (event: ProgressEvent) => {
-    if (event.type === 'file-added')    console.log('A', event.file);
-    if (event.type === 'file-modified') console.log('M', event.file);
-    if (event.type === 'file-deleted')  console.log('D', event.file);
+    if (event.type === 'file-added')    console.log('+', event.file);
+    if (event.type === 'file-modified') console.log('~', event.file);
+    if (event.type === 'file-deleted')  console.log('-', event.file);
   },
 });
 
-// check sync status
-const summary = await actionCheck({ entries, cwd });
-const hasDrift = summary.missing.length > 0 || summary.modified.length > 0 || summary.extra.length > 0;
+// check sync status (reads from .filedist.lock)
+const lockfilePath = '.filedist.lock';
+const summary = await actionCheck({ entries: [], cwd, lockfilePath, frozenLockfile: true });
+const hasDrift = summary.missing.length > 0 || summary.conflict.length > 0 || summary.extra.length > 0;
 if (hasDrift) {
   console.log('Missing:', summary.missing);
-  console.log('Modified:', summary.modified);
+  console.log('Conflict:', summary.conflict);
   console.log('Extra:', summary.extra);
 }
 
 // remove a package set from config and delete its managed files
-await actionRemove({ cwd, packageSpec: 'my-shared-assets' });
+await actionRemove({
+  cwd,
+  packageSpec: 'my-shared-assets',
+  configFilePath: path.join(cwd, '.filedist.yml'),
+  lockfilePath: path.join(cwd, '.filedist.lock'),
+});
 
 // list managed files
 const managed = await actionList({ entries, config: null, cwd });
@@ -551,7 +578,7 @@ type ProgressEvent =
 
 ### postExtractCmd
 
-Set `postExtractCmd` at the top level of your config to run a command after a successful (non-dry-run) `extract`. Use an array so the executable and its arguments are passed directly without a shell. The full argv of the extract call is appended automatically.
+Set `postExtractCmd` at the top level of your config to run a command after a successful (non-dry-run) `install`. Use an array so the executable and its arguments are passed directly without a shell. The full argv of the install call is appended automatically.
 
 `postExtractCmd` must be an argv array. Shell strings such as `"node scripts/post-extract.js"` are rejected with a configuration error because they are a common source of mistakes.
 
@@ -566,7 +593,7 @@ Set `postExtractCmd` at the top level of your config to run a command after a su
 
 ### defaultPresets
 
-Set `defaultPresets` at the top level of your config to make `extract` and `check` default to the same preset filter you would otherwise pass through `--presets`.
+Set `defaultPresets` at the top level of your config to make `install` and `check` default to the same preset filter you would otherwise pass through `--presets`.
 
 ```json
 {

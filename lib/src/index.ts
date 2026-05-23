@@ -20,6 +20,9 @@ export type { CheckOptions, CheckSummary } from './package/action-check';
 export { actionList } from './package/action-list';
 export type { ListOptions } from './package/action-list';
 
+export { actionRemove } from './package/action-remove';
+export type { RemoveOptions, RemoveSummary } from './package/action-remove';
+
 export { resolveFiles } from './package/resolve-files';
 export type { ResolveOptions } from './package/resolve-files';
 
