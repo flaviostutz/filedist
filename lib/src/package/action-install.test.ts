@@ -1,5 +1,3 @@
-/* eslint-disable no-undefined */
-/* eslint-disable no-process-env */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -1721,64 +1719,6 @@ describe('actionInstall — lock file', () => {
     });
     // Lock file should be unchanged
     expect(fs.readFileSync(lockPath, 'utf8')).toBe(originalContent);
-  }, 60_000);
-
-  it('auto-enables frozenLockfile when process.env.CI is set', async () => {
-    const PKG = 'lock-ci-pkg';
-    await installMockPackage(PKG, '3.0.0', { 'data/file.txt': 'hello' }, tmpDir);
-    const outputDir = path.join(tmpDir, 'output');
-
-    // First install without CI to create the lock file
-    await actionInstall({
-      entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
-      cwd: tmpDir,
-    });
-
-    const lockPath = path.join(tmpDir, '.filedist.lock');
-    expect(fs.existsSync(lockPath)).toBe(true);
-    const originalContent = fs.readFileSync(lockPath, 'utf8');
-
-    // Second install with CI=true — should behave as frozen (lock file unchanged)
-    const prevCI = process.env.CI;
-    try {
-      process.env.CI = 'true';
-      await actionInstall({
-        entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
-        cwd: tmpDir,
-        // frozenLockfile not set — should be derived from CI env
-      });
-    } finally {
-      if (prevCI === undefined) {
-        delete process.env.CI;
-      } else {
-        process.env.CI = prevCI;
-      }
-    }
-
-    expect(fs.readFileSync(lockPath, 'utf8')).toBe(originalContent);
-  }, 60_000);
-
-  it('throws when CI is set but .filedist.lock is missing', async () => {
-    const PKG = 'lock-ci-missing-pkg';
-    await installMockPackage(PKG, '1.0.0', { 'data/file.txt': 'hello' }, tmpDir);
-    const outputDir = path.join(tmpDir, 'output');
-
-    const prevCI = process.env.CI;
-    try {
-      process.env.CI = 'true';
-      await expect(
-        actionInstall({
-          entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
-          cwd: tmpDir,
-        }),
-      ).rejects.toThrow('.filedist.lock');
-    } finally {
-      if (prevCI === undefined) {
-        delete process.env.CI;
-      } else {
-        process.env.CI = prevCI;
-      }
-    }
   }, 60_000);
 
   it('records transitive sub-package dependencies in the lock file', async () => {

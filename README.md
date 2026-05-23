@@ -570,9 +570,8 @@ npx filedist install --frozen-lockfile
 
 - Fails immediately if `.filedist.lock` does not exist.
 - Does **not** update the lock file.
-- Automatically enabled when the `CI` environment variable is set (GitHub Actions, GitLab CI, CircleCI, etc.).
 
-Commit `.filedist.lock` alongside your config file so all team members and CI jobs install identical versions.
+Commit `.filedist.lock` alongside your config file so all team members install identical versions.
 
 ---
 

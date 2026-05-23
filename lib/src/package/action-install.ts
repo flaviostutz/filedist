@@ -1,4 +1,3 @@
-/* eslint-disable no-process-env */
 /* eslint-disable no-console */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,8 +45,6 @@ export type InstallOptions = BasicPackageOptions & {
    * When true, read .filedist.lock and use it to pin package versions.
    * Fails if no lock file is found. Does not update the lock file.
    * When false (default), resolve normally and write/update .filedist.lock.
-   * When undefined, the value is derived from the CI environment variable:
-   * if process.env.CI is set (and not 'false'), behaves as true.
    */
   frozenLockfile?: boolean;
 };
@@ -68,11 +65,11 @@ export type InstallResult = {
  *  3. Apply disk changes: delete extra, add missing, resolve conflicts.
  *
  * Lock file behaviour:
- *  - Without frozenLockfile (and CI env not set): resolve with latest package versions,
+ *  - Without frozenLockfile: resolve with latest package versions,
  *    then write/update .filedist.lock (packages + sets + managed files).
- *  - With frozenLockfile (or when process.env.CI is set): read .filedist.lock (error if
- *    missing), use pinned versions and set definitions from lockfile, validate that the
- *    resolved managed-files list matches the lockfile — fail on any difference.
+ *  - With frozenLockfile: read .filedist.lock (error if missing), use pinned versions
+ *    and set definitions from lockfile, validate that the resolved managed-files list
+ *    matches the lockfile — fail on any difference.
  */
 function mergePackagesFromLockfile(
   cwd: string,
@@ -93,8 +90,7 @@ function mergePackagesFromLockfile(
 // eslint-disable-next-line complexity
 export async function actionInstall(options: InstallOptions): Promise<InstallResult> {
   const { cwd, verbose = false, onProgress, dryRun, entries: configEntries } = options;
-  // Auto-enable frozen lockfile in CI environments
-  const frozenLockfile = options.frozenLockfile ?? (!!process.env.CI && process.env.CI !== 'false');
+  const frozenLockfile = options.frozenLockfile ?? false;
   const hasForce = configEntries.some((e) => e.output?.force === true);
   const sourceRuntime = createSourceRuntime(cwd, verbose);
 

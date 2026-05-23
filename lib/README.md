@@ -592,8 +592,7 @@ Extract options:
                            .filedistrc.yml so future `filedist install` calls (without
                            --packages) reuse the same config automatically.
   --frozen-lockfile        Use .filedist.lock exclusively; fail if the lock file does not
-                           exist. Does not update the lock file. Automatically enabled when
-                           the CI environment variable is set.
+                           exist. Does not update the lock file.
 
 Check options:
   (no extra options — reads exclusively from .filedist.lock)
@@ -738,12 +737,6 @@ Behaviour:
 - Reads `.filedist.lock` and pins every package to its recorded version.
 - Fails immediately if `.filedist.lock` does not exist.
 - Does **not** write or update `.filedist.lock`.
-
-### CI auto-detection
-
-`--frozen-lockfile` is enabled automatically when the `CI` environment variable is set (as it is on GitHub Actions, GitLab CI, CircleCI, and most other CI platforms). This prevents accidental version bumps on CI and makes pipelines reproducible with no extra flags required.
-
-To opt out on CI, pass `--frozen-lockfile=false` explicitly.
 
 ### Commit `.filedist.lock`
 
