@@ -39,8 +39,7 @@ export async function runRemove(
   const parsed = parseArgv(argv);
 
   // Extract positional package name — first arg that is not a flag or flag value.
-  // Fall back to the first --packages value to support binpkg shim invocations.
-  const packageSpec = extractPackageSpec(argv) ?? parsed.packages?.[0];
+  const packageSpec = extractPackageSpec(argv) ?? parsed.package;
 
   if (!packageSpec && !parsed.all) {
     console.error(

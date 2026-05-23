@@ -15,7 +15,7 @@ What it does:
 Example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 The same pattern works for prompt packs, agent kits, docs, XDRs, and evaluation data.

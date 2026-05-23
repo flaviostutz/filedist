@@ -6,10 +6,10 @@ Publish folders as npm packages or git repositories and extract them in any work
 
 ```sh
 # extract files from any npm package into a local directory
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets@^2.0.0 --output ./data
 
 # extract directly from git
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 ```typescript
@@ -52,16 +52,16 @@ Pull files directly without any setup:
 
 ```sh
 # npm package examples
-npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
-npx filedist install --packages my-shared-assets --files "**/*.md" --output ./docs
-npx filedist install --packages my-shared-assets --content-regex "env: production" --output ./configs
-npx filedist install --packages my-shared-assets --output ./data --dry-run
+npx filedist install my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets --files "**/*.md" --output ./docs
+npx filedist install my-shared-assets --content-regex "env: production" --output ./configs
+npx filedist install my-shared-assets --output ./data --dry-run
 
 # git source examples
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
-npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
+npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
 ```
 
 ---

@@ -34,9 +34,19 @@ describe('parseArgv', () => {
     );
   });
 
-  it('parses --packages as comma-split raw specs', () => {
-    const result = parseArgv(['--packages', 'my-pkg@^1.0.0,git:github.com/acme/repo.git@main']);
-    expect(result.packages).toEqual(['my-pkg@^1.0.0', 'git:github.com/acme/repo.git@main']);
+  it('parses positional package spec', () => {
+    const result = parseArgv(['my-pkg@^1.0.0', '--output', './out']);
+    expect(result.package).toBe('my-pkg@^1.0.0');
+  });
+
+  it('parses positional git package spec', () => {
+    const result = parseArgv(['git:github.com/acme/repo.git@main']);
+    expect(result.package).toBe('git:github.com/acme/repo.git@main');
+  });
+
+  it('returns undefined package when no positional arg is given', () => {
+    expect(parseArgv(['--output', './out']).package).toBeUndefined();
+    expect(parseArgv([]).package).toBeUndefined();
   });
 
   it('parses --output / -o', () => {
@@ -129,26 +139,27 @@ describe('parseArgv', () => {
 });
 
 describe('buildEntriesFromArgv', () => {
-  it('returns null when --packages not set', () => {
+  it('returns null when no positional package arg is given', () => {
     expect(buildEntriesFromArgv(parseArgv([]))).toBeNull();
+    expect(buildEntriesFromArgv(parseArgv(['--output', './out']))).toBeNull();
   });
 
-  it('builds entries from --packages', () => {
-    const parsed = parseArgv(['--packages', 'my-pkg@1.0.0', '--output', './out']);
+  it('builds one entry from positional package arg', () => {
+    const parsed = parseArgv(['my-pkg@1.0.0', '--output', './out']);
     const entries = buildEntriesFromArgv(parsed);
     expect(entries).toHaveLength(1);
     expect(entries![0].package).toBe('my-pkg@1.0.0');
     expect(entries![0].output!.path).toBe('./out');
   });
 
-  it('builds entries with a prefixed git package', () => {
-    const parsed = parseArgv(['--packages', 'git:github.com/acme/repo.git@main']);
+  it('builds entry with a prefixed git package', () => {
+    const parsed = parseArgv(['git:github.com/acme/repo.git@main']);
     const entries = buildEntriesFromArgv(parsed);
     expect(entries![0].package).toBe('git:github.com/acme/repo.git@main');
   });
 
   it('leaves output path undefined when --output is not set', () => {
-    const parsed = parseArgv(['--packages', 'my-pkg']);
+    const parsed = parseArgv(['my-pkg']);
     const entries = buildEntriesFromArgv(parsed);
     expect(entries![0].output!.path).toBeUndefined();
   });
@@ -185,31 +196,31 @@ describe('applyArgvOverrides', () => {
   };
 
   it('overrides output path when --output is set', () => {
-    const parsed = parseArgv(['--output', './new-path', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--output', './new-path']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.path).toBe('./new-path');
   });
 
   it('does not override output path when --output is not set', () => {
-    const parsed = parseArgv(['--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.path).toBe('./current');
   });
 
   it('applies --force override', () => {
-    const parsed = parseArgv(['--force', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--force']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.force).toBe(true);
   });
 
   it('applies --mutable override', () => {
-    const parsed = parseArgv(['--mutable', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--mutable']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.mutable).toBe(true);
   });
 
   it('applies --nosync override', () => {
-    const parsed = parseArgv(['--nosync', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--nosync']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.noSync).toBe(true);
   });
@@ -220,67 +231,67 @@ describe('applyArgvOverrides', () => {
       output: { path: './current', mutable: true },
       selector: {},
     };
-    const parsed = parseArgv(['--packages', 'test-pkg']); // no --mutable
+    const parsed = parseArgv(['test-pkg']); // no --mutable
     const result = applyArgvOverrides([entryWithMutable], parsed);
     expect(result[0].output!.mutable).toBe(true);
   });
 
   it('applies --gitignore=false override', () => {
-    const parsed = parseArgv(['--gitignore=false', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--gitignore=false']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.gitignore).toBe(false);
   });
 
   it('applies --gitignore=true override', () => {
-    const parsed = parseArgv(['--gitignore=true', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--gitignore=true']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.gitignore).toBe(true);
   });
 
   it('applies --managed=false override', () => {
-    const parsed = parseArgv(['--managed=false', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--managed=false']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.managed).toBe(false);
   });
 
   it('applies --managed=true override', () => {
-    const parsed = parseArgv(['--managed=true', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--managed=true']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.managed).toBe(true);
   });
 
   it('applies --dry-run override', () => {
-    const parsed = parseArgv(['--dry-run', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--dry-run']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].output!.dryRun).toBe(true);
   });
 
   it('applies --files override to selector', () => {
-    const parsed = parseArgv(['--files', 'docs/**', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--files', 'docs/**']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].selector?.files).toEqual(['docs/**']);
   });
 
   it('applies --content-regex override to selector', () => {
-    const parsed = parseArgv(['--content-regex', 'hello', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--content-regex', 'hello']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].selector?.contentRegexes).toEqual(['hello']);
   });
 
   it('applies --upgrade override to selector', () => {
-    const parsed = parseArgv(['--upgrade', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--upgrade']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].selector?.upgrade).toBe(true);
   });
 
   it('applies --silent override', () => {
-    const parsed = parseArgv(['--silent', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--silent']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].silent).toBe(true);
   });
 
   it('applies --verbose override', () => {
-    const parsed = parseArgv(['--verbose', '--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg', '--verbose']);
     const result = applyArgvOverrides([baseEntry], parsed);
     expect(result[0].verbose).toBe(true);
   });
@@ -291,7 +302,7 @@ describe('applyArgvOverrides', () => {
       output: { path: './current' },
       selector: {},
     };
-    const parsed = parseArgv(['--packages', 'test-pkg']);
+    const parsed = parseArgv(['test-pkg']);
     const result = applyArgvOverrides([entry], parsed);
     expect(result[0].package).toBe('git:github.com/acme/repo.git@main');
   });
@@ -328,13 +339,13 @@ describe('resolveEntriesFromConfigAndArgs', () => {
     expect(entries[0].package).toBe('pkg-api');
   });
 
-  it('applies config defaultPresets to ad-hoc --packages mode', () => {
+  it('applies config defaultPresets to ad-hoc positional package mode', () => {
     const config = {
       defaultPresets: ['docs'],
       sets: [],
     };
 
-    const entries = resolveEntriesFromConfigAndArgs(config, ['--packages', 'pkg-docs']);
+    const entries = resolveEntriesFromConfigAndArgs(config, ['pkg-docs']);
 
     expect(entries).toHaveLength(1);
     expect(entries[0].selector?.presets).toEqual(['docs']);
@@ -354,13 +365,13 @@ describe('resolveEntriesFromConfigAndArgs', () => {
     expect(entries).toHaveLength(2);
   });
 
-  it('does not forward selector.presets in ad-hoc --packages mode when --all is used', () => {
+  it('does not forward selector.presets in ad-hoc positional package mode when --all is used', () => {
     const config = {
       defaultPresets: ['docs'],
       sets: [],
     };
 
-    const entries = resolveEntriesFromConfigAndArgs(config, ['--packages', 'pkg-docs', '--all']);
+    const entries = resolveEntriesFromConfigAndArgs(config, ['pkg-docs', '--all']);
 
     expect(entries).toHaveLength(1);
     expect(entries[0].selector?.presets).toBeUndefined();

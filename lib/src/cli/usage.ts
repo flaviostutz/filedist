@@ -12,15 +12,21 @@ export function printUsage(command?: string): void {
   switch (cmd) {
     case 'install':
       console.log(`
-Usage: filedist [install] [options]
+Usage: filedist [install] [<package>] [options]
 
 Install files from one or more npm packages into a local output directory.
 Reads (or creates) .filedist.lock to pin exact package versions for reproducible installs.
 In config-file mode, the root-level postExtractCmd runs after a successful non-dry-run install.
 
+When <package> is supplied it is saved as a single entry in .filedistrc.yml and install runs
+for all configured entries. Omit <package> to run install using the existing config file.
+
+Arguments:
+  <package>               Package spec to add/update and install (e.g. my-pkg@^1.2.3,
+                          git:github.com/org/repo.git@main). Saved to .filedistrc.yml.
+
 Options:
-  --packages <specs>      Comma-separated package specs (e.g. my-pkg@^1.2.3, git:github.com/org/repo.git@main). Overrides config sets.
-  --output, -o <dir>      Output directory path. Required when --packages is used.
+  --output, -o <dir>      Output directory path. Required when <package> is used without a config.
   --files <globs>         Comma-separated glob patterns for file selection.
   --content-regex <re>    Comma-separated regex strings for content filtering.
   --force                 Overwrite existing unmanaged files.

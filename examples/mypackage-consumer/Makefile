@@ -1,3 +1,8 @@
+all: clean build test
+
+lint:
+	@echo "mypackage-consumer has no lint. Ignoring."
+
 install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
@@ -7,12 +12,11 @@ install:
 	pnpm install
 
 build: install
-# 	pnpm exec example-files-package
-# 	pnpm exec example-files-package extract --files "docs/**/*,conf/**/*" --output output
 
-test: clean install
+test:
 	@echo ""
 	@echo ">>>> mypackage-consumer"
+	@rm -rf output
 
 	# Test 1
 	rm -rf output

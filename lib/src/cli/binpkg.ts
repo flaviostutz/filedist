@@ -17,9 +17,41 @@ setupUncaughtExceptionHandler();
  * @param args   - CLI arguments (without node + script, i.e. process.argv.slice(2)).
  */
 export async function binpkg(binDir: string, args: string[]): Promise<void> {
-  if (args.includes('--packages')) {
+  // Detect if the user passed a positional package arg (bare word that is not a
+  // known command and not the value following a known flag-with-value).
+  const flagsWithValue = new Set([
+    '--output',
+    '-o',
+    '--files',
+    '--exclude',
+    '--content-regex',
+    '--presets',
+    '--config',
+  ]);
+  const knownCommands = new Set([
+    'install',
+    'check',
+    'list',
+    'remove',
+    'init',
+    'presets',
+    'update',
+  ]);
+  let userPositional: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('-')) {
+      if (flagsWithValue.has(args[i])) i++; // skip the value
+    } else if (i === 0 && knownCommands.has(args[i])) {
+      // first element is a known command word, not a package
+    } else {
+      userPositional = args[i];
+      break;
+    }
+  }
+  // eslint-disable-next-line no-undefined
+  if (userPositional !== undefined) {
     // eslint-disable-next-line no-console
-    console.log('Cannot use --packages when invoked from a data package bin shim');
+    console.log('Cannot pass a package argument when invoked from a data package bin shim');
     // eslint-disable-next-line unicorn/no-process-exit
     process.exit(1);
   }
@@ -43,10 +75,17 @@ export async function binpkg(binDir: string, args: string[]): Promise<void> {
     effectiveArgs.push('--presets', defaultPresets.join(','));
   }
 
-  // Inject --packages <pkgName> so cli builds a synthetic single-set entry from args.
+  // Inject pkgName as a positional arg right after the command word so cli
+  // builds a synthetic single-set entry from it.
   // No configCwd is passed, so the data package's own filedist config is not loaded.
+  //
+  // Build argv: preserve the user's command (or default to 'install'), then pkgName, then remaining flags.
+  const commandArg = knownCommands.has(effectiveArgs[0]) ? effectiveArgs[0] : 'install';
+  const remainingArgs = knownCommands.has(effectiveArgs[0])
+    ? effectiveArgs.slice(1)
+    : effectiveArgs;
   const exitCode = await cli(
-    ['node', 'filedist', ...effectiveArgs, '--packages', pkgName],
+    ['node', 'filedist', commandArg, pkgName, ...remainingArgs],
     process.cwd(),
   );
   // eslint-disable-next-line unicorn/no-process-exit

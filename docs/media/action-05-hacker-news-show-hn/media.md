@@ -15,7 +15,7 @@ Examples: prompt packs, agent instructions, XDRs, docs, evaluation datasets, and
 A simple example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Managed files are tracked with a `.filedist` marker so updates and purges stay safe.

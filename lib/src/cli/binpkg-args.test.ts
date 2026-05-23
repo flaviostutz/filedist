@@ -58,12 +58,11 @@ describe('binpkg defaultPresets forwarding', () => {
         'node',
         'filedist',
         'install',
+        'example-files-package',
         '--output',
         'output',
         '--presets',
         'basic,eslint',
-        '--packages',
-        'example-files-package',
       ],
       process.cwd(),
     );
@@ -88,12 +87,11 @@ describe('binpkg defaultPresets forwarding', () => {
         'node',
         'filedist',
         'install',
+        'example-files-package',
         '--output',
         'output',
         '--presets',
         'special',
-        '--packages',
-        'example-files-package',
       ],
       process.cwd(),
     );
@@ -114,16 +112,7 @@ describe('binpkg defaultPresets forwarding', () => {
     );
 
     expect(mockCli).toHaveBeenCalledWith(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--output',
-        'output',
-        '--all',
-        '--packages',
-        'example-files-package',
-      ],
+      ['node', 'filedist', 'install', 'example-files-package', '--output', 'output', '--all'],
       process.cwd(),
     );
   });

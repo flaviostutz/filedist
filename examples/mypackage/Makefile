@@ -1,7 +1,9 @@
 SHELL := /bin/bash
 
-%:
-	@echo "Unknown target: $@. Ignoring"
+all: clean build test
+
+lint:
+	@echo "mypackage has no lint. Ignoring."
 
 init-publisher: install
 	# package.json already contains the full filedist configuration (no init step needed)
@@ -22,10 +24,6 @@ clean:
 	@rm -rf dist
 	@rm -rf lib
 	@rm -rf bin
-	make clean -C ../mypackage-consumer
-	make clean -C ../cli-config
-	make clean -C ../git-sources-config
-	make clean -C ../split-set-config
 
 test:
 	echo "Running integration tests..."
@@ -34,15 +32,9 @@ test:
 	make init-publisher
 	make build
 
-	cd ../mypackage-consumer && make test
-	cd ../cli-config && make test
-	cd ../git-sources-config && make test
-	cd ../split-set-config && make test
-
 install:
 	# replace the dependency with the local package
 	pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
 	@# update local tar gz checksum
 	pnpm install
 
-all: build test

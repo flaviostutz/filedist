@@ -1,5 +1,12 @@
 SHELL := /bin/bash
 
+all: clean build test
+
+lint:
+	@echo "cli-config has no lint. Ignoring."
+
+build: install
+
 install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
@@ -8,9 +15,10 @@ install:
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
 	pnpm install --no-frozen-lockfile
 
-test: clean install
+test:
 	@echo ""
 	@echo ">>>> cli-config"
+	@rm -rf output
 
 	# --- Test 1: config from package.json "filedist" key ---
 	# extract without --packages: reads entries from the "filedist" key in package.json

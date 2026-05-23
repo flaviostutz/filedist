@@ -15,7 +15,7 @@ It lets you publish folders as npm packages or point directly to plain git repos
 Example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 The interesting part for me is that it works for things that are not normal code dependencies but still need versioning and reuse:

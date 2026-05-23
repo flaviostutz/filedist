@@ -7,7 +7,7 @@ I built an open source tool called `filedist` for a problem I kept seeing in AI 
 Example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Repo:

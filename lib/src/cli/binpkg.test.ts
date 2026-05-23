@@ -126,12 +126,12 @@ describe('binpkg', () => {
     expect(fs.existsSync(path.join(outputDir, 'data/file1.json'))).toBe(true);
   }, 60_000);
 
-  it('rejects --packages flag with error and exit code 1', async () => {
+  it('rejects positional package arg with error and exit code 1', async () => {
     const logSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn());
 
-    await expect(binpkg(binDir, ['--packages', 'other-pkg'])).rejects.toThrow('process.exit(1)');
+    await expect(binpkg(binDir, ['install', 'other-pkg'])).rejects.toThrow('process.exit(1)');
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot use --packages'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot pass a package argument'));
     logSpy.mockRestore();
   }, 10_000);
 });

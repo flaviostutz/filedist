@@ -57,6 +57,7 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
     action = firstArg;
     cmdArgs = args.slice(1);
   } else {
+    // Unknown bare word — will be caught below as unknown command
     action = firstArg;
     cmdArgs = args.slice(1);
   }
@@ -65,7 +66,9 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
   const effectiveConfigSearchCwd = configSearchCwd ?? effectiveCwd;
 
   const ignoreConfig = args.includes('--no-save') || args.includes('--no-save=true');
-  const packagesSpecified = args.includes('--packages');
+  // A positional package arg triggers the save-to-config flow, but only for the install command.
+  const packageSpecified =
+    action === 'install' && cmdArgs.length > 0 && !cmdArgs[0].startsWith('-');
 
   try {
     if (!KNOWN_COMMANDS.has(action)) {
@@ -73,16 +76,16 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
         `Unknown command: "${action}". Run 'filedist --help' for available commands.`,
       );
     }
-    const { config, configFilePath } = await resolveConfig(
+    const { config, configFilePath, installArgv } = await resolveConfig(
       args,
       cmdArgs,
       effectiveCwd,
       effectiveConfigSearchCwd,
       ignoreConfig,
-      packagesSpecified,
+      packageSpecified,
     );
 
-    await dispatch(action, config, cmdArgs, effectiveCwd, configFilePath);
+    await dispatch(action, config, installArgv ?? cmdArgs, effectiveCwd, configFilePath);
     return 0;
   } catch (error) {
     console.error((error as Error).message);
@@ -96,8 +99,12 @@ async function resolveConfig(
   effectiveCwd: string,
   effectiveConfigSearchCwd: string,
   ignoreConfig: boolean,
-  packagesSpecified: boolean,
-): Promise<{ config: FiledistConfig | null; configFilePath: string | undefined }> {
+  packageSpecified: boolean,
+): Promise<{
+  config: FiledistConfig | null;
+  configFilePath: string | undefined;
+  installArgv?: string[];
+}> {
   const configFlagIdx = args.indexOf('--config');
   const configFilePath =
     configFlagIdx !== -1 && configFlagIdx + 1 < args.length
@@ -119,8 +126,9 @@ async function resolveConfig(
     config = localConfig ?? (await searchAndLoadFiledistConfig(effectiveConfigSearchCwd));
   }
 
-  // When --packages is specified, persist the entries to the config file (yml only)
-  if (packagesSpecified && !ignoreConfig) {
+  // When a positional package arg is specified, persist the entry to the config file (yml only),
+  // then reload the full config and run install from the config file (ignoring the positional arg).
+  if (packageSpecified && !ignoreConfig) {
     const parsed = parseArgv(cmdArgs);
     const entries = buildEntriesFromArgv(parsed);
     if (entries && entries.length > 0) {
@@ -133,6 +141,11 @@ async function resolveConfig(
           console.log(`[verbose] Auto-saving packages to config file: ${targetPath}`);
         }
         await upsertFiledistConfigEntries(effectiveCwd, entries, saveTarget);
+        // Reload config from the now-updated file so install sees all sets (not just the new one).
+        const reloadedConfig = await loadFiledistConfigFile(targetPath);
+        // Strip package-specific flags — install will be driven entirely by the config file.
+        const installArgv = stripPackageFlags(cmdArgs);
+        return { config: reloadedConfig, configFilePath, installArgv };
       } else if (parsed.verbose) {
         console.log(`[verbose] Skipping auto-save: config file is not a YAML file (${targetPath})`);
       }
@@ -140,6 +153,34 @@ async function resolveConfig(
   }
 
   return { config, configFilePath };
+}
+
+/**
+ * Remove the positional package arg and per-set flags from an argv array.
+ * After the entry is saved to the config file, install should run from
+ * the full config, so these per-invocation overrides must not be forwarded.
+ *
+ * Removed: positional package arg (first non-flag element), --output / -o, --files, --exclude, --content-regex
+ * (each flag together with its following value argument).
+ */
+function stripPackageFlags(argv: string[]): string[] {
+  const flagsWithValue = new Set(['--output', '-o', '--files', '--exclude', '--content-regex']);
+  const result: string[] = [];
+  let positionalStripped = false;
+  let i = 0;
+  while (i < argv.length) {
+    if (flagsWithValue.has(argv[i])) {
+      i += 2; // skip flag + value
+    } else if (!positionalStripped && !argv[i].startsWith('-')) {
+      // Strip the first positional (package spec)
+      positionalStripped = true;
+      i++;
+    } else {
+      result.push(argv[i]);
+      i++;
+    }
+  }
+  return result;
 }
 
 async function dispatch(

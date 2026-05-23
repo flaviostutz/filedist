@@ -41,7 +41,7 @@ It supports three patterns:
 Here is the simplest example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 That pulls versioned files from a git repository into a local folder.

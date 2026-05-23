@@ -3,11 +3,11 @@ packages:
   example-files-package: 1.0.0
 sets:
   - package: example-files-package
-    output:
-      path: output
     selector:
       presets:
         - special
+    output:
+      path: output
     verbose: true
-checksum: 90d2e5ab64b1
+checksum: 976bb472618e
 

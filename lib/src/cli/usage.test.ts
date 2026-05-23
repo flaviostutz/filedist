@@ -26,6 +26,7 @@ describe('printUsage', () => {
   it('prints install usage when command is "install"', () => {
     printUsage('install');
     expect(lines.join('\n')).toMatch(/filedist.*install/i);
+    expect(lines.join('\n')).toMatch(/\[<package>]/);
     expect(lines.join('\n')).toMatch(/--output/);
     expect(lines.join('\n')).toMatch(/--all/);
     expect(lines.join('\n')).toMatch(/--nosync/);
@@ -33,6 +34,7 @@ describe('printUsage', () => {
     expect(lines.join('\n')).toMatch(/defaultpresets/i);
     expect(lines.join('\n')).toMatch(/postextractcmd/i);
     expect(lines.join('\n')).toMatch(/--frozen-lockfile/);
+    expect(lines.join('\n')).not.toMatch(/--packages/);
     expect(lines.join('\n')).not.toMatch(/--source/);
   });
 

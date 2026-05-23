@@ -158,6 +158,49 @@ export async function loadFiledistLocalConfig(directory: string): Promise<Filedi
  *   value, or appends it when no match is found.
  * - Writes the merged result back as YAML.
  */
+/**
+ * Upserts a single entry into the sets array. Returns true if changed.
+ */
+function upsertSingleEntry(sets: FiledistExtractEntry[], addEntry: FiledistExtractEntry): boolean {
+  if (!addEntry.package) return false;
+  const baseName = packageNameWithoutRef(addEntry.package);
+
+  // Build a minimal entry: omit output and selector when they are empty objects
+  const entryToSave: FiledistExtractEntry = { package: addEntry.package };
+  if (addEntry.selector && Object.keys(addEntry.selector).length > 0) {
+    entryToSave.selector = addEntry.selector;
+  }
+  if (addEntry.output && Object.keys(addEntry.output).length > 0) {
+    entryToSave.output = addEntry.output;
+  }
+
+  // Collect indices of all entries whose base name matches (regardless of version)
+  const matchingIndices = sets.reduce<number[]>((acc, e, i) => {
+    if (e.package && packageNameWithoutRef(e.package) === baseName) acc.push(i);
+    return acc;
+  }, []);
+
+  if (matchingIndices.length > 0) {
+    const firstIdx = matchingIndices[0];
+    // Short-circuit when there is exactly one match and it is already identical
+    if (
+      matchingIndices.length === 1 &&
+      JSON.stringify(sets[firstIdx]) === JSON.stringify(entryToSave)
+    ) {
+      return false;
+    }
+    // Remove all matching entries in reverse order (preserves unaffected indices)
+    for (let i = matchingIndices.length - 1; i >= 0; i--) {
+      sets.splice(matchingIndices[i], 1);
+    }
+    // Re-insert the single updated entry at the position of the first removed entry
+    sets.splice(firstIdx, 0, entryToSave);
+    return true;
+  }
+  sets.push(entryToSave);
+  return true;
+}
+
 export async function upsertFiledistConfigEntries(
   directory: string,
   addEntries: FiledistExtractEntry[],
@@ -179,28 +222,12 @@ export async function upsertFiledistConfigEntries(
     }
   }
 
-  // Upsert each entry by package name
+  // Upsert each entry by base package name (ignoring version/ref).
+  // All existing entries that share the same base name are removed and replaced
+  // with a single new entry so that stale version selectors do not accumulate.
   let changed = false;
   for (const addEntry of addEntries) {
-    const idx = existing.sets.findIndex((e) => e.package === addEntry.package);
-    // Build a minimal entry: omit output and selector when they are empty objects
-    const entryToSave: FiledistExtractEntry = { package: addEntry.package };
-    if (addEntry.selector && Object.keys(addEntry.selector).length > 0) {
-      entryToSave.selector = addEntry.selector;
-    }
-    if (addEntry.output && Object.keys(addEntry.output).length > 0) {
-      entryToSave.output = addEntry.output;
-    }
-    if (idx !== -1) {
-      // Only replace when the entry content differs
-      if (JSON.stringify(existing.sets[idx]) !== JSON.stringify(entryToSave)) {
-        existing.sets[idx] = entryToSave;
-        changed = true;
-      }
-    } else {
-      existing.sets.push(entryToSave);
-      changed = true;
-    }
+    if (upsertSingleEntry(existing.sets, addEntry)) changed = true;
   }
 
   if (!changed) return;

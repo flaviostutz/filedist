@@ -30,7 +30,7 @@ Post 3
 Example:
 
 ```sh
-npx filedist install --packages https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install https://github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 ```
 
 Same idea works for prompt repos, internal agent rules, and curated data bundles.

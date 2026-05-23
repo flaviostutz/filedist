@@ -1,5 +1,12 @@
 SHELL := /bin/bash
 
+all: clean build test
+
+lint:
+	@echo "split-set-config has no lint. Ignoring."
+
+build: install
+
 install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
@@ -9,9 +16,10 @@ install:
 	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
 	pnpm install --no-frozen-lockfile
 
-test: clean install
+test:
 	@echo ""
 	@echo ">>>> split-set-config"
+	@rm -rf output
 
 	# --- Test 1: split-set extraction from myconfig.json (no 'filedist' key in package.json) ---
 	# Set 1 extracts .configs/** and docs/** but EXCLUDES .configs/database.config.json
@@ -66,9 +74,6 @@ test: clean install
 	pnpm exec filedist check --config myconfig.json
 
 	@echo "All split-set config tests passed"
-
-lint:
-	pnpm exec filedist check --config myconfig.json
 
 clean:
 	@rm -rf node_modules

@@ -12,7 +12,8 @@ export type FiledistCliConfig = FiledistConfig & {
  * defaults are applied downstream in the library.
  */
 export type ParsedArgv = {
-  packages?: string[];
+  /** Positional package spec: filedist install <package_definition> */
+  package?: string;
   output?: string;
   files?: string[];
   exclude?: string[];
@@ -115,7 +116,27 @@ export function parseArgv(argv: string[]): ParsedArgv {
     throw new Error('--force and --mutable are mutually exclusive');
   }
 
-  const packages = getCommaSplit('--packages');
+  // Positional package arg: first element that does not start with '-' and is
+  // not the value of a known flag-with-value (--output, --files, --exclude,
+  // --content-regex, --presets, --config).
+  const flagsWithValue = new Set([
+    '--output',
+    '-o',
+    '--files',
+    '--exclude',
+    '--content-regex',
+    '--presets',
+    '--config',
+  ]);
+  let positionalPkg: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i].startsWith('-')) {
+      if (flagsWithValue.has(argv[i])) i++; // skip the value following the flag
+    } else {
+      positionalPkg = argv[i];
+      break;
+    }
+  }
   const all = getBoolFlag('--all');
   const presets = getCommaSplit('--presets');
 
@@ -126,7 +147,7 @@ export function parseArgv(argv: string[]): ParsedArgv {
   const verboseFlag = getBoolFlag('--verbose');
 
   return {
-    packages,
+    package: positionalPkg,
     output: getValue('--output', '-o'),
     files: getCommaSplit('--files'),
     exclude: getCommaSplit('--exclude'),
@@ -150,32 +171,34 @@ export function parseArgv(argv: string[]): ParsedArgv {
 }
 
 /**
- * Build FiledistExtractEntry objects from --packages + --output CLI flags.
- * Returns null if --packages is not set.
+ * Build a FiledistExtractEntry from the positional package arg + CLI flags.
+ * Returns null if no positional package arg is present.
  */
 export function buildEntriesFromArgv(
   parsed: ParsedArgv,
   presets: string[] = parsed.presets ?? [],
 ): FiledistExtractEntry[] | null {
-  if (!parsed.packages || parsed.packages.length === 0) {
+  if (!parsed.package) {
     // eslint-disable-next-line unicorn/no-null
     return null;
   }
 
-  // In ad-hoc --packages mode there is no entry-level presets tag, so we place
+  // In positional-package mode there is no entry-level presets tag, so we place
   // --presets into selector.presets. filterEntriesByPresets checks both fields,
   // which keeps --presets filtering working in this mode.
   // selector.presets is also forwarded to the target package's nested set extraction.
   const selector = buildSelectorFromArgv(parsed, presets);
   const output = buildOutputFromArgv(parsed);
 
-  return parsed.packages.map((pkg) => ({
-    package: pkg,
-    output,
-    selector,
-    ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),
-    ...(parsed.verbose !== undefined ? { verbose: parsed.verbose } : {}),
-  }));
+  return [
+    {
+      package: parsed.package,
+      output,
+      selector,
+      ...(parsed.silent !== undefined ? { silent: parsed.silent } : {}),
+      ...(parsed.verbose !== undefined ? { verbose: parsed.verbose } : {}),
+    },
+  ];
 }
 
 /**
@@ -219,7 +242,7 @@ export function applyArgvOverrides(
 
 /**
  * Build and preset-filter extract entries from parsed CLI args and/or config.
- * When --packages is provided, entries come from the CLI flags.
+ * When a positional package arg is provided, one entry is built from CLI flags.
  * Otherwise, entries come from the config sets with CLI overrides applied.
  * Results are filtered by any requested --presets.
  * Throws if no packages are configured.
@@ -234,7 +257,9 @@ export function resolveEntriesFromConfigAndArgs(
   let entries = buildEntriesFromArgv(parsed, effectivePresets);
   if (!entries) {
     if (!config || config.sets.length === 0) {
-      throw new Error(`No packages specified. Use --packages or a config file with sets.`);
+      throw new Error(
+        `No packages specified. Use 'filedist install <package>' or a config file with sets.`,
+      );
     }
     entries = applyArgvOverrides(config.sets, parsed);
   }

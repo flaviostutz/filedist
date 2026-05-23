@@ -44,7 +44,7 @@ describe('cli', () => {
   it('defaults to install command when no command given', async () => {
     const outputDir = path.join(tmpDir, 'output');
     await cli(
-      ['node', 'filedist', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -54,7 +54,7 @@ describe('cli', () => {
   it('defaults to install when first arg starts with -', async () => {
     const outputDir = path.join(tmpDir, 'output-flag');
     await cli(
-      ['node', 'filedist', '--packages', PKG_NAME, '--output', outputDir, '--gitignore=false'],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -63,16 +63,7 @@ describe('cli', () => {
   it('routes to install command explicitly', async () => {
     const outputDir = path.join(tmpDir, 'output-extract');
     await cli(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--packages',
-        PKG_NAME,
-        '--output',
-        outputDir,
-        '--gitignore=false',
-      ],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -83,16 +74,7 @@ describe('cli', () => {
 
     // Extract first
     await cli(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--packages',
-        PKG_NAME,
-        '--output',
-        outputDir,
-        '--gitignore=false',
-      ],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
 
@@ -114,16 +96,7 @@ describe('cli', () => {
 
     // Extract first
     await cli(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--packages',
-        PKG_NAME,
-        '--output',
-        outputDir,
-        '--gitignore=false',
-      ],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
 
@@ -148,16 +121,7 @@ describe('cli', () => {
     const outputDir = path.join(tmpDir, 'output-list');
 
     await cli(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--packages',
-        PKG_NAME,
-        '--output',
-        outputDir,
-        '--gitignore=false',
-      ],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
     const lines: string[] = [];
@@ -174,16 +138,7 @@ describe('cli', () => {
     const outputDir = path.join(tmpDir, 'output-remove');
 
     await cli(
-      [
-        'node',
-        'filedist',
-        'install',
-        '--packages',
-        PKG_NAME,
-        '--output',
-        outputDir,
-        '--gitignore=false',
-      ],
+      ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
       tmpDir,
     );
 

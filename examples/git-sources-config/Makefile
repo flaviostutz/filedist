@@ -3,6 +3,13 @@ SHELL := /bin/bash
 PARENT_TAG := v2.0.0
 CHILD_TAG := v1.0.0
 
+all: clean build test
+
+lint:
+	@echo "git-sources-config has no lint. Ignoring."
+
+build: install
+
 install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
@@ -36,9 +43,10 @@ prepare-repos:
 	git -C repos/parent-repo commit -m 'parent fixture'
 	git -C repos/parent-repo tag $(PARENT_TAG)
 
-test: clean install prepare-repos
+test: prepare-repos
 	@echo ""
 	@echo ">>>> git-sources-config"
+	@rm -rf output
 
 	# --- Test 1: config from package.json "filedist" key ---
 	make prepare-config

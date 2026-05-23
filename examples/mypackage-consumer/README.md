@@ -23,8 +23,7 @@ pnpm exec example-files-package check
 Alternatively, use `filedist` directly and point it at the installed package:
 
 ```sh
-pnpm exec filedist install --packages example-files-package --files "docs/**/*"
-pnpm exec filedist check  --packages example-files-package
+pnpm exec filedist install example-files-package --files "docs/**/*"
 pnpm exec filedist list
 ```
 
