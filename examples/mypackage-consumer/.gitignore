@@ -1,4 +1,5 @@
 output
+package.json
 pnpm-lock.yaml
 # filedist:start
 .filedist

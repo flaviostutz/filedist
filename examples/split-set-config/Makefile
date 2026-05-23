@@ -11,6 +11,7 @@ install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
 	cp ../../lib/dist/filedist-0.0.1.tgz ../lib/dist/
+	cp -f package.json.orig package.json
 
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
 	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
@@ -20,6 +21,7 @@ test:
 	@echo ""
 	@echo ">>>> split-set-config"
 	@rm -rf output
+	@cp -f myconfig.yml.orig myconfig.yml
 
 	# --- Test 1: split-set extraction from myconfig.yml (no 'filedist' key in package.json) ---
 	# Set 1 extracts .configs/** and docs/** but EXCLUDES .configs/database.config.json
@@ -78,6 +80,7 @@ test:
 clean:
 	@rm -rf node_modules
 	@rm -rf output
+	@rm -f package.json
 	@rm -f pnpm-lock.yaml
-	@cp -f package.json.orig package.json
-	@cp -f myconfig.yml.orig myconfig.yml
+	@rm -f myconfig.yml
+	@rm -f myconfig.lock

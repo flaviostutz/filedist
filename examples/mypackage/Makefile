@@ -37,4 +37,3 @@ install:
 	pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
 	@# update local tar gz checksum
 	pnpm install
-

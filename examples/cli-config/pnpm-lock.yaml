@@ -8,13 +8,13 @@ importers:
 
   .:
     dependencies:
+      example-files-package:
+        specifier: file:../mypackage/dist/example-files-package-1.0.0.tgz
+        version: file:../mypackage/dist/example-files-package-1.0.0.tgz
       filedist:
         specifier: file:../lib/dist/filedist-0.0.1.tgz
         version: file:../lib/dist/filedist-0.0.1.tgz
     devDependencies:
-      chalk:
-        specifier: 4.1.2
-        version: 4.1.2
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -181,6 +181,11 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
+  example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz:
+    resolution: {integrity: sha512-wPZACEKblBXzNmmIkstS3PfCPE3VGZhnJewaJrAf2Koe5vnnS0Vlp6/M+fRvUkSCXRHbIq+WHSI4ZLrm603w9A==, tarball: file:../mypackage/dist/example-files-package-1.0.0.tgz}
+    version: 1.0.0
+    hasBin: true
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -196,6 +201,11 @@ packages:
   file-entry-cache@6.0.1:
     resolution: {integrity: sha512-7Gps/XWymbLk2QLYK4NzpMOrYjMhdIxXuIvy2QBsLE6ljuodKvdkWs/cpyJJ3CVIVpH0Oi1Hvg1ovbMzLdFBBg==}
     engines: {node: ^10.12.0 || >=12.0.0}
+
+  filedist@file:../../lib/dist/filedist-0.0.1.tgz:
+    resolution: {integrity: sha512-XCZ6WZNZ13nDKWk8zL9ijuMPH//PBFdyWFkANDor/IVMih7Wjtwn/5NZHxlvAsOaKkwiOiLHN8AN9rkL2oqIiQ==, tarball: file:../../lib/dist/filedist-0.0.1.tgz}
+    version: 0.0.1
+    hasBin: true
 
   filedist@file:../lib/dist/filedist-0.0.1.tgz:
     resolution: {integrity: sha512-XCZ6WZNZ13nDKWk8zL9ijuMPH//PBFdyWFkANDor/IVMih7Wjtwn/5NZHxlvAsOaKkwiOiLHN8AN9rkL2oqIiQ==, tarball: file:../lib/dist/filedist-0.0.1.tgz}
@@ -618,6 +628,13 @@ snapshots:
 
   esutils@2.0.3: {}
 
+  example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz:
+    dependencies:
+      eslint: 8.57.1
+      filedist: file:../../lib/dist/filedist-0.0.1.tgz
+    transitivePeerDependencies:
+      - supports-color
+
   fast-deep-equal@3.1.3: {}
 
   fast-json-stable-stringify@2.1.0: {}
@@ -631,6 +648,15 @@ snapshots:
   file-entry-cache@6.0.1:
     dependencies:
       flat-cache: 3.2.0
+
+  filedist@file:../../lib/dist/filedist-0.0.1.tgz:
+    dependencies:
+      ignore: 7.0.5
+      js-yaml: 4.1.1
+      minimatch: 10.2.5
+      mypkg: 1.0.0
+      package-manager-detector: 1.6.0
+      semver: 7.8.1
 
   filedist@file:../lib/dist/filedist-0.0.1.tgz:
     dependencies:

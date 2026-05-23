@@ -110,6 +110,5 @@ test:
 clean:
 	@rm -rf node_modules
 	@rm -rf output
-	@rm -f pnpm-lock.yaml
 	@rm -f .filedist.lock
-	@cp -f .filedist.yml.orig .filedist.yml
+	@rm -f .filedist.yml

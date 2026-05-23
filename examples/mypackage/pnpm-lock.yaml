@@ -8,16 +8,12 @@ importers:
 
   .:
     dependencies:
-      filedist:
-        specifier: file:../lib/dist/filedist-0.0.1.tgz
-        version: file:../lib/dist/filedist-0.0.1.tgz
-    devDependencies:
-      chalk:
-        specifier: 4.1.2
-        version: 4.1.2
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
+      filedist:
+        specifier: file:../../lib/dist/filedist-0.0.1.tgz
+        version: file:../../lib/dist/filedist-0.0.1.tgz
 
 packages:
 
@@ -197,8 +193,8 @@ packages:
     resolution: {integrity: sha512-7Gps/XWymbLk2QLYK4NzpMOrYjMhdIxXuIvy2QBsLE6ljuodKvdkWs/cpyJJ3CVIVpH0Oi1Hvg1ovbMzLdFBBg==}
     engines: {node: ^10.12.0 || >=12.0.0}
 
-  filedist@file:../lib/dist/filedist-0.0.1.tgz:
-    resolution: {integrity: sha512-XCZ6WZNZ13nDKWk8zL9ijuMPH//PBFdyWFkANDor/IVMih7Wjtwn/5NZHxlvAsOaKkwiOiLHN8AN9rkL2oqIiQ==, tarball: file:../lib/dist/filedist-0.0.1.tgz}
+  filedist@file:../../lib/dist/filedist-0.0.1.tgz:
+    resolution: {integrity: sha512-XCZ6WZNZ13nDKWk8zL9ijuMPH//PBFdyWFkANDor/IVMih7Wjtwn/5NZHxlvAsOaKkwiOiLHN8AN9rkL2oqIiQ==, tarball: file:../../lib/dist/filedist-0.0.1.tgz}
     version: 0.0.1
     hasBin: true
 
@@ -632,7 +628,7 @@ snapshots:
     dependencies:
       flat-cache: 3.2.0
 
-  filedist@file:../lib/dist/filedist-0.0.1.tgz:
+  filedist@file:../../lib/dist/filedist-0.0.1.tgz:
     dependencies:
       ignore: 7.0.5
       js-yaml: 4.1.1

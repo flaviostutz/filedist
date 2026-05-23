@@ -100,7 +100,6 @@ test:
 
 clean:
 	@rm -rf node_modules
-	@rm -f pnpm-lock.yaml
 	@rm -rf output
 	@rm -f .filedist.lock
 	@rm -f .filedist.yml

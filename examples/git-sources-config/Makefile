@@ -76,5 +76,6 @@ clean:
 	@rm -rf repos
 	@rm -rf .filedist-tmp
 	@rm -f pnpm-lock.yaml
+	@rm -f package.json
 	@rm -f .filedist.yml
 	@rm -f .filedist.lock

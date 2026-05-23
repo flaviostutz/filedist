@@ -7,6 +7,7 @@ install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
 	cp -R ../../lib/dist/filedist-0.0.1.tgz ../lib/dist/
+	cp -f package.json.orig package.json
 
 	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
 	pnpm install
@@ -16,7 +17,8 @@ build: install
 test:
 	@echo ""
 	@echo ">>>> mypackage-consumer"
-	@rm -rf output
+	rm -rf output
+	cp -f .filedist.yml.orig .filedist.yml
 
 	# Test 1
 	rm -rf output
@@ -95,4 +97,7 @@ test:
 clean:
 	@rm -rf node_modules
 	@rm -rf output
+	@rm -f .filedist.yml
 	@rm -f .filedist.lock
+	@rm -f package.json
+	@rm -f pnpm-lock.yaml
