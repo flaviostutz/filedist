@@ -14,6 +14,7 @@ install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
 	cp ../../lib/dist/filedist-0.0.1.tgz ../lib/dist/
+	cp -f package.json.orig package.json
 
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
 	pnpm install --no-frozen-lockfile

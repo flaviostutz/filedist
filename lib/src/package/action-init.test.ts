@@ -120,35 +120,6 @@ describe('actionInit', () => {
     expect(pkgConfig.sets[0].selector?.files).toEqual(['docs/**', 'data/**']);
   });
 
-  it('adds --packages as external filedist sets', async () => {
-    const outputDir = path.join(tmpDir, 'packages-pkg');
-    await actionInit(outputDir, false, {
-      files: ['conf/globals.js'],
-      packages: ['eslint@8'],
-    });
-
-    const pkgConfig = yaml.load(
-      fs.readFileSync(path.join(outputDir, '.filedist-package.yml'), 'utf8'),
-    ) as { sets: Array<{ package?: string; selector?: { files: string[] } }> };
-    expect(pkgConfig.sets).toHaveLength(2);
-    expect(pkgConfig.sets[1].package).toBe('eslint@8');
-    expect(pkgConfig.sets[1].selector?.files).toEqual(['conf/globals.js']);
-  });
-
-  it('creates package-less self set as first entry in filedist sets', async () => {
-    const outputDir = path.join(tmpDir, 'self-pkg');
-    await actionInit(outputDir, false, {
-      files: ['docs/**'],
-      packages: ['some-pkg@1'],
-    });
-
-    const pkgConfig = yaml.load(
-      fs.readFileSync(path.join(outputDir, '.filedist-package.yml'), 'utf8'),
-    ) as { sets: Array<{ package?: string }> };
-    expect(pkgConfig.sets[0].package).toBeUndefined();
-    expect(pkgConfig.sets[1].package).toBe('some-pkg@1');
-  });
-
   it('runs package manager add for filedist after writing package.json', async () => {
     const outputDir = path.join(tmpDir, 'install-pkg');
     await actionInit(outputDir, false);
@@ -156,14 +127,5 @@ describe('actionInit', () => {
     expect(mockSpawnSync).toHaveBeenCalledTimes(1);
     expect(mockSpawnSync.mock.calls[0][0]).toBeTruthy();
     expect((mockSpawnSync.mock.calls[0][1] as string[]).join(' ')).toMatch(/filedist/);
-  });
-
-  it('includes external packages in the add command', async () => {
-    const outputDir = path.join(tmpDir, 'ext-pkg');
-    await actionInit(outputDir, false, { packages: ['eslint@8'] });
-
-    const args = mockSpawnSync.mock.calls[0][1] as string[];
-    expect(args.join(' ')).toMatch(/filedist/);
-    expect(args.join(' ')).toMatch(/eslint@8/);
   });
 });

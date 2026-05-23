@@ -182,12 +182,31 @@ A data package bundles, filters, and versions content from multiple upstream sou
 ```sh
 # in the data package directory
 pnpm dlx filedist init --files "docs/**,data/**"
-
-# also pull from upstream npm packages and git repositories
-pnpm dlx filedist init --files "docs/**" --packages "shared-configs@^1.0.0,git:github.com/flaviostutz/xdrs-core@1.3.0"
 ```
 
-`init` updates `package.json` with the right `files`, `bin`, and `dependencies` and writes a `bin/filedist.js` entry point. Then:
+`init` updates `package.json` with the right `files`, `bin`, and `dependencies`, writes a `bin/filedist.js` entry point, and generates a `.filedist-package.yml` with a single self entry for the local files.
+
+To also pull from upstream npm packages or git repositories, add additional entries manually to `.filedist-package.yml` after running `init`:
+
+```yaml
+# .filedist-package.yml
+sets:
+  - output:
+      path: .
+    selector:
+      files:
+        - docs/**
+        - data/**
+  # Add upstream sources manually:
+  - package: "shared-configs@^1.0.0"
+    output:
+      path: .
+  - package: "git:github.com/flaviostutz/xdrs-core@1.3.0"
+    output:
+      path: .
+```
+
+Then:
 
 ```sh
 npm publish

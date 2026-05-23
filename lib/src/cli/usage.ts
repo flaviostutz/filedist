@@ -134,14 +134,20 @@ Exit codes: 0 success | 1 error
       console.log(`
 Usage: filedist init [options]
 
-Scaffold a new publishable npm data package.
+Scaffold a new publishable npm data package (local files only).
+To include files from upstream npm or git packages, add them manually
+to .filedist-package.yml after running this command.
 
 Options:
   --output, -o <dir>      Directory to scaffold into (default: current dir).
+  --files <globs>         Comma-separated glob patterns for the local files to include
+                          (e.g. "docs/**,data/**"). Added to package.json#files and the
+                          self entry in .filedist-package.yml.
+  --package-config <file> Config filename embedded in bin/filedist.js (default: .filedist.yml).
   --verbose, -v           Print scaffolding steps.
   --help                  Print this help text.
 
-Created files: package.json, bin/filedist.js
+Created files: package.json, bin/filedist.js, .filedist-package.yml
 Exit codes: 0 success | 1 target dir has conflicting files
 `);
       break;

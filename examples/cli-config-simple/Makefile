@@ -11,6 +11,7 @@ install:
 	# copy local relative dependencies (required by local filedist package)
 	mkdir -p ../lib/dist
 	cp ../../lib/dist/filedist-0.0.1.tgz ../lib/dist/
+	cp package.json.orig package.json
 
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
 	pnpm install --no-frozen-lockfile
@@ -101,6 +102,8 @@ test:
 clean:
 	@rm -rf node_modules
 	@rm -rf output
+	@rm -f package.json
+	@rm -f pnpm-lock.yaml
 	@rm -f .filedist.lock
 	@rm -f .filedist.yml
 	@rm -f .mytest.lock

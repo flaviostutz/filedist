@@ -23,17 +23,6 @@ export async function runInit(
   const outputDir = parsed.output ? path.resolve(cwd, parsed.output) : cwd;
   const { verbose, files } = parsed;
 
-  // Parse --packages specifically for init (scaffolds the data-package's package.json)
-  const packagesIdx = argv.indexOf('--packages');
-  const packagesArg =
-    packagesIdx !== -1 && packagesIdx + 1 < argv.length ? argv[packagesIdx + 1] : '';
-  const packages = packagesArg
-    ? packagesArg
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-
   // Parse --package-config: config filename to embed in the generated bin shim
   const pkgConfigIdx = argv.indexOf('--package-config');
   let baseConfigFile: string | undefined;
@@ -41,10 +30,9 @@ export async function runInit(
     baseConfigFile = argv[pkgConfigIdx + 1];
   }
 
-  const initConfig: { files?: string[]; packages?: string[]; baseConfigFile?: string } = {
+  const initConfig: { files?: string[]; baseConfigFile?: string } = {
     files,
   };
-  if (packages.length > 0) initConfig.packages = packages;
   if (baseConfigFile) initConfig.baseConfigFile = baseConfigFile;
 
   await actionInit(outputDir, verbose ?? false, initConfig);

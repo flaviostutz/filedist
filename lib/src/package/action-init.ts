@@ -14,8 +14,6 @@ import { PACKAGE_CONFIG_FILENAME } from './config';
 export type InitConfig = {
   /** File glob patterns to include in the package and use as selector for filesets. */
   files?: string[];
-  /** External package specs (e.g. "eslint@8") to add as filedist sets and dependencies. */
-  packages?: string[];
   /**
    * Optional config filename to embed in the generated bin shim so consumers use a
    * named config file (e.g. `.mypackage.yml`) instead of the default `.filedist.yml`.
@@ -61,7 +59,6 @@ export async function actionInit(
   }
 
   const filePatterns = config?.files ?? [];
-  const externalPackages = config?.packages ?? [];
 
   // Set bin entry
   pkgJson.bin = 'bin/filedist.js';
@@ -82,17 +79,13 @@ export async function actionInit(
   // eslint-disable-next-line unicorn/no-null
   fs.writeFileSync(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`, 'utf8');
 
-  // Build filedist sets: self entry first (no package field), then external packages
+  // Build filedist sets: self entry only (local files). Additional upstream packages
+  // must be added manually to .filedist-package.yml.
   const selfEntry: FiledistExtractEntry = {
     output: { path: '.' },
     ...(filePatterns.length > 0 ? { selector: { files: filePatterns } } : {}),
   };
-  const externalEntries: FiledistExtractEntry[] = externalPackages.map((pkg) => ({
-    package: pkg,
-    output: { path: '.' },
-    ...(filePatterns.length > 0 ? { selector: { files: filePatterns } } : {}),
-  }));
-  const packageConfigData = { sets: [selfEntry, ...externalEntries] };
+  const packageConfigData = { sets: [selfEntry] };
   fs.writeFileSync(packageConfigPath, yaml.dump(packageConfigData, { indent: 2 }), 'utf8');
 
   // Create bin/filedist.js only if it does not already exist
@@ -106,7 +99,7 @@ export async function actionInit(
   // and package.json dependencies are updated with the correct resolved versions.
   const detected = await detect({ cwd: outputDir });
   const agent = detected?.agent ?? 'npm';
-  const packagesToAdd = ['filedist', ...externalPackages];
+  const packagesToAdd = ['filedist'];
   const addResolved = resolveCommand(agent, 'add', packagesToAdd);
   if (addResolved) {
     spawnWithLog(addResolved.command, addResolved.args, outputDir, verbose, true);

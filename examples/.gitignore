@@ -1,5 +1,9 @@
-.filedist.lock
+myconfig.yml
+myconfig.lock
+**/package.json
+**/pnpm-lock.yaml
 .filedist.yml
-.mytest.lock
-.mytest.yml
-output
+.filedist.lock
+.myconfig.yml
+.myconfig.lock
+dist

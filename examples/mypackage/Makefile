@@ -5,35 +5,31 @@ all: clean build test
 lint:
 	@echo "mypackage has no lint. Ignoring."
 
-init-publisher: install
-	# package.json already contains the full filedist configuration (no init step needed)
-	# create the bin shim that allows consumers to run `npx example-files-package`
-	mkdir -p bin
-	printf '#!/usr/bin/env node\n'"'"'use strict'"'"';\nrequire('"'"'filedist'"'"').binpkg(__dirname, process.argv.slice(2));\n' > bin/filedist.js
-	chmod +x bin/filedist.js
+test:
+	@echo "mypackage has no tests. Ignoring"
+
+install:
+	cp -f package.json.orig package.json
+	# replace the dependency with the local package
+	pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
+	@# update local tar gz checksum
+	pnpm install
 
 build: install
-	rm -rf dist
-	pnpm pack --pack-destination dist
+	# initialize filedist package with local files to be shared
+	pnpm exec filedist init --files ".configs/**/*,docs/**/*,data/**/*"
 
-build-dev:
-	cd ../../lib; make build; cd ../examples/mypackage; make init-publisher; make build; cd ../mypackage-consumer; make test
+	# use custom package sets
+	cp -f .filedist-package.yml.orig .filedist-package.yml
+
+	pnpm pack --pack-destination dist
 
 clean:
 	@rm -rf node_modules
 	@rm -rf dist
 	@rm -rf lib
 	@rm -rf bin
+	@rm -f package.json
+	@rm -f pnpm-lock.yaml
+	@rm -f .filedist-package.yml
 
-test:
-	echo "Running integration tests..."
-	# prepare a deployable package from the pre-configured package.json
-	make clean
-	make init-publisher
-	make build
-
-install:
-	# replace the dependency with the local package
-	pnpm add filedist@file:../../lib/dist/filedist-0.0.1.tgz
-	@# update local tar gz checksum
-	pnpm install

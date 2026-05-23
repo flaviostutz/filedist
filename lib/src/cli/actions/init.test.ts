@@ -78,15 +78,6 @@ describe('runInit — --files and --packages forwarding', () => {
       expect.objectContaining({ files: ['docs/**', 'data/**'] }),
     );
   });
-
-  it('forwards --packages to initConfig.packages as spec strings', async () => {
-    await runInit(null, ['--packages', 'eslint@8'], '/cwd');
-    expect(mockActionInit).toHaveBeenCalledWith(
-      '/cwd',
-      false,
-      expect.objectContaining({ packages: ['eslint@8'] }),
-    );
-  });
 });
 
 describe('runInit — success output', () => {
