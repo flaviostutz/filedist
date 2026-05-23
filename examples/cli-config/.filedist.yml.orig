@@ -4,7 +4,7 @@ postExtractCmd:
   - node
   - myPostExtract.js
 sets:
-  - package: example-files-package
+  - package: mypackage
     upgrade: false
     selector:
       files:
@@ -39,7 +39,7 @@ sets:
     presets:
       - extra
 
-  - package: example-files-package
+  - package: mypackage
     selector:
       presets:
         - eslint

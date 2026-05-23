@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Example demonstrating split-set config: same package in two sets where one excludes a specific file and the other includes only that file with different output settings, using .filedistrc instead of the package.json 'filedist' key.",
   "dependencies": {
-    "example-files-package": "file:../mypackage/dist/example-files-package-1.0.0.tgz",
+    "mypackage": "file:../mypackage/dist/mypackage-1.0.0.tgz",
     "filedist": "file:../lib/dist/filedist-0.0.1.tgz"
   },
   "devDependencies": {

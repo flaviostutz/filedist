@@ -1,5 +1,5 @@
 sets:
-  - package: example-files-package
+  - package: mypackage
     selector:
       files:
         - .configs/**
@@ -10,7 +10,7 @@ sets:
       path: output
       gitignore: true
 
-  - package: example-files-package
+  - package: mypackage
     selector:
       files:
         - .configs/database.config.json

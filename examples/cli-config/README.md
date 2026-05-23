@@ -32,7 +32,7 @@ Each entry in the `sets` array supports the same fields as a data-package `"file
     "postExtractCmd": ["node", "myPostExtract.js"],
     "sets": [
       {
-        "package": "example-files-package",
+        "package": "mypackage",
         "outputDir": "output",
         "files": ["docs/**", "data/**"]
       }
@@ -49,7 +49,7 @@ Each entry in the `sets` array supports the same fields as a data-package `"file
   "postExtractCmd": ["node", "myPostExtract.js"],
   "sets": [
     {
-      "package": "example-files-package",
+      "package": "mypackage",
       "outputDir": "output",
       "files": ["docs/**", "data/**"]
     }
@@ -87,7 +87,7 @@ Entries can be tagged with `presets` so that only a subset is processed when `--
 {
   "defaultPresets": ["basic"],
   "sets": [
-    { "package": "example-files-package", "presets": ["basic"], "output": { "path": "output" } },
+    { "package": "mypackage", "presets": ["basic"], "output": { "path": "output" } },
     { "package": "eslint@8",              "presets": ["extra"],  "output": { "path": "output/eslint", "managed": false } }
   ]
 }
@@ -123,7 +123,7 @@ entirely for that command.
 >   tagged `basic` are processed. This is what `filedist presets` lists.
 >
 > - **`sets[].selector.presets`** — filters which of the **target package's own** `filedist.sets` are
->   recursively extracted. If `example-files-package` itself has an `filedist.sets` array with its own
+>   recursively extracted. If `mypackage` itself has an `filedist.sets` array with its own
 >   preset tags, you can control which of those inner sets are pulled by setting `selector.presets` on
 >   the entry that references it.
 

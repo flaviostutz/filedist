@@ -1,6 +1,6 @@
 version: 1
 sets:
-  - package: example-files-package
+  - package: mypackage
     selector:
       presets:
         - special

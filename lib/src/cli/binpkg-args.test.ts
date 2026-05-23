@@ -42,7 +42,7 @@ describe('binpkg defaultPresets forwarding', () => {
   it('injects defaultPresets when the user does not pass --presets', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+      JSON.stringify({ name: 'mypackage', version: '1.0.0' }),
     );
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', '.filedist-package.yml'),
@@ -58,7 +58,7 @@ describe('binpkg defaultPresets forwarding', () => {
         'node',
         'filedist',
         'install',
-        'example-files-package',
+        'mypackage',
         '--output',
         'output',
         '--presets',
@@ -71,7 +71,7 @@ describe('binpkg defaultPresets forwarding', () => {
   it('does not inject defaultPresets when the user already passed --presets', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+      JSON.stringify({ name: 'mypackage', version: '1.0.0' }),
     );
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', '.filedist-package.yml'),
@@ -83,16 +83,7 @@ describe('binpkg defaultPresets forwarding', () => {
     ).rejects.toThrow('process.exit(0)');
 
     expect(mockCli).toHaveBeenCalledWith(
-      [
-        'node',
-        'filedist',
-        'install',
-        'example-files-package',
-        '--output',
-        'output',
-        '--presets',
-        'special',
-      ],
+      ['node', 'filedist', 'install', 'mypackage', '--output', 'output', '--presets', 'special'],
       process.cwd(),
     );
   });
@@ -100,7 +91,7 @@ describe('binpkg defaultPresets forwarding', () => {
   it('does not inject defaultPresets when the user passes --all', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+      JSON.stringify({ name: 'mypackage', version: '1.0.0' }),
     );
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', '.filedist-package.yml'),
@@ -112,7 +103,7 @@ describe('binpkg defaultPresets forwarding', () => {
     );
 
     expect(mockCli).toHaveBeenCalledWith(
-      ['node', 'filedist', 'install', 'example-files-package', '--output', 'output', '--all'],
+      ['node', 'filedist', 'install', 'mypackage', '--output', 'output', '--all'],
       process.cwd(),
     );
   });

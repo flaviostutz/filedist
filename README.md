@@ -4,13 +4,30 @@ Publish folders as npm packages or git repositories and extract them in any work
 
 ## Getting Started
 
+### CLI
+
 ```sh
 # extract files from any npm package into a local directory
-npx filedist install my-shared-assets@^2.0.0 --output ./data
+npx filedist install my-shared-assets --output ./data
 
 # extract directly from git
-npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+npx filedist install git:github.com/flaviostutz/xdrs-core --output ./xdrs
 ```
+
+If you want to syncronise later with the latest versions of the files published in npm or git, run
+
+```sh
+# will read lock file, upgrade with latest versions and extract more recent files
+npx filedist update
+```
+
+You can change file .filedist.yml to tweak how installation is performed, then run to update the extracted files to the new configuration
+
+```sh
+npx filedist install
+```
+
+## Lib
 
 ```typescript
 import { actionInstall } from 'filedist';

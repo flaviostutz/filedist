@@ -752,7 +752,7 @@ describe('actionInstall', () => {
 
   it('extracts an example-style package and verifies exported files and symlinks', async () => {
     await installMockPackage(
-      'example-files-package',
+      'mypackage',
       '1.0.0',
       {
         'docs/guide.md': '# Guide',
@@ -767,7 +767,7 @@ describe('actionInstall', () => {
     await actionInstall({
       entries: [
         {
-          package: 'example-files-package',
+          package: 'mypackage',
           selector: { files: ['docs/**', 'data/**'] },
           output: {
             path: outputDir,
@@ -804,7 +804,7 @@ describe('actionInstall', () => {
     const checkResult = await actionCheck({
       entries: [
         {
-          package: 'example-files-package@1.0.0',
+          package: 'mypackage@1.0.0',
           selector: { files: ['docs/**', 'data/**'] },
           output: {
             path: outputDir,

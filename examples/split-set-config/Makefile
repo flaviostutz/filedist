@@ -14,7 +14,7 @@ install:
 	cp -f package.json.orig package.json
 
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
-	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
+	pnpm add mypackage@file:../mypackage/dist/mypackage-1.0.0.tgz
 	pnpm install --no-frozen-lockfile
 
 test:

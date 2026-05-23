@@ -99,8 +99,8 @@ test:
 	test -e output/docs/README.md
 	test -e output/data/users-dataset/user1.json
 	test -e output/nested-eslint/conf/globals.js
-	# remove only example-files-package sets; eslint@8 files must survive
-	pnpm exec filedist remove example-files-package
+	# remove only mypackage sets; eslint@8 files must survive
+	pnpm exec filedist remove mypackage
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/nested-eslint/conf/globals.js

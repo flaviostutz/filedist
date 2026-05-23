@@ -10,7 +10,7 @@ install:
 	cp -f package.json.orig package.json
 
 	pnpm add filedist@file:../lib/dist/filedist-0.0.1.tgz
-	pnpm add example-files-package@file:../mypackage/dist/example-files-package-1.0.0.tgz
+	pnpm add mypackage@file:../mypackage/dist/mypackage-1.0.0.tgz
 	pnpm install --no-frozen-lockfile
 
 build: install
@@ -24,7 +24,7 @@ test:
 	# Test 1
 	rm -rf output
 	rm -f .filedist.lock
-	pnpm exec example-files-package install --output output
+	pnpm exec mypackage install --output output
 	test -e output/.configs/app.config.json
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
@@ -45,11 +45,11 @@ test:
 
 	! grep -e "conf/config-schema.js" .filedist.lock
 
-	pnpm exec example-files-package check --output output
+	pnpm exec mypackage check --output output
 
-	pnpm exec example-files-package list --output output
+	pnpm exec mypackage list --output output
 
-	pnpm exec example-files-package remove --output output
+	pnpm exec mypackage remove --output output
 	test ! -e output/.configs/app.config.json
 	test ! -e output/docs/adrs/adr-001-sample1.md
 
@@ -59,7 +59,7 @@ test:
 	test -e output/conf/config-schema.js
 
 	# Test 2 - basic preset
-	pnpm exec example-files-package install --output output --presets basic
+	pnpm exec mypackage install --output output --presets basic
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/data/users-dataset/user1.json
 	# user2 is not in the basic preset, but it remains because it is unmanaged
@@ -71,21 +71,21 @@ test:
 
 	# Test 3 - eslint preset
 	rm -rf output
-	pnpm exec example-files-package install --output output --presets eslint
+	pnpm exec mypackage install --output output --presets eslint
 	test ! -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
 	# Test 4
 	rm -rf output
-	pnpm exec example-files-package install --output output --presets "eslint,basic"
+	pnpm exec mypackage install --output output --presets "eslint,basic"
 	test -e output/docs/adrs/adr-001-sample1.md
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
 	# Test 5 - existing managed files that are not part of a profile are removed
-	pnpm exec example-files-package install --output output
-	pnpm exec example-files-package install --output output --presets special --verbose
+	pnpm exec mypackage install --output output
+	pnpm exec mypackage install --output output --presets special --verbose
 	# part of the special profile
 	test -e output/data/users-dataset/user2.json
 	test ! -e output/docs/adrs/adr-001-sample1.md

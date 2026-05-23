@@ -1,4 +1,4 @@
-# example-files-package
+# mypackage
 
 This is an example **publisher** project. It packages shared `docs/` and `data/` folders as an npm package using `filedist`, so any consumer project can install and extract those files locally.
 
