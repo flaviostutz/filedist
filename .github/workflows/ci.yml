@@ -31,6 +31,7 @@ jobs:
           pnpm pack --pack-destination dist
         working-directory: lib
       - run: |
+          Copy-Item -Force package.json.orig package.json
           pnpm install --frozen-lockfile
           node -e "require('node:fs').rmSync('dist', { recursive: true, force: true })"
           pnpm pack --pack-destination dist
@@ -43,4 +44,4 @@ jobs:
           pnpm exec filedist install
           node ../../.github/scripts/check-cli-config-symlinks.cjs
           pnpm exec filedist check
-        working-directory: examples/cli-config
+        working-directory: examples/cli-config-simple

@@ -68,6 +68,8 @@ test: prepare-repos
 	test ! -e output/docs/guide.md
 	test ! -e output/nested/child/data.json
 	test ! -e .filedist-tmp
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
 
 	@echo "All git-prefixed source config tests passed"
 

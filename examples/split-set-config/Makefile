@@ -66,9 +66,9 @@ test:
 	test ! -e output/conf/globals.js
 	# database.config.json is managed=false, so it survives purge
 	test -e output/.configs/database.config.json
-
-	# check should now pass because remove --all also cleared the config entries
-	pnpm exec filedist check --config myconfig.yml
+	# config and lock files are deleted after successful --all removal
+	test ! -e myconfig.yml
+	test ! -e myconfig.lock
 
 	# restore config and re-install to verify round-trip
 	cp -f myconfig.yml.orig myconfig.yml

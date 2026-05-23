@@ -33,7 +33,7 @@ export type ParsedArgv = {
   upgrade?: boolean;
   silent?: boolean;
   verbose?: boolean;
-  /** --no-save: skip saving config to .filedistrc.yml */
+  /** --no-save: skip saving config to .filedist.yml */
   ignoreConfig?: boolean;
   /** --local-only: skip package installs/git clones; verify only against .filedist markers */
   localOnly?: boolean;

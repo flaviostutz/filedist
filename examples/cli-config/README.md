@@ -15,7 +15,7 @@ following order (starting from the current working directory):
 | `package.json` → `"filedist"` key | JSON object with `"sets"` array |
 | `.filedistrc` | JSON or YAML object with `"sets"` array |
 | `.filedistrc.json` | JSON object with `"sets"` array |
-| `.filedistrc.yaml` / `.filedistrc.yml` | YAML object with `"sets"` array |
+| `.filedistrc.yaml` / `.filedist.yml` | YAML object with `"sets"` array |
 | `filedist.config.js` | CommonJS module exporting object with `sets` array |
 
 Each entry in the `sets` array supports the same fields as a data-package `"filedist.sets"` array entry.

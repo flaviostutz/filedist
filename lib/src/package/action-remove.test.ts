@@ -38,19 +38,20 @@ afterEach(() => {
 });
 
 /**
- * Write a .filedistrc.yml config file to tmpDir.
+ * Write a .filedist.yml config file to tmpDir.
  */
 function writeConfig(sets: object[]): string {
-  const filePath = path.join(tmpDir, '.filedistrc.yml');
+  const filePath = path.join(tmpDir, '.filedist.yml');
   fs.writeFileSync(filePath, yaml.dump({ sets }, { indent: 2 }), 'utf8');
   return filePath;
 }
 
 /**
- * Read the sets array from .filedistrc.yml in tmpDir.
+ * Read the sets array from .filedist.yml in tmpDir.
  */
 function readConfigSets(): object[] {
-  const filePath = path.join(tmpDir, '.filedistrc.yml');
+  const filePath = path.join(tmpDir, '.filedist.yml');
+  if (!fs.existsSync(filePath)) return [];
   const raw = fs.readFileSync(filePath, 'utf8');
   const parsed = yaml.load(raw) as { sets?: object[] } | null;
   return parsed?.sets ?? [];
@@ -74,7 +75,7 @@ describe('actionRemove — config entry removal', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'pkg-a',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(result.removedEntries).toBe(1);
@@ -100,7 +101,7 @@ describe('actionRemove — config entry removal', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'versioned-pkg@2.3.4',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(result.removedEntries).toBe(1);
@@ -131,7 +132,7 @@ describe('actionRemove — config entry removal', () => {
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'multi-out',
       outputPath: outA,
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(result.removedEntries).toBe(1);
@@ -149,7 +150,7 @@ describe('actionRemove — config entry removal', () => {
         cwd: tmpDir,
         lockfilePath: path.join(tmpDir, '.filedist.lock'),
         packageSpec: 'nonexistent-pkg',
-        configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+        configFilePath: path.join(tmpDir, '.filedist.yml'),
       }),
     ).rejects.toThrow('No entries found for "nonexistent-pkg"');
   }, 60_000);
@@ -160,7 +161,7 @@ describe('actionRemove — config entry removal', () => {
         cwd: tmpDir,
         lockfilePath: path.join(tmpDir, '.filedist.lock'),
         packageSpec: 'any-pkg',
-        configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+        configFilePath: path.join(tmpDir, '.filedist.yml'),
       }),
     ).rejects.toThrow('No entries found for "any-pkg"');
   }, 60_000);
@@ -197,7 +198,7 @@ describe('actionRemove — file deletion via install', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'rm-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'guide.md'))).toBe(false);
@@ -226,7 +227,7 @@ describe('actionRemove — file deletion via install', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'drop-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'keep.md'))).toBe(true);
@@ -252,7 +253,7 @@ describe('actionRemove — file deletion via install', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'lock-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     const lockAfter = readLockfile(path.join(tmpDir, '.filedist.lock'));
@@ -301,7 +302,7 @@ describe('actionRemove — file deletion via install', () => {
       ),
     ).toHaveLength(0);
 
-    // 3. User config set is updated — entry removed from .filedistrc.yml
+    // 3. User config set is updated — entry removed from .filedist.yml
     expect(readConfigSets()).toHaveLength(0);
 
     // 4. Lock set is updated — removed package absent from lockfile sets
@@ -333,7 +334,7 @@ describe('actionRemove — dry-run', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'dry-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       dryRun: true,
     });
 
@@ -360,7 +361,7 @@ describe('actionRemove — progress events', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'evt-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       onProgress: (e) => events.push({ type: e.type, file: 'file' in e ? e.file : void 0 }),
     });
 
@@ -390,7 +391,7 @@ describe('actionRemove — progress events', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'go-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       onProgress: (e) => eventTypes.push(e.type),
     });
 
@@ -415,7 +416,7 @@ describe('actionRemove — progress events', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'meta-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       onProgress: (e) => events.push(e),
     });
 
@@ -444,7 +445,7 @@ describe('actionRemove — verbose', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'verbose-rm',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       verbose: true,
     });
 
@@ -467,7 +468,7 @@ describe('actionRemove — verbose', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'vdry-rm',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       verbose: true,
       dryRun: true,
     });
@@ -519,7 +520,7 @@ describe('actionRemove — hierarchical packages', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'rm-parent',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     expect(fs.existsSync(path.join(parentOutputDir, 'parent.md'))).toBe(false);
@@ -552,7 +553,7 @@ describe('actionRemove — files cleanup', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'mf-pkg',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     // Files gone from disk
@@ -601,7 +602,7 @@ describe('actionRemove — files cleanup', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'stale-a',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     // stale-a entries are gone from disk and marker
@@ -638,7 +639,7 @@ describe('actionRemove — files cleanup', () => {
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'lf-clean',
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
     });
 
     const lockAfter = readLockfile(path.join(tmpDir, '.filedist.lock'));
@@ -657,7 +658,7 @@ describe('actionRemove — branch coverage', () => {
       actionRemove({
         cwd: tmpDir,
         lockfilePath: path.join(tmpDir, '.filedist.lock'),
-        configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+        configFilePath: path.join(tmpDir, '.filedist.yml'),
         // no packageSpec, no all
       }),
     ).rejects.toThrow('packageSpec is required when all is not true');
@@ -677,7 +678,7 @@ describe('actionRemove — branch coverage', () => {
     const result = await actionRemove({
       cwd: tmpDir,
       lockfilePath: path.join(tmpDir, '.filedist.lock'),
-      configFilePath: path.join(tmpDir, '.filedistrc.yml'),
+      configFilePath: path.join(tmpDir, '.filedist.yml'),
       all: true,
       verbose: true,
     });
@@ -691,7 +692,7 @@ describe('actionRemove — branch coverage', () => {
     const outA = path.join(tmpDir, 'outA');
     const outB = path.join(tmpDir, 'outB');
 
-    const filePath = path.join(tmpDir, '.filedistrc.yml');
+    const filePath = path.join(tmpDir, '.filedist.yml');
     fs.writeFileSync(
       filePath,
       [
@@ -731,5 +732,69 @@ describe('actionRemove — branch coverage', () => {
     const remaining = readConfigSets() as Array<{ presets?: string[] }>;
     expect(remaining).toHaveLength(1);
     expect(remaining[0].presets).toContain('mobile');
+  }, 60_000);
+});
+
+describe('actionRemove — all flag deletes lock and config files', () => {
+  it('deletes lockfile and config file after successful remove --all', async () => {
+    await installMockPackage('cleanup-pkg', '1.0.0', { 'file.md': '# file' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+    const configFilePath = writeConfig([
+      { package: 'cleanup-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
+    ]);
+    const lockfilePath = path.join(tmpDir, '.filedist.lock');
+
+    await actionInstall({
+      entries: [{ package: 'cleanup-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
+      cwd: tmpDir,
+      lockfilePath,
+    });
+
+    expect(fs.existsSync(configFilePath)).toBe(true);
+    expect(fs.existsSync(lockfilePath)).toBe(true);
+
+    const result = await actionRemove({
+      cwd: tmpDir,
+      lockfilePath,
+      configFilePath,
+      all: true,
+    });
+
+    expect(result.removedEntries).toBe(1);
+    expect(result.lockfileDeleted).toBe(true);
+    expect(result.configFileDeleted).toBe(true);
+    expect(fs.existsSync(configFilePath)).toBe(false);
+    expect(fs.existsSync(lockfilePath)).toBe(false);
+    expect(fs.existsSync(path.join(outputDir, 'file.md'))).toBe(false);
+  }, 60_000);
+
+  it('does not delete lockfile and config in dry-run mode', async () => {
+    await installMockPackage('dry-cleanup-pkg', '1.0.0', { 'file.md': '# file' }, tmpDir);
+    const outputDir = path.join(tmpDir, 'out');
+    const configFilePath = writeConfig([
+      { package: 'dry-cleanup-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
+    ]);
+    const lockfilePath = path.join(tmpDir, '.filedist.lock');
+
+    await actionInstall({
+      entries: [
+        { package: 'dry-cleanup-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
+      ],
+      cwd: tmpDir,
+      lockfilePath,
+    });
+
+    const result = await actionRemove({
+      cwd: tmpDir,
+      lockfilePath,
+      configFilePath,
+      all: true,
+      dryRun: true,
+    });
+
+    expect(result.lockfileDeleted).toBeFalsy();
+    expect(result.configFileDeleted).toBeFalsy();
+    expect(fs.existsSync(configFilePath)).toBe(true);
+    expect(fs.existsSync(lockfilePath)).toBe(true);
   }, 60_000);
 });

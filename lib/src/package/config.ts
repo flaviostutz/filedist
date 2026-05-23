@@ -105,7 +105,7 @@ const RC_FILENAME = DEFAULT_CONFIG_FILENAME;
 
 /**
  * Upsert entries into a filedist YAML config file.
- * - Uses the path provided (from --config) or defaults to `.filedistrc.yml` in `directory`.
+ * - Uses the path provided (from --config) or defaults to `.filedist.yml` in `directory`.
  * - Reads the existing file (or starts with an empty sets array).
  * - For each provided entry, replaces an existing entry with the same `package`
  *   value, or appends it when no match is found.
@@ -226,7 +226,7 @@ export function packageNameWithoutRef(spec: string): string {
  *   `outputPath` are removed (allows targeting a specific entry when the same
  *   package is installed to multiple output directories).
  * - Returns the number of entries removed.  Zero means the config was unchanged.
- * - When `configFilePath` is not supplied, defaults to `.filedistrc.yml` in `directory`.
+ * - When `configFilePath` is not supplied, defaults to `.filedist.yml` in `directory`.
  * - Throws if the config file exists but cannot be parsed.
  */
 export function removeFiledistConfigEntries(

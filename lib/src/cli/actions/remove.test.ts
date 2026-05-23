@@ -194,10 +194,10 @@ describe('runRemove — options forwarding', () => {
       ['my-pkg'],
       '/cwd',
       path.join('/cwd', '.filedist.lock'),
-      '/project/.filedistrc.yml',
+      '/project/.filedist.yml',
     );
     spy.mockRestore();
-    expect(mockActionRemove.mock.calls[0][0].configFilePath).toBe('/project/.filedistrc.yml');
+    expect(mockActionRemove.mock.calls[0][0].configFilePath).toBe('/project/.filedist.yml');
   });
 
   it('resolves --config flag to absolute configFilePath', async () => {

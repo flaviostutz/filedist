@@ -270,6 +270,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
       if (fs.existsSync(fullPath)) {
         fs.chmodSync(fullPath, 0o644);
         fs.unlinkSync(fullPath);
+        removeEmptyDirsUpTo(path.dirname(fullPath), outputDir);
       }
       onProgress?.({
         type: 'file-deleted',
@@ -371,6 +372,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
             managed: true,
             gitignore: false,
           });
+          removeEmptyDirsUpTo(path.dirname(path.join(outputDir, relPath)), outputDir);
         }
       }
 
@@ -442,6 +444,23 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
   } finally {
     sourceRuntime.cleanup();
     cleanupTempPackageJson(cwd, verbose);
+  }
+}
+
+/**
+ * Recursively remove empty directories up to (but not including) the output root.
+ * Stops as soon as a non-empty directory is encountered.
+ */
+function removeEmptyDirsUpTo(dir: string, rootDir: string): void {
+  if (dir === rootDir || !dir.startsWith(rootDir)) return;
+  try {
+    const entries = fs.readdirSync(dir);
+    if (entries.length === 0) {
+      fs.rmdirSync(dir);
+      removeEmptyDirsUpTo(path.dirname(dir), rootDir);
+    }
+  } catch {
+    // Ignore errors (e.g. dir already removed by a parallel operation)
   }
 }
 

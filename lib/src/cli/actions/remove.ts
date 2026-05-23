@@ -74,6 +74,8 @@ export async function runRemove(
         `${summary.install.added} added, ${summary.install.modified} modified, ` +
         `${summary.install.deleted} deleted.`,
     );
+    if (summary.lockfileDeleted) console.log('Lock file deleted.');
+    if (summary.configFileDeleted) console.log('Config file deleted.');
     return;
   }
 

@@ -48,6 +48,10 @@ export type RemoveSummary = {
   removedEntries: number;
   /** Result from the subsequent install run that cleared the output directories. */
   install: InstallResult;
+  /** True when the lock file was deleted (only possible on --all with full cleanup). */
+  lockfileDeleted?: boolean;
+  /** True when the config file was deleted (only possible on --all with full cleanup). */
+  configFileDeleted?: boolean;
 };
 
 /**
@@ -207,5 +211,34 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
     onProgress,
   });
 
-  return { removedEntries, install };
+  // When --all is used and all files were successfully removed, delete the lock
+  // file and config file since they would be empty/useless.
+  let lockfileDeleted = false;
+  let configFileDeleted = false;
+  if (all && !dryRun && install.added === 0 && install.modified === 0) {
+    try {
+      if (fs.existsSync(lockfilePath)) {
+        fs.unlinkSync(lockfilePath);
+        lockfileDeleted = true;
+        if (verbose) {
+          console.log(`[verbose] actionRemove: deleted lock file ${lockfilePath}`);
+        }
+      }
+    } catch {
+      // Ignore lock file deletion errors
+    }
+    try {
+      if (fs.existsSync(configFilePath)) {
+        fs.unlinkSync(configFilePath);
+        configFileDeleted = true;
+        if (verbose) {
+          console.log(`[verbose] actionRemove: deleted config file ${configFilePath}`);
+        }
+      }
+    } catch {
+      // Ignore config file deletion errors
+    }
+  }
+
+  return { removedEntries, install, lockfileDeleted, configFileDeleted };
 }

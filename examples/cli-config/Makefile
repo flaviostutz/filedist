@@ -52,10 +52,11 @@ test:
 	test ! -e output/data-symlink/user1.json
 	test ! -e output/data-symlink/users-dataset
 	test -e output/lastUpdated
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
 
 	# --- Test 2: explicit --presets overrides defaultPresets ---
 	cp -f .filedist.yml.orig .filedist.yml
-	rm -f .filedist.lock
 	rm -rf output
 	pnpm exec filedist install --presets "nested-eslint"
 	test -e output/nested-eslint/conf/globals.js
@@ -65,10 +66,11 @@ test:
 	pnpm exec filedist check --presets "nested-eslint"
 	pnpm exec filedist remove --all
 	test ! -e output/nested-eslint/conf/globals.js
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
 
 	# --- Test 3: presets command lists all preset tags ---
 	cp -f .filedist.yml.orig .filedist.yml
-	rm -f .filedist.lock
 	rm -rf output
 	pnpm exec filedist presets | grep -x "basic"
 	pnpm exec filedist presets | grep -x "extra"
@@ -89,6 +91,8 @@ test:
 	test ! -e output/data-symlink/user1.json
 	test ! -e output/data-symlink/users-dataset
 	test ! -e output/nested-eslint/conf/globals.js
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
 
 	# --- Test 5: remove only a specific package leaves other packages' files intact ---
 	cp -f .filedist.yml.orig .filedist.yml

@@ -1,7 +1,7 @@
 {
   "name": "cli-config-simple",
   "version": "1.0.0",
-  "description": "Simple example using .filedistrc.yml to extract files from public npm packages with version lifecycle exercises",
+  "description": "Simple example using .filedist.yml to extract files from public npm packages with version lifecycle exercises",
   "dependencies": {
     "filedist": "file:../lib/dist/filedist-0.0.1.tgz"
   },

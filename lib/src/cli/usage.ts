@@ -18,12 +18,12 @@ Install files from one or more npm packages into a local output directory.
 Reads (or creates) .filedist.lock to pin exact package versions for reproducible installs.
 In config-file mode, the root-level postExtractCmd runs after a successful non-dry-run install.
 
-When <package> is supplied it is saved as a single entry in .filedistrc.yml and install runs
+When <package> is supplied it is saved as a single entry in .filedist.yml and install runs
 for all configured entries. Omit <package> to run install using the existing config file.
 
 Arguments:
   <package>               Package spec to add/update and install (e.g. my-pkg@^1.2.3,
-                          git:github.com/org/repo.git@main). Saved to .filedistrc.yml.
+                          git:github.com/org/repo.git@main). Saved to .filedist.yml.
 
 Options:
   --output, -o <dir>      Output directory path. Required when <package> is used without a config.

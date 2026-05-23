@@ -85,13 +85,13 @@ test:
 	pnpm exec filedist remove --config .mytest.yml --all
 	test ! -e output/eslint2/package.json
 	test -e output/chalk/package.json
+	test ! -e .mytest.yml
+	test ! -e .mytest.lock
 	pnpm exec filedist check
 
 	pnpm exec filedist remove --all
-	! grep "eslint@^8.0.0" .filedist.yml
-	! grep "chalk@4" .filedist.yml
-	! grep "eslint@^8.0.0: 8.57.1" .filedist.lock
-	! grep "chalk@4: 4.1.2" .filedist.lock
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
 	! grep "8.57.1" output/eslint/package.json
 	! grep "4.1.2" output/chalk/package.json
 	test ! -e output/eslint/README.md
