@@ -1,0 +1,8 @@
+version: 1
+sets:
+  - package: mypackage
+    selector:
+      presets:
+        - special
+    output:
+      path: output

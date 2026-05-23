@@ -19,10 +19,11 @@ test:
 	@echo ""
 	@echo ">>>> mypackage-consumer"
 	rm -rf output
-	cp -f .filedist.yml.orig .filedist.yml
+	cp -f mypackage.yml.orig mypackage.yml
 
 	# Test 1
 	rm -rf output
+	rm -f mypackage.lock
 	rm -f .filedist.lock
 	pnpm exec mypackage install --output output
 	test -e output/.configs/app.config.json
@@ -30,20 +31,25 @@ test:
 	test -e output/conf/globals.js
 	test -e output/conf/config-schema.js
 
+	# mypackage.yml and mypackage.lock should be used (not .filedist.yml / .filedist.lock)
+	test -e mypackage.yml
+	test -e mypackage.lock
+	test ! -e .filedist.lock
+
 	# user1 should be managed and in .gitignore
 	test -e output/data/users-dataset/user1.json
 	grep -e "data/users-dataset/user1.json" output/.gitignore
-	grep -e "data/users-dataset/user1.json" .filedist.lock
+	grep -e "data/users-dataset/user1.json" mypackage.lock
 
 	# user2 should be unmanaged and not in .gitignore
 	test -e output/data/users-dataset/user2.json
-	! grep -e "data/users-dataset/user2.json" .filedist.lock
+	! grep -e "data/users-dataset/user2.json" mypackage.lock
 	! grep -e "data/users-dataset/user2.json" output/.gitignore
 
 	# user3 was excluded, so it should not be extracted at all
 	test ! -e output/data/users-dataset/user3.json
 
-	! grep -e "conf/config-schema.js" .filedist.lock
+	! grep -e "conf/config-schema.js" mypackage.lock
 
 	pnpm exec mypackage check --output output
 
@@ -98,7 +104,8 @@ test:
 clean:
 	@rm -rf node_modules
 	@rm -rf output
-	@rm -f .filedist.yml
+	@rm -f mypackage.yml
+	@rm -f mypackage.lock
 	@rm -f .filedist.lock
 	@rm -f package.json
 	@rm -f pnpm-lock.yaml

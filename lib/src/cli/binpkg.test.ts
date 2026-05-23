@@ -117,4 +117,44 @@ describe('binpkg', () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot pass a package argument'));
     logSpy.mockRestore();
   }, 10_000);
+
+  it('uses custom config file and derives lock file name from it when configFile is specified', async () => {
+    const outputDir = path.join(tmpDir, 'output-custom-config');
+
+    // Write a minimal bootstrap config (package entry with output path specified via CLI --output)
+    const configContent = `version: 1\nsets: []\n`;
+    fs.writeFileSync(path.join(tmpDir, 'mypackage.yml'), configContent);
+
+    await expect(
+      binpkg(binDir, ['--output', outputDir, '--gitignore=false'], 'mypackage.yml'),
+    ).rejects.toThrow('process.exit(0)');
+
+    // The custom config file should exist
+    expect(fs.existsSync(path.join(tmpDir, 'mypackage.yml'))).toBe(true);
+
+    // The lock file must be derived from the config filename: mypackage.lock (not .filedist.lock)
+    expect(fs.existsSync(path.join(tmpDir, 'mypackage.lock'))).toBe(true);
+
+    // The default .filedist.lock must NOT be created
+    expect(fs.existsSync(path.join(tmpDir, '.filedist.lock'))).toBe(false);
+
+    // Files from the data package should have been extracted to the specified output dir
+    expect(fs.existsSync(path.join(outputDir, 'data/file1.json'))).toBe(true);
+  }, 60_000);
+
+  it('does not create .filedist.lock when configFile is specified — only the derived lock file', async () => {
+    // Ensure no pre-existing lock files
+    expect(fs.existsSync(path.join(tmpDir, '.filedist.lock'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, 'mypackage.lock'))).toBe(false);
+
+    const configContent = `version: 1\nsets:\n  - package: ${DATA_PKG_NAME}\n    output:\n      path: output-no-default-lock\n`;
+    fs.writeFileSync(path.join(tmpDir, 'mypackage.yml'), configContent);
+
+    await expect(binpkg(binDir, ['--gitignore=false'], 'mypackage.yml')).rejects.toThrow(
+      'process.exit(0)',
+    );
+
+    expect(fs.existsSync(path.join(tmpDir, 'mypackage.lock'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.filedist.lock'))).toBe(false);
+  }, 60_000);
 });

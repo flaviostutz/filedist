@@ -76,9 +76,10 @@ export async function binpkg(binDir: string, args: string[], configFile?: string
 
   let effectiveArgs = [...args];
 
-  // Inject --config if a configFile is specified and the user has not already passed --config
+  // Determine the config flag to inject (kept separate so it can be placed after the command)
+  let configFlagPair: string[] = [];
   if (configFile && !effectiveArgs.includes('--config')) {
-    effectiveArgs = ['--config', configFile, ...effectiveArgs];
+    configFlagPair = ['--config', configFile];
   }
 
   if (
@@ -89,21 +90,21 @@ export async function binpkg(binDir: string, args: string[], configFile?: string
     effectiveArgs.push('--presets', defaultPresets.join(','));
   }
 
-  // Find the command word, skipping any --config <value> prefix.
-  // effectiveArgs may start with ['--config', '<file>', 'command', ...] or ['command', ...]
+  // Find the command word (first known command in the args, ignoring flags and their values)
   let searchArgs = effectiveArgs;
   if (searchArgs[0] === '--config') {
-    searchArgs = searchArgs.slice(2); // skip --config <value>
+    searchArgs = searchArgs.slice(2); // skip any user-supplied --config <value>
   }
   const commandArg = KNOWN_COMMANDS.has(searchArgs[0]) ? searchArgs[0] : 'install';
 
   // Split into: flags before command | command | flags after command
+  // --config is always placed AFTER the command so cli.ts can detect the command word correctly
   const commandIdx = effectiveArgs.indexOf(commandArg);
   const beforeCmd = commandIdx > 0 ? effectiveArgs.slice(0, commandIdx) : [];
   const afterCmd = commandIdx >= 0 ? effectiveArgs.slice(commandIdx + 1) : effectiveArgs;
 
   const exitCode = await cli(
-    ['node', 'filedist', ...beforeCmd, commandArg, pkgName, ...afterCmd],
+    ['node', 'filedist', ...beforeCmd, commandArg, pkgName, ...configFlagPair, ...afterCmd],
     process.cwd(),
   );
   // eslint-disable-next-line unicorn/no-process-exit

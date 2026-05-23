@@ -17,7 +17,7 @@ install:
 
 build: install
 	# initialize filedist package with local files to be shared
-	pnpm exec filedist init --files ".configs/**/*,docs/**/*,data/**/*"
+	pnpm exec filedist init --files ".configs/**/*,docs/**/*,data/**/*" --package-config mypackage.yml
 
 	# use custom package sets
 	cp -f .filedist-package.yml.orig .filedist-package.yml
