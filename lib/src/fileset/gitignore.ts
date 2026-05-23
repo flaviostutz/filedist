@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { MARKER_FILE, GITIGNORE_FILE, GITIGNORE_START, GITIGNORE_END } from './constants';
+import { GITIGNORE_FILE, GITIGNORE_START, GITIGNORE_END } from './constants';
 
 /**
  * Add paths to the filedist-managed section in .gitignore.
@@ -37,7 +37,7 @@ export async function removeFromGitignore(markerDir: string, paths: string[]): P
 
   // Remove specified paths from the managed section
   const pathSet = new Set(paths);
-  const remaining = managedEntries.filter((e) => !pathSet.has(e) && e !== MARKER_FILE);
+  const remaining = managedEntries.filter((e) => !pathSet.has(e));
 
   writeGitignore(gitignorePath, beforeSection, remaining, afterSection);
 }
@@ -83,7 +83,7 @@ function parseSections(content: string): {
   const managedEntries = sectionContent
     .split('\n')
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && l !== MARKER_FILE);
+    .filter((l) => l.length > 0);
   const afterSection = content.slice(endIdx + GITIGNORE_END.length).trimStart();
 
   return { beforeSection, managedEntries, afterSection, hasSection: true };
@@ -106,7 +106,7 @@ function writeGitignore(
     return;
   }
 
-  const section = [GITIGNORE_START, MARKER_FILE, ...managedPaths.sort(), GITIGNORE_END].join('\n');
+  const section = [GITIGNORE_START, ...managedPaths.sort(), GITIGNORE_END].join('\n');
   const parts = [beforeSection, section, afterSection].filter(Boolean);
   const updatedContent = `${parts.join('\n')}\n`;
   fs.writeFileSync(gitignorePath, updatedContent, 'utf8');

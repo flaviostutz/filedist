@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
+import { PACKAGE_CONFIG_FILENAME } from '../package/config';
+
 import { cli, setupUncaughtExceptionHandler } from './cli';
 
 setupUncaughtExceptionHandler();
@@ -10,46 +14,45 @@ setupUncaughtExceptionHandler();
  *
  * Builds a synthetic single-set config from CLI args pointing to this data package.
  * Selectors (--files, --presets, etc.) are applied from the CLI args; omitting them
- * extracts all files. The data package's own filedist config in package.json is never
- * used as the CLI config here.
+ * extracts all files. The data package's own .filedist-package.yml is NOT used as
+ * the CLI bootstrap config here.
  *
- * @param binDir - The bin/ directory of the data package (__dirname from the shim).
- * @param args   - CLI arguments (without node + script, i.e. process.argv.slice(2)).
+ * @param binDir     - The bin/ directory of the data package (__dirname from the shim).
+ * @param args       - CLI arguments (without node + script, i.e. process.argv.slice(2)).
+ * @param configFile - Optional bootstrap config filename to inject as --config in the
+ *                     consumer's cwd. When omitted the consumer's default .filedist.yml is used.
  */
-export async function binpkg(binDir: string, args: string[]): Promise<void> {
-  // Detect if the user passed a positional package arg (bare word that is not a
-  // known command and not the value following a known flag-with-value).
-  const flagsWithValue = new Set([
-    '--output',
-    '-o',
-    '--files',
-    '--exclude',
-    '--content-regex',
-    '--presets',
-    '--config',
-  ]);
-  const knownCommands = new Set([
-    'install',
-    'check',
-    'list',
-    'remove',
-    'init',
-    'presets',
-    'update',
-  ]);
-  let userPositional: string | undefined;
+
+const FLAGS_WITH_VALUE = new Set([
+  '--output',
+  '-o',
+  '--files',
+  '--exclude',
+  '--content-regex',
+  '--presets',
+  '--config',
+]);
+
+const KNOWN_COMMANDS = new Set(['install', 'check', 'list', 'remove', 'init', 'presets', 'update']);
+
+/** Returns the first positional (non-flag, non-command) argument, or undefined. */
+function findUserPositional(args: string[]): string | undefined {
   for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith('-')) {
-      if (flagsWithValue.has(args[i])) i++; // skip the value
-    } else if (i === 0 && knownCommands.has(args[i])) {
+      if (FLAGS_WITH_VALUE.has(args[i])) i++; // skip the value
+    } else if (i === 0 && KNOWN_COMMANDS.has(args[i])) {
       // first element is a known command word, not a package
     } else {
-      userPositional = args[i];
-      break;
+      return args[i];
     }
   }
   // eslint-disable-next-line no-undefined
-  if (userPositional !== undefined) {
+  return undefined;
+}
+
+export async function binpkg(binDir: string, args: string[], configFile?: string): Promise<void> {
+  // eslint-disable-next-line no-undefined
+  if (findUserPositional(args) !== undefined) {
     // eslint-disable-next-line no-console
     console.log('Cannot pass a package argument when invoked from a data package bin shim');
     // eslint-disable-next-line unicorn/no-process-exit
@@ -59,14 +62,25 @@ export async function binpkg(binDir: string, args: string[]): Promise<void> {
   const pkgRootDir = path.join(binDir, '..');
   const pkgJson = JSON.parse(fs.readFileSync(path.join(pkgRootDir, 'package.json')).toString()) as {
     name: string;
-    filedist?: {
-      defaultPresets?: string[];
-    };
   };
   const pkgName = pkgJson.name;
-  const defaultPresets = pkgJson.filedist?.defaultPresets ?? [];
 
-  const effectiveArgs = [...args];
+  // Read defaultPresets from .filedist-package.yml (not package.json)
+  let defaultPresets: string[] = [];
+  const packageConfigPath = path.join(pkgRootDir, PACKAGE_CONFIG_FILENAME);
+  if (fs.existsSync(packageConfigPath)) {
+    const raw = fs.readFileSync(packageConfigPath, 'utf8');
+    const parsed = yaml.load(raw) as { defaultPresets?: string[] } | null;
+    defaultPresets = parsed?.defaultPresets ?? [];
+  }
+
+  let effectiveArgs = [...args];
+
+  // Inject --config if a configFile is specified and the user has not already passed --config
+  if (configFile && !effectiveArgs.includes('--config')) {
+    effectiveArgs = ['--config', configFile, ...effectiveArgs];
+  }
+
   if (
     !effectiveArgs.includes('--presets') &&
     !effectiveArgs.includes('--all') &&
@@ -75,17 +89,21 @@ export async function binpkg(binDir: string, args: string[]): Promise<void> {
     effectiveArgs.push('--presets', defaultPresets.join(','));
   }
 
-  // Inject pkgName as a positional arg right after the command word so cli
-  // builds a synthetic single-set entry from it.
-  // No configCwd is passed, so the data package's own filedist config is not loaded.
-  //
-  // Build argv: preserve the user's command (or default to 'install'), then pkgName, then remaining flags.
-  const commandArg = knownCommands.has(effectiveArgs[0]) ? effectiveArgs[0] : 'install';
-  const remainingArgs = knownCommands.has(effectiveArgs[0])
-    ? effectiveArgs.slice(1)
-    : effectiveArgs;
+  // Find the command word, skipping any --config <value> prefix.
+  // effectiveArgs may start with ['--config', '<file>', 'command', ...] or ['command', ...]
+  let searchArgs = effectiveArgs;
+  if (searchArgs[0] === '--config') {
+    searchArgs = searchArgs.slice(2); // skip --config <value>
+  }
+  const commandArg = KNOWN_COMMANDS.has(searchArgs[0]) ? searchArgs[0] : 'install';
+
+  // Split into: flags before command | command | flags after command
+  const commandIdx = effectiveArgs.indexOf(commandArg);
+  const beforeCmd = commandIdx > 0 ? effectiveArgs.slice(0, commandIdx) : [];
+  const afterCmd = commandIdx >= 0 ? effectiveArgs.slice(commandIdx + 1) : effectiveArgs;
+
   const exitCode = await cli(
-    ['node', 'filedist', commandArg, pkgName, ...remainingArgs],
+    ['node', 'filedist', ...beforeCmd, commandArg, pkgName, ...afterCmd],
     process.cwd(),
   );
   // eslint-disable-next-line unicorn/no-process-exit

@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-import { FiledistConfig } from '../../types';
 import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { actionCheck } from '../../package/action-check';
@@ -11,11 +10,7 @@ import { actionCheck } from '../../package/action-check';
  * package versions from .filedist.lock. Fails if no lock file is found.
  * The user configuration file is not used.
  */
-export async function runCheck(
-  config: FiledistConfig | null,
-  argv: string[],
-  cwd: string,
-): Promise<void> {
+export async function runCheck(argv: string[], cwd: string, lockfilePath: string): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('check');
     return;
@@ -27,6 +22,7 @@ export async function runCheck(
     entries: [],
     cwd,
     verbose: parsed.verbose,
+    lockfilePath,
     localOnly: parsed.localOnly,
     frozenLockfile: true,
   });

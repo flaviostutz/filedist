@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
+import yaml from 'js-yaml';
 import { jest } from '@jest/globals';
 
 import { installMockPackage } from '../fileset/test-utils';
@@ -29,7 +30,11 @@ afterEach(() => {
 
 describe('actionCheck', () => {
   it('returns empty summary when entries array is empty', async () => {
-    const result = await actionCheck({ entries: [], cwd: tmpDir });
+    const result = await actionCheck({
+      entries: [],
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
@@ -44,7 +49,7 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(outputDir, 'guide.md'), content);
 
     const checksum = crypto.createHash('sha256').update(content).digest('hex').slice(18, 30);
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'check-action-pkg',
@@ -59,7 +64,11 @@ describe('actionCheck', () => {
       { package: 'check-action-pkg@1.0.0', output: { path: outputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.ok).toBe(1);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
@@ -75,6 +84,7 @@ describe('actionCheck', () => {
     const result = await actionCheck({
       entries: [{ package: 'post-purge-pkg@1.0.0', output: { path: outputDir } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.ok).toBe(0);
@@ -90,7 +100,7 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
 
     // Write a marker for a file
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'src/index.ts',
         packageName: 'not-installed-pkg',
@@ -106,7 +116,11 @@ describe('actionCheck', () => {
       { package: 'not-installed-pkg@1.0.0', output: { path: outputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     // File is not on disk → missing
     expect(result.ok).toBe(0);
     expect(result.missing.length).toBeGreaterThan(0);
@@ -124,6 +138,7 @@ describe('actionCheck', () => {
     await actionInstall({
       entries: [{ package: 'check-nosync-pkg@1.0.0', output: { path: outputDir } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     await actionInstall({
@@ -135,6 +150,7 @@ describe('actionCheck', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionCheck({
@@ -146,6 +162,7 @@ describe('actionCheck', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // keep.md is in sync — counted as ok
@@ -159,7 +176,11 @@ describe('actionCheck', () => {
       { package: 'some-pkg', output: { path: path.join(tmpDir, 'out'), managed: false } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
@@ -173,7 +194,7 @@ describe('actionCheck', () => {
     // Don't extract the file → it will be "modified" (hash mismatch) or "missing"
 
     // Write a marker entry with wrong hash (will cause modified detection)
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.md',
         packageName: 'multi-pkg',
@@ -190,7 +211,11 @@ describe('actionCheck', () => {
       { package: 'multi-pkg@1.0.0', output: { path: outputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     // Since hash differs, should be in modified
     expect(result.ok).toBe(0);
     expect(result.conflict).toContain('a.md');
@@ -206,6 +231,7 @@ describe('actionCheck', () => {
     await actionCheck({
       entries,
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -217,7 +243,7 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-nv');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.txt',
         packageName: 'no-version-pkg',
@@ -238,6 +264,7 @@ describe('actionCheck', () => {
     const result = await actionCheck({
       entries,
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => {
         if ('packageVersion' in e) {
           events.push({ type: e.type, version: e.packageVersion });
@@ -258,7 +285,7 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-sel');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'docs/api.md',
         packageName: 'sel-pkg',
@@ -279,7 +306,11 @@ describe('actionCheck', () => {
       },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     // With selector matching all files, should be clean
     expect(result.ok).toBeGreaterThan(0);
     expect(result.conflict).toHaveLength(0);
@@ -312,7 +343,7 @@ describe('actionCheck', () => {
       path.join(outputDir, 'data-symlink', 'user1.json'),
     );
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'data/users-dataset/user1.json',
         packageName: 'check-symlink-pkg',
@@ -351,6 +382,7 @@ describe('actionCheck', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.missing).toHaveLength(0);
@@ -387,7 +419,7 @@ describe('actionCheck', () => {
       path.join(outputDir, 'data-symlink', 'user1.json'),
     );
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'data/users-dataset/user1.json',
         packageName: 'check-symlink-drift-pkg',
@@ -426,6 +458,7 @@ describe('actionCheck', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.missing).toHaveLength(0);
@@ -443,7 +476,7 @@ describe('actionCheck', () => {
     // Set up marker and matching files for both packages so check passes when run
     fs.mkdirSync(path.join(docsOutput, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(docsOutput, 'docs/guide.md'), '# Guide');
-    writeManagedFilesForDir(tmpDir, docsOutput, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, docsOutput, [
       {
         path: 'docs/guide.md',
         packageName: 'presets-docs-pkg',
@@ -456,7 +489,7 @@ describe('actionCheck', () => {
 
     fs.mkdirSync(path.join(dataOutput, 'data'), { recursive: true });
     fs.writeFileSync(path.join(dataOutput, 'data/sample.csv'), 'a,b');
-    writeManagedFilesForDir(tmpDir, dataOutput, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, dataOutput, [
       {
         path: 'data/sample.csv',
         packageName: 'presets-data-pkg',
@@ -475,7 +508,11 @@ describe('actionCheck', () => {
     // Check with presets=['docs'] — only the docs entry is checked
     const filteredEntries = filterEntriesByPresets(entries, ['docs']);
 
-    const resultDocs = await actionCheck({ entries: filteredEntries, cwd: tmpDir });
+    const resultDocs = await actionCheck({
+      entries: filteredEntries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(resultDocs.ok).toBeGreaterThan(0);
     expect(resultDocs.missing).toHaveLength(0);
     expect(resultDocs.conflict).toHaveLength(0);
@@ -487,6 +524,7 @@ describe('actionCheck', () => {
     const resultDocsOnly = await actionCheck({
       entries: filteredEntriesDocs,
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     // data entry was filtered out, so missing data file is not reported
     expect(resultDocsOnly.missing).toHaveLength(0);
@@ -496,6 +534,7 @@ describe('actionCheck', () => {
     const resultData = await actionCheck({
       entries: filteredEntriesData,
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     expect(resultData.missing).toContain('data/sample.csv');
   }, 60000);
@@ -506,7 +545,7 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-all');
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'file.md'), '# File');
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'file.md',
         packageName: 'all-presets-pkg',
@@ -522,7 +561,11 @@ describe('actionCheck', () => {
     ];
 
     // presets=[] means no filtering — all entries pass through
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.ok).toBeGreaterThan(0);
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
@@ -534,18 +577,14 @@ describe('actionCheck', () => {
     fs.mkdirSync(parentPkgDir, { recursive: true });
     fs.writeFileSync(
       path.join(parentPkgDir, 'package.json'),
-      JSON.stringify({
-        name: 'recurse-parent',
-        version: '1.0.0',
-        filedist: {
-          sets: [
-            {
-              package: 'recurse-child@1.0.0',
-              output: { path: 'child-out' },
-            },
-          ],
-        },
-      }),
+      JSON.stringify({ name: 'recurse-parent', version: '1.0.0' }),
+    );
+    fs.writeFileSync(
+      path.join(parentPkgDir, '.filedist-package.yml'),
+      yaml.dump(
+        { sets: [{ package: 'recurse-child@1.0.0', output: { path: 'child-out' } }] },
+        { indent: 2 },
+      ),
     );
 
     // Child package installed too
@@ -562,7 +601,7 @@ describe('actionCheck', () => {
     const parentOutputDir = path.join(tmpDir, 'parent-out');
     fs.mkdirSync(parentOutputDir, { recursive: true });
     fs.writeFileSync(path.join(parentOutputDir, 'parent.md'), 'parent content');
-    writeManagedFilesForDir(tmpDir, parentOutputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, parentOutputDir, [
       {
         path: 'parent.md',
         packageName: 'recurse-parent',
@@ -576,7 +615,7 @@ describe('actionCheck', () => {
     // Child output dir (parent output + child path) — child.md is MISSING on disk
     const childOutputDir = path.join(tmpDir, 'parent-out', 'child-out');
     fs.mkdirSync(childOutputDir, { recursive: true });
-    writeManagedFilesForDir(tmpDir, childOutputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, childOutputDir, [
       {
         path: 'child.md',
         packageName: 'recurse-child',
@@ -592,7 +631,11 @@ describe('actionCheck', () => {
       { package: 'recurse-parent@1.0.0', output: { path: parentOutputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
 
     // Parent file is present and matching — no drift there
     expect(result.missing).not.toContain('parent.md');
@@ -609,13 +652,16 @@ describe('actionCheck', () => {
     );
     await installMockPackage('nested-parent', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
 
-    const parentPkgJsonPath = path.join(tmpDir, 'node_modules', 'nested-parent', 'package.json');
-    const parentPkgJson = JSON.parse(fs.readFileSync(parentPkgJsonPath).toString()) as object;
+    const parentPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'nested-parent',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      parentPkgJsonPath,
-      JSON.stringify({
-        ...parentPkgJson,
-        filedist: {
+      parentPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'nested-child@1.0.0',
@@ -624,7 +670,8 @@ describe('actionCheck', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'out-nested-managed-false');
@@ -632,7 +679,7 @@ describe('actionCheck', () => {
     fs.mkdirSync(path.join(outputDir, 'conf'), { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'docs/guide.md'), '# Guide');
     fs.writeFileSync(path.join(outputDir, 'conf/config-schema.js'), 'custom local content');
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'docs/guide.md',
         packageName: 'nested-parent',
@@ -646,6 +693,7 @@ describe('actionCheck', () => {
     const result = await actionCheck({
       entries: [{ package: 'nested-parent@1.0.0', output: { path: outputDir } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.ok).toBe(1);
@@ -660,7 +708,7 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'readme.md'), '# hello');
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'readme.md',
         packageName: 'verbose-check-pkg',
@@ -677,7 +725,12 @@ describe('actionCheck', () => {
 
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn());
     try {
-      const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+      const result = await actionCheck({
+        entries,
+        cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
+        verbose: true,
+      });
       expect(result.ok).toBe(1);
       expect(result.missing).toHaveLength(0);
       expect(result.conflict).toHaveLength(0);
@@ -697,7 +750,7 @@ describe('actionCheck', () => {
     const outputDir = path.join(tmpDir, 'out-vnp');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'file.md',
         packageName: 'missing-verbose-pkg',
@@ -713,7 +766,12 @@ describe('actionCheck', () => {
       { package: 'missing-verbose-pkg@1.0.0', output: { path: outputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+      verbose: true,
+    });
     expect(result.ok).toBe(0);
     expect(result.missing).toHaveLength(1);
   }, 60000);
@@ -731,7 +789,7 @@ describe('actionCheck', () => {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(path.join(outputDir, 'readme.md'), '# hi');
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'readme.md',
         packageName: 'spy-corrupt-parent',
@@ -761,7 +819,12 @@ describe('actionCheck', () => {
         { package: 'spy-corrupt-parent@1.0.0', output: { path: outputDir } },
       ];
       // Should not throw — catch block inside actionCheck handles the error
-      const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+      const result = await actionCheck({
+        entries,
+        cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
+        verbose: true,
+      });
       expect(result).toBeDefined();
     } finally {
       spy.mockRestore();
@@ -777,7 +840,11 @@ describe('actionCheck', () => {
       },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.missing).toHaveLength(0);
     expect(result.conflict).toHaveLength(0);
     expect(result.extra).toHaveLength(0);
@@ -790,13 +857,14 @@ describe('actionCheck', () => {
     fs.mkdirSync(parentPkgDir, { recursive: true });
     fs.writeFileSync(
       path.join(parentPkgDir, 'package.json'),
-      JSON.stringify({
-        name: 'verbose-recurse-parent',
-        version: '1.0.0',
-        filedist: {
-          sets: [{ package: 'verbose-recurse-child@1.0.0', output: { path: 'child-out' } }],
-        },
-      }),
+      JSON.stringify({ name: 'verbose-recurse-parent', version: '1.0.0' }),
+    );
+    fs.writeFileSync(
+      path.join(parentPkgDir, '.filedist-package.yml'),
+      yaml.dump(
+        { sets: [{ package: 'verbose-recurse-child@1.0.0', output: { path: 'child-out' } }] },
+        { indent: 2 },
+      ),
     );
 
     const childPkgDir = path.join(tmpDir, 'node_modules', 'verbose-recurse-child');
@@ -810,7 +878,7 @@ describe('actionCheck', () => {
     const parentOutputDir = path.join(tmpDir, 'verbose-parent-out');
     fs.mkdirSync(parentOutputDir, { recursive: true });
     fs.writeFileSync(path.join(parentOutputDir, 'parent.md'), 'parent content');
-    writeManagedFilesForDir(tmpDir, parentOutputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, parentOutputDir, [
       {
         path: 'parent.md',
         packageName: 'verbose-recurse-parent',
@@ -824,7 +892,7 @@ describe('actionCheck', () => {
     const childOutputDir = path.join(tmpDir, 'verbose-parent-out', 'child-out');
     fs.mkdirSync(childOutputDir, { recursive: true });
     fs.writeFileSync(path.join(childOutputDir, 'child.md'), 'child content');
-    writeManagedFilesForDir(tmpDir, childOutputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, childOutputDir, [
       {
         path: 'child.md',
         packageName: 'verbose-recurse-child',
@@ -839,7 +907,12 @@ describe('actionCheck', () => {
       { package: 'verbose-recurse-parent@1.0.0', output: { path: parentOutputDir } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir, verbose: true });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+      verbose: true,
+    });
     // Both files are present and match — no drift
     expect(result.missing).not.toContain('parent.md');
     expect(result.missing).not.toContain('child.md');
@@ -859,7 +932,7 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(sharedOutput, 'b.md'), 'BBB');
 
     // Both packages share the same output directory and marker file
-    writeManagedFilesForDir(tmpDir, sharedOutput, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, sharedOutput, [
       {
         path: 'a.md',
         packageName: 'shared-pkg-a',
@@ -883,7 +956,11 @@ describe('actionCheck', () => {
       { package: 'shared-pkg-b@1.0.0', output: { path: sharedOutput } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     // b.md should not appear as extra/modified when checking shared-pkg-a
     // a.md should not appear as extra/modified when checking shared-pkg-b
     expect(result.missing).toHaveLength(0);
@@ -905,7 +982,7 @@ describe('actionCheck', () => {
     fs.writeFileSync(path.join(sharedOutput, 'a.md'), 'AAA');
     // Deliberately do NOT write b.md (absent-pkg's file is missing from output)
 
-    writeManagedFilesForDir(tmpDir, sharedOutput, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, sharedOutput, [
       {
         path: 'a.md',
         packageName: 'present-pkg',
@@ -928,7 +1005,11 @@ describe('actionCheck', () => {
       { package: 'absent-pkg@1.0.0', output: { path: sharedOutput } },
     ];
 
-    const result = await actionCheck({ entries, cwd: tmpDir });
+    const result = await actionCheck({
+      entries,
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.missing).toContain('b.md');
     // a.md belongs to present-pkg — must NOT be reported as missing
     expect(result.missing).not.toContain('a.md');
@@ -947,6 +1028,7 @@ describe('actionCheck — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'frozen-check-a', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Modify a.md to create drift
@@ -958,6 +1040,7 @@ describe('actionCheck — frozenLockfile', () => {
     const result = await actionCheck({
       entries: [{ package: 'frozen-check-b', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       frozenLockfile: true,
     });
 
@@ -974,10 +1057,16 @@ describe('actionCheck — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'frozen-check-clean', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Pass empty entries — frozen mode reads lockfile sets and checks pkg
-    const result = await actionCheck({ entries: [], cwd: tmpDir, frozenLockfile: true });
+    const result = await actionCheck({
+      entries: [],
+      cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+      frozenLockfile: true,
+    });
 
     expect(result.ok).toBeGreaterThan(0);
     expect(result.missing).toHaveLength(0);
@@ -986,9 +1075,14 @@ describe('actionCheck — frozenLockfile', () => {
   }, 90_000);
 
   it('fails when frozenLockfile=true and no lockfile exists', async () => {
-    await expect(actionCheck({ entries: [], cwd: tmpDir, frozenLockfile: true })).rejects.toThrow(
-      '.filedist.lock',
-    );
+    await expect(
+      actionCheck({
+        entries: [],
+        cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
+        frozenLockfile: true,
+      }),
+    ).rejects.toThrow('.filedist.lock');
   });
 
   it('localOnly mode: returns ok when files are intact', async () => {
@@ -998,11 +1092,13 @@ describe('actionCheck — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'local-ok-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionCheck({
       entries: [{ package: 'local-ok-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       localOnly: true,
       verbose: true,
     });
@@ -1019,6 +1115,7 @@ describe('actionCheck — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'local-miss-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Delete the installed file to simulate missing
@@ -1027,6 +1124,7 @@ describe('actionCheck — frozenLockfile', () => {
     const result = await actionCheck({
       entries: [{ package: 'local-miss-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       localOnly: true,
       verbose: true,
     });
@@ -1043,11 +1141,13 @@ describe('actionCheck — frozenLockfile', () => {
         { package: 'frozen-verbose-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionCheck({
       entries: [],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       frozenLockfile: true,
       verbose: true,
     });
@@ -1064,6 +1164,7 @@ describe('actionCheck — frozenLockfile', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.ok).toBe(0);

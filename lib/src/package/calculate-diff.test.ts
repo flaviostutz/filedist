@@ -78,7 +78,7 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'guide.md', '# Guide');
     writeFile(outputDir, 'guide.md', '# Guide');
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'test-pkg',
@@ -91,7 +91,14 @@ describe('calculateDiff', () => {
 
     const resolved = [buildResolvedFile('guide.md', { managed: true, gitignore: false })];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.ok).toHaveLength(1);
     expect(result.ok[0].relPath).toBe('guide.md');
@@ -104,7 +111,7 @@ describe('calculateDiff', () => {
     writeFile(outputDir, 'guide.md', 'OLD content');
 
     // Marker checksum reflects original extraction ('NEW content'); disk has 'OLD content'
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'test-pkg',
@@ -117,7 +124,14 @@ describe('calculateDiff', () => {
 
     const resolved = [buildResolvedFile('guide.md')];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.conflict).toHaveLength(1);
     expect(result.conflict[0].relPath).toBe('guide.md');
@@ -142,7 +156,7 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'guide.md', '# Guide');
     writeFile(outputDir, 'guide.md', '# Guide');
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'test-pkg',
@@ -156,7 +170,14 @@ describe('calculateDiff', () => {
 
     const resolved = [buildResolvedFile('guide.md', { gitignore: true })];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.conflict).toHaveLength(1);
     expect(result.conflict[0].conflictReasons).toContain('gitignore');
@@ -166,7 +187,7 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'guide.md', '# Guide');
     writeFile(outputDir, 'guide.md', '# Guide');
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'test-pkg',
@@ -180,7 +201,14 @@ describe('calculateDiff', () => {
 
     const resolved = [buildResolvedFile('guide.md', { gitignore: true })];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.ok).toHaveLength(1);
     expect(result.conflict).toHaveLength(0);
@@ -188,7 +216,7 @@ describe('calculateDiff', () => {
 
   it('classifies extra when managed file in marker is not in desired files', async () => {
     writeFile(outputDir, 'stale.md', 'stale content');
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'stale.md',
         packageName: 'test-pkg',
@@ -203,7 +231,14 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'current.md', '# Current');
     const resolved = [buildResolvedFile('current.md')];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.extra).toHaveLength(1);
     expect(result.extra[0].relPath).toBe('stale.md');
@@ -214,7 +249,7 @@ describe('calculateDiff', () => {
     writeFile(outputDir, 'pkg-b.md', 'bbb');
 
     // Marker has both packages
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'pkg-a.md',
         packageName: 'test-pkg',
@@ -237,7 +272,14 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'pkg-a.md', 'aaa');
     const resolved = [buildResolvedFile('pkg-a.md', { managed: true, gitignore: false })];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     // pkg-b.md belongs to other-pkg which is NOT in relevantPackages → not extra
     const extraPaths = result.extra.map((e) => e.relPath);
@@ -246,7 +288,7 @@ describe('calculateDiff', () => {
 
   it('classifies extra for relevant packages even when desired managed files are empty', async () => {
     writeFile(outputDir, 'stale-eslint.js', 'module.exports = {};');
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'stale-eslint.js',
         packageName: 'eslint',
@@ -259,7 +301,14 @@ describe('calculateDiff', () => {
 
     const relevantPackagesByOutputDir = new Map([[outputDir, new Set(['eslint'])]]);
 
-    const result = await calculateDiff([], false, tmpDir, relevantPackagesByOutputDir);
+    const result = await calculateDiff(
+      [],
+      false,
+      tmpDir,
+      relevantPackagesByOutputDir,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.extra).toHaveLength(1);
     expect(result.extra[0].relPath).toBe('stale-eslint.js');
@@ -274,7 +323,7 @@ describe('calculateDiff', () => {
     writeFile(outputDir, 'file1.md', '# 1');
     // file2 missing from outputDir2
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'file1.md',
         packageName: 'test-pkg',
@@ -304,7 +353,14 @@ describe('calculateDiff', () => {
       } satisfies ResolvedFile,
     ];
 
-    const result = await calculateDiff(resolved, false, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      false,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.ok.some((e) => e.relPath === 'file1.md')).toBe(true);
     expect(result.missing.some((e) => e.relPath === 'file2.md' && e.outputDir === outputDir2)).toBe(
@@ -316,7 +372,7 @@ describe('calculateDiff', () => {
     writeFile(pkgDir, 'guide.md', 'pkg content');
     writeFile(outputDir, 'guide.md', 'user modified content'); // user changed it
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'guide.md',
         packageName: 'test-pkg',
@@ -330,7 +386,14 @@ describe('calculateDiff', () => {
     const resolved = [buildResolvedFile('guide.md', { force: true, mutable: false })];
 
     // compareWithSource=true (extraction mode): mutable existing → content check always skipped
-    const result = await calculateDiff(resolved, true, tmpDir);
+    const result = await calculateDiff(
+      resolved,
+      true,
+      tmpDir,
+      void 0,
+      void 0,
+      path.join(tmpDir, '.filedist.lock'),
+    );
 
     expect(result.ok).toHaveLength(1);
     expect(result.conflict).toHaveLength(0);

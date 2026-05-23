@@ -39,6 +39,7 @@ export async function runInstall(
   config: FiledistConfig | null,
   argv: string[],
   cwd: string,
+  lockfilePath: string,
 ): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('install');
@@ -64,6 +65,7 @@ export async function runInstall(
     entries,
     cwd,
     verbose: parsed.verbose,
+    lockfilePath,
     frozenLockfile: parsed.frozenLockfile,
     onProgress: (event: ProgressEvent) => {
       if (entries[0]?.silent) return;

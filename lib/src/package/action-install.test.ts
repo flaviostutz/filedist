@@ -60,6 +60,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'my-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBeGreaterThan(0);
@@ -75,9 +76,10 @@ describe('actionInstall', () => {
       entries: [{ package: 'marker-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
-    const marker = readManagedFilesForDir(tmpDir, outputDir);
+    const marker = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(marker.length).toBeGreaterThan(0);
     expect(marker[0].packageName).toBe('marker-pkg');
   }, 60000);
@@ -98,9 +100,10 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
-    const marker = readManagedFilesForDir(tmpDir, outputDir);
+    const marker = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(marker).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: 'docs/guide.md', kind: 'file' }),
@@ -125,6 +128,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const linkPath = path.join(outputDir, 'links', 'guide.md');
@@ -143,10 +147,11 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const after = fs.lstatSync(linkPath);
-    const marker = readManagedFilesForDir(tmpDir, outputDir);
+    const marker = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     const symlinkEntry = marker.find((entry) => entry.path === 'links/guide.md');
 
     expect(after.ino).toBe(before.ino);
@@ -169,7 +174,7 @@ describe('actionInstall', () => {
     fs.writeFileSync(path.join(outputDir, 'docs-guide-placeholder.txt'), 'placeholder');
     fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-managed.md'));
     fs.symlinkSync('/dev/null', path.join(linksDir, 'stale-unmanaged.md'));
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'links/stale-managed.md',
         packageName: 'symlink-stale-pkg',
@@ -192,11 +197,12 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(linksDir, 'stale-managed.md'))).toBe(false);
     expect(fs.existsSync(path.join(linksDir, 'stale-unmanaged.md'))).toBe(true);
-    const marker = readManagedFilesForDir(tmpDir, outputDir);
+    const marker = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(marker.some((entry) => entry.path === 'links/stale-managed.md')).toBe(false);
     expect(
       marker.some((entry) => entry.path === 'links/guide.md' && entry.kind === 'symlink'),
@@ -213,10 +219,13 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(false);
-    expect(readManagedFilesForDir(tmpDir, outputDir)).toHaveLength(0);
+    expect(
+      readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir),
+    ).toHaveLength(0);
   }, 60000);
 
   it('force overwrites unmanaged files', async () => {
@@ -232,6 +241,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('pkg content');
@@ -249,6 +259,7 @@ describe('actionInstall', () => {
         entries: [{ package: 'conflict-pkg', output: { path: outputDir, gitignore: false } }],
 
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).rejects.toThrow('Conflict');
   }, 60000);
@@ -266,6 +277,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('user content');
@@ -284,6 +296,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     // Simulate user modification
     fs.chmodSync(path.join(outputDir, 'guide.md'), 0o644);
@@ -299,6 +312,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -318,6 +332,7 @@ describe('actionInstall', () => {
     await actionInstall({
       entries: [{ package: 'nosync-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionInstall({
@@ -329,13 +344,14 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.deleted).toBe(0);
     expect(fs.existsSync(path.join(outputDir, 'keep.md'))).toBe(true);
     expect(fs.existsSync(path.join(outputDir, 'stale.md'))).toBe(true);
 
-    const marker = readManagedFilesForDir(tmpDir, outputDir);
+    const marker = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(marker).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: 'keep.md' }),
@@ -355,6 +371,7 @@ describe('actionInstall', () => {
         { package: 'circ-pkg', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     // Guide.md should be extracted once, not twice
     expect(result.added).toBe(1);
@@ -369,13 +386,11 @@ describe('actionInstall', () => {
 
     // Modify recursive-main's package.json in node_modules to include filedist.sets
     const mainPkgPath = path.join(tmpDir, 'node_modules', 'recursive-main');
-    const mainPkgJsonPath = path.join(mainPkgPath, 'package.json');
-    const existingJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(mainPkgPath, '.filedist-package.yml');
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...existingJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'recursive-dep',
@@ -383,7 +398,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -396,6 +412,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Should have extracted main-file.md AND recursively extracted dep-file.md
@@ -439,6 +456,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBe(2);
@@ -446,8 +464,16 @@ describe('actionInstall', () => {
     expect(fs.existsSync(path.join(outputDir, 'nested', 'child', 'data.json'))).toBe(true);
     // git clone temp dir is in the OS temp dir, not in the workspace
 
-    const parentMarker = readManagedFilesForDir(tmpDir, outputDir);
-    const childMarker = readManagedFilesForDir(tmpDir, path.join(outputDir, 'nested'));
+    const parentMarker = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      outputDir,
+    );
+    const childMarker = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      path.join(outputDir, 'nested'),
+    );
     expect(parentMarker.map((entry) => entry.packageName)).toEqual(
       expect.arrayContaining([parentRepo.repoUrl]),
     );
@@ -478,6 +504,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Without presets filtering at the call site all entries are extracted
@@ -494,13 +521,16 @@ describe('actionInstall', () => {
     // Install a main package whose filedist.sets references both nested packages,
     // each tagged with a different preset
     await installMockPackage('preset-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'preset-main', 'package.json');
-    const existing = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'preset-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...existing,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'nested-docs',
@@ -514,7 +544,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -531,6 +562,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'main.md'))).toBe(false);
@@ -553,13 +585,11 @@ describe('actionInstall', () => {
     );
 
     // Add self-referencing filedist.sets to the installed package's package.json
-    const pkgJsonPath = path.join(tmpDir, 'node_modules', 'self-ref-pkg', 'package.json');
-    const existing = JSON.parse(fs.readFileSync(pkgJsonPath).toString()) as object;
+    const pkgYmlPath = path.join(tmpDir, 'node_modules', 'self-ref-pkg', '.filedist-package.yml');
     fs.writeFileSync(
-      pkgJsonPath,
-      JSON.stringify({
-        ...existing,
-        filedist: {
+      pkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               presets: ['docs'],
@@ -573,7 +603,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -588,6 +619,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBe(1);
@@ -604,13 +636,16 @@ describe('actionInstall', () => {
       tmpDir,
     );
 
-    const pkgJsonPath = path.join(tmpDir, 'node_modules', 'multi-preset-pkg', 'package.json');
-    const existing = JSON.parse(fs.readFileSync(pkgJsonPath).toString()) as object;
+    const pkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'multi-preset-pkg',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      pkgJsonPath,
-      JSON.stringify({
-        ...existing,
-        filedist: {
+      pkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               presets: ['docs'],
@@ -624,7 +659,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -639,6 +675,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBe(2);
@@ -648,16 +685,18 @@ describe('actionInstall', () => {
 
   it('throws when selector.presets does not match any set in the producer package', async () => {
     await installMockPackage('no-match-pkg', '1.0.0', { 'main.md': '# Main' }, tmpDir);
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'no-match-pkg', 'package.json');
-    const existing = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'no-match-pkg',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...existing,
-        filedist: {
-          sets: [{ package: 'some-dep', presets: ['docs'], output: { path: '.' } }],
-        },
-      }),
+      mainPkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'some-dep', presets: ['docs'], output: { path: '.' } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -672,6 +711,7 @@ describe('actionInstall', () => {
         ],
 
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).rejects.toThrow('nonexistent');
   }, 60000);
@@ -684,6 +724,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'modify-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Update the file in node_modules to simulate a new version with changed content
@@ -701,6 +742,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -735,6 +777,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const exportedGuide = path.join(outputDir, 'docs', 'guide.md');
@@ -770,6 +813,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(checkResult.missing).toHaveLength(0);
@@ -783,6 +827,7 @@ describe('actionInstall', () => {
         entries: [{ package: '', output: { path: 'out' } }],
 
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).rejects.toThrow('"package" field');
   });
@@ -793,6 +838,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'default-out-pkg' }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     expect(result.added).toBe(1);
     expect(fs.existsSync(path.join(tmpDir, 'file.md'))).toBe(true);
@@ -803,6 +849,7 @@ describe('actionInstall', () => {
       entries: [],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBe(0);
@@ -829,6 +876,7 @@ describe('actionInstall', () => {
         ],
 
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).resolves.toBeDefined();
 
@@ -846,6 +894,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'events-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -863,6 +912,7 @@ describe('actionInstall', () => {
     await actionInstall({
       entries: [{ package: 'event-flags-pkg', output: { path: outputDir } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e),
     });
 
@@ -884,6 +934,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'skip-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const events: string[] = [];
@@ -892,6 +943,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'skip-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -912,6 +964,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(result.added).toBeGreaterThan(0);
@@ -939,6 +992,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // No file should be written in dryRun mode
@@ -960,6 +1014,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'delete-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'remove.md'))).toBe(true);
@@ -973,6 +1028,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'delete-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       onProgress: (e) => events.push(e.type),
     });
 
@@ -1004,6 +1060,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Only docs files selected by selector
@@ -1033,13 +1090,11 @@ describe('actionInstall', () => {
     await installMockPackage('merge-main', '1.0.0', { 'readme.md': 'main file' }, tmpDir);
 
     // Patch main package.json in node_modules to declare filedist.sets for merge-dep
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'merge-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(tmpDir, 'node_modules', 'merge-main', '.filedist-package.yml');
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'merge-dep',
@@ -1054,7 +1109,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1085,6 +1141,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Main package file extracted to outputDir
@@ -1122,6 +1179,7 @@ describe('actionInstall', () => {
         ],
 
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).rejects.toThrow('Conflict');
 
@@ -1133,13 +1191,16 @@ describe('actionInstall', () => {
     await installMockPackage('dryrun-dep', '1.0.0', { 'dep.md': '# Dep' }, tmpDir);
     await installMockPackage('dryrun-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'dryrun-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'dryrun-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'dryrun-dep',
@@ -1147,7 +1208,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1161,6 +1223,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'main.md'))).toBe(false);
@@ -1171,13 +1234,16 @@ describe('actionInstall', () => {
     await installMockPackage('keepex-dep', '1.0.0', { 'dep.md': 'new content from pkg' }, tmpDir);
     await installMockPackage('keepex-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'keepex-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'keepex-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'keepex-dep',
@@ -1185,7 +1251,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1203,6 +1270,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // dep.md should remain unchanged (kept, not overwritten)
@@ -1215,13 +1283,16 @@ describe('actionInstall', () => {
     await installMockPackage('depforce-pkg', '1.0.0', { 'dep.md': 'pkg content' }, tmpDir);
     await installMockPackage('depforce-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'depforce-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'depforce-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'depforce-pkg',
@@ -1230,7 +1301,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1248,6 +1320,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.readFileSync(path.join(outputDir, 'dep-out', 'dep.md'), 'utf8')).toBe('pkg content');
@@ -1257,16 +1330,18 @@ describe('actionInstall', () => {
     await installMockPackage('unmngcasc-dep', '1.0.0', { 'dep.md': 'dep content' }, tmpDir);
     await installMockPackage('unmngcasc-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'unmngcasc-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'unmngcasc-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
-          sets: [{ package: 'unmngcasc-dep', output: { path: 'dep-out', gitignore: false } }],
-        },
-      }),
+      mainPkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'unmngcasc-dep', output: { path: 'dep-out', gitignore: false } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1279,6 +1354,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const depFile = path.join(outputDir, 'dep-out', 'dep.md');
@@ -1292,13 +1368,16 @@ describe('actionInstall', () => {
     await installMockPackage('unmngdep-pkg', '1.0.0', { 'dep.md': 'dep content' }, tmpDir);
     await installMockPackage('unmngdep-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'unmngdep-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'unmngdep-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'unmngdep-pkg',
@@ -1307,7 +1386,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1316,6 +1396,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'unmngdep-main', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const depFile = path.join(outputDir, 'dep-out', 'dep.md');
@@ -1328,13 +1409,16 @@ describe('actionInstall', () => {
     await installMockPackage('gitcasc-dep', '1.0.0', { 'dep.md': 'dep content' }, tmpDir);
     await installMockPackage('gitcasc-main', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'gitcasc-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'gitcasc-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'gitcasc-dep',
@@ -1343,7 +1427,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1354,6 +1439,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // dep output should NOT contain a .gitignore (parent gitignore: false cascaded)
@@ -1365,13 +1451,16 @@ describe('actionInstall', () => {
     await installMockPackage('symsub-main', '1.0.0', { 'main-docs/main.md': '# Main Doc' }, tmpDir);
 
     const depOutRelative = 'dep-out';
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'symsub-main', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'symsub-main',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
+      mainPkgYmlPath,
+      yaml.dump(
+        {
           sets: [
             {
               package: 'symsub-dep',
@@ -1384,7 +1473,8 @@ describe('actionInstall', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1407,6 +1497,7 @@ describe('actionInstall', () => {
       ],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // main package file and its symlink
@@ -1428,29 +1519,23 @@ describe('actionInstall', () => {
     await installMockPackage('level1-pkg', '1.0.0', { 'top.md': '# Top' }, tmpDir);
 
     // level2 depends on level3
-    const l2PkgJsonPath = path.join(tmpDir, 'node_modules', 'level2-pkg', 'package.json');
-    const l2PkgJson = JSON.parse(fs.readFileSync(l2PkgJsonPath).toString()) as object;
+    const l2PkgYmlPath = path.join(tmpDir, 'node_modules', 'level2-pkg', '.filedist-package.yml');
     fs.writeFileSync(
-      l2PkgJsonPath,
-      JSON.stringify({
-        ...l2PkgJson,
-        filedist: {
-          sets: [{ package: 'level3-pkg', output: { path: 'l3', gitignore: false } }],
-        },
-      }),
+      l2PkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'level3-pkg', output: { path: 'l3', gitignore: false } }] },
+        { indent: 2 },
+      ),
     );
 
     // level1 depends on level2
-    const l1PkgJsonPath = path.join(tmpDir, 'node_modules', 'level1-pkg', 'package.json');
-    const l1PkgJson = JSON.parse(fs.readFileSync(l1PkgJsonPath).toString()) as object;
+    const l1PkgYmlPath = path.join(tmpDir, 'node_modules', 'level1-pkg', '.filedist-package.yml');
     fs.writeFileSync(
-      l1PkgJsonPath,
-      JSON.stringify({
-        ...l1PkgJson,
-        filedist: {
-          sets: [{ package: 'level2-pkg', output: { path: 'l2', gitignore: false } }],
-        },
-      }),
+      l1PkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'level2-pkg', output: { path: 'l2', gitignore: false } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -1458,6 +1543,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'level1-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // level1 files at outputDir/
@@ -1484,6 +1570,7 @@ describe('actionInstall', () => {
       entries: [{ package: 'license-pkg', output: { path: outputDir, gitignore: false } }],
 
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
@@ -1497,6 +1584,7 @@ describe('actionInstall', () => {
     const result = await actionInstall({
       entries: [{ package: 'verbose-extract-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       verbose: true,
     });
 
@@ -1519,6 +1607,7 @@ describe('actionInstall', () => {
         { package: 'verbose-reextract-pkg', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       verbose: true,
     });
 
@@ -1542,6 +1631,7 @@ describe('actionInstall', () => {
         },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       verbose: true,
       onProgress: (e) => events.push(e.type),
     });
@@ -1556,22 +1646,25 @@ describe('actionInstall', () => {
     await installMockPackage('verbose-dep', '1.0.0', { 'dep.md': '# Dep' }, tmpDir);
     await installMockPackage('verbose-main-rec', '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', 'verbose-main-rec', 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'verbose-main-rec',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
-          sets: [{ package: 'verbose-dep', output: { path: 'dep-out', gitignore: false } }],
-        },
-      }),
+      mainPkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'verbose-dep', output: { path: 'dep-out', gitignore: false } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output-verbose-rec');
     const result = await actionInstall({
       entries: [{ package: 'verbose-main-rec', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       verbose: true,
     });
 
@@ -1606,6 +1699,7 @@ describe('actionInstall', () => {
           { package: 'conflict-verbose-b', output: { path: outputDir, gitignore: false } },
         ],
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         verbose: true,
       }),
     ).rejects.toThrow('Conflict');
@@ -1651,6 +1745,7 @@ describe('actionInstall — lock file', () => {
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     const lockPath = path.join(tmpDir, '.filedist.lock');
     expect(fs.existsSync(lockPath)).toBe(true);
@@ -1667,6 +1762,7 @@ describe('actionInstall — lock file', () => {
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false, dryRun: true } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     expect(fs.existsSync(path.join(tmpDir, '.filedist.lock'))).toBe(false);
   }, 60_000);
@@ -1679,6 +1775,7 @@ describe('actionInstall — lock file', () => {
       actionInstall({
         entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         frozenLockfile: true,
       }),
     ).rejects.toThrow('.filedist.lock');
@@ -1693,12 +1790,14 @@ describe('actionInstall — lock file', () => {
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     expect(fs.existsSync(path.join(tmpDir, '.filedist.lock'))).toBe(true);
     // Second run with frozenLockfile: should succeed using pinned version
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       frozenLockfile: true,
     });
     expect(fs.existsSync(path.join(outputDir, 'data/file.txt'))).toBe(true);
@@ -1710,11 +1809,15 @@ describe('actionInstall — lock file', () => {
     const outputDir = path.join(tmpDir, 'output');
     // Create a minimal lock file manually
     const lockPath = path.join(tmpDir, '.filedist.lock');
-    writeLockfile(tmpDir, { version: 1, packages: { [PKG]: '2.0.0' } });
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), {
+      version: 1,
+      packages: { [PKG]: '2.0.0' },
+    });
     const originalContent = fs.readFileSync(lockPath, 'utf8');
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       frozenLockfile: true,
     });
     // Lock file should be unchanged
@@ -1729,22 +1832,20 @@ describe('actionInstall — lock file', () => {
     await installMockPackage(MAIN, '1.0.0', { 'main.md': '# Main' }, tmpDir);
 
     // Patch main's package.json to declare a filedist.sets referencing dep
-    const mainPkgJsonPath = path.join(tmpDir, 'node_modules', MAIN, 'package.json');
-    const mainPkgJson = JSON.parse(fs.readFileSync(mainPkgJsonPath).toString()) as object;
+    const mainPkgYmlPath = path.join(tmpDir, 'node_modules', MAIN, '.filedist-package.yml');
     fs.writeFileSync(
-      mainPkgJsonPath,
-      JSON.stringify({
-        ...mainPkgJson,
-        filedist: {
-          sets: [{ package: DEP, output: { path: 'dep-out', gitignore: false } }],
-        },
-      }),
+      mainPkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: DEP, output: { path: 'dep-out', gitignore: false } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
     await actionInstall({
       entries: [{ package: MAIN, output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const lockPath = path.join(tmpDir, '.filedist.lock');
@@ -1770,6 +1871,7 @@ describe('actionInstall — lock file', () => {
       actionInstall({
         entries: [{ package: PKG, output: { path: outputDir, gitignore: false } }],
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
       }),
     ).rejects.toThrow();
   }, 60_000);
@@ -1788,6 +1890,7 @@ describe('actionInstall — lock file', () => {
     await actionInstall({
       entries: [{ package: PKG, output: { path: outputDir, gitignore: false, force: true } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('corrupt'));
@@ -1836,6 +1939,7 @@ describe('actionInstall — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'frozen-pkg-a', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'a.md'))).toBe(true);
@@ -1844,6 +1948,7 @@ describe('actionInstall — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'frozen-pkg-b', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       frozenLockfile: true,
     });
 
@@ -1858,6 +1963,7 @@ describe('actionInstall — frozenLockfile', () => {
       actionInstall({
         entries: [{ package: 'any-pkg', output: { path: outputDir } }],
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         frozenLockfile: true,
       }),
     ).rejects.toThrow('.filedist.lock');
@@ -1872,11 +1978,12 @@ describe('actionInstall — frozenLockfile', () => {
     await actionInstall({
       entries: [{ package: 'frozen-validate-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Manually add an extra untracked file to the output dir, then forcibly update the marker
     // so the lockfile files list diverges from what a fresh resolve would produce
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'file.md',
         packageName: 'frozen-validate-pkg',
@@ -1902,6 +2009,7 @@ describe('actionInstall — frozenLockfile', () => {
           { package: 'frozen-validate-pkg', output: { path: outputDir, gitignore: false } },
         ],
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         frozenLockfile: true,
       }),
     ).rejects.toThrow();

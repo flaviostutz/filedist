@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import fs from 'node:fs';
 
-import { cosmiconfig } from 'cosmiconfig';
 import yaml from 'js-yaml';
 
 import { FiledistExtractEntry, ProgressEvent } from '../types';
@@ -37,7 +36,8 @@ export type RemoveOptions = {
    * Explicit path to the config file. When omitted, the config is auto-discovered
    * via cosmiconfig (same as the `install` command).
    */
-  configFilePath?: string;
+  configFilePath: string;
+  lockfilePath: string;
   dryRun?: boolean;
   verbose?: boolean;
   onProgress?: (event: ProgressEvent) => void;
@@ -124,23 +124,7 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
   } = options;
 
   // ── Resolve config file path ──────────────────────────────────────────────
-  let { configFilePath } = options;
-  if (!configFilePath) {
-    const result = await cosmiconfig('filedist').search(cwd);
-    configFilePath = result?.filepath;
-  }
-
-  // ── Load current sets ─────────────────────────────────────────────────────
-  // A config file is required: remove only works on user-declared config sets,
-  // not on lockfile state. This mirrors the effect of manually editing the
-  // config and running install.
-  if (!configFilePath) {
-    throw new Error(
-      'No filedist config file found. ' +
-        'Run "filedist install" first to create a configuration, or ' +
-        'pass --config to point to an existing config file.',
-    );
-  }
+  const { configFilePath } = options;
   const currentSets = readConfigSets(configFilePath);
 
   // ── Determine which entries to remove and which to keep ───────────────────
@@ -189,7 +173,7 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
   }
 
   // ── Rewrite config file with remaining entries ────────────────────────────
-  if (!dryRun && configFilePath && removedEntries > 0) {
+  if (!dryRun && removedEntries > 0) {
     let existingConfig: Record<string, unknown> = {};
     try {
       const raw = fs.readFileSync(configFilePath, 'utf8');
@@ -212,9 +196,11 @@ export async function actionRemove(options: RemoveOptions): Promise<RemoveSummar
     console.log(`[verbose] actionRemove: running install with ${toKeep.length} remaining entries`);
   }
 
+  const { lockfilePath } = options;
   const install = await actionInstall({
     entries: toKeep,
     cwd,
+    lockfilePath,
     dryRun,
     verbose,
     frozenLockfile: false,

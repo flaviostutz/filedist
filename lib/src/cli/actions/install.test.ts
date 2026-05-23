@@ -1,3 +1,4 @@
+import path from 'node:path';
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable unicorn/no-null */
 
@@ -69,6 +70,7 @@ describe('runInstall — source selection', () => {
       CONFIG_WITH_SETS,
       ['--packages', 'cli-pkg@2.0.0', '--output', './cli-out', '--gitignore=false'],
       '/cwd',
+      path.join('/cwd', '.filedist.lock'),
     );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries).toHaveLength(1);
@@ -77,19 +79,23 @@ describe('runInstall — source selection', () => {
   });
 
   it('uses config sets when --packages is not provided', async () => {
-    await runInstall(CONFIG_WITH_SETS, [], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries).toHaveLength(1);
     expect(entries[0].package).toBe('config-pkg@1.0.0');
   });
 
   it('throws when no --packages and config is null', async () => {
-    await expect(runInstall(null, [], '/cwd')).rejects.toThrow('No packages specified');
+    await expect(runInstall(null, [], '/cwd', path.join('/cwd', '.filedist.lock'))).rejects.toThrow(
+      'No packages specified',
+    );
     expect(mockActionInstall).not.toHaveBeenCalled();
   });
 
   it('throws when no --packages and config has empty sets', async () => {
-    await expect(runInstall({ sets: [] }, [], '/cwd')).rejects.toThrow('No packages specified');
+    await expect(
+      runInstall({ sets: [] }, [], '/cwd', path.join('/cwd', '.filedist.lock')),
+    ).rejects.toThrow('No packages specified');
     expect(mockActionInstall).not.toHaveBeenCalled();
   });
 
@@ -100,7 +106,7 @@ describe('runInstall — source selection', () => {
         { package: 'pkg-b@2.0.0', output: { path: './b' } },
       ],
     };
-    await runInstall(multiConfig, [], '/cwd');
+    await runInstall(multiConfig, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries).toHaveLength(2);
     expect(entries[0].package).toBe('pkg-a@1.0.0');
@@ -110,50 +116,60 @@ describe('runInstall — source selection', () => {
 
 describe('runInstall — CLI overrides applied to config entries', () => {
   it('overrides output path with --output', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--output', './override-out'], '/cwd');
+    await runInstall(
+      CONFIG_WITH_SETS,
+      ['--output', './override-out'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.path).toBe('./override-out');
   });
 
   it('overrides force with --force', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--force'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--force'], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.force).toBe(true);
   });
 
   it('overrides dryRun with --dry-run', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--dry-run'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--dry-run'], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.dryRun).toBe(true);
   });
 
   it('overrides gitignore with --gitignore=false', async () => {
     // Config entry has gitignore: true — CLI flag should override to false
-    await runInstall(CONFIG_WITH_SETS, ['--gitignore=false'], '/cwd');
+    await runInstall(
+      CONFIG_WITH_SETS,
+      ['--gitignore=false'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.gitignore).toBe(false);
   });
 
   it('overrides mutable with --mutable', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--mutable'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--mutable'], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.mutable).toBe(true);
   });
 
   it('overrides noSync with --nosync', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--nosync'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--nosync'], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.noSync).toBe(true);
   });
 
   it('overrides silent with --silent', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--silent'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--silent'], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].silent).toBe(true);
   });
 
   it('preserves config entry values when no overriding CLI flag given', async () => {
-    await runInstall(CONFIG_WITH_SETS, [], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.path).toBe('./config-out');
     expect(entries[0].output!.force).toBe(false);
@@ -167,7 +183,12 @@ describe('runInstall — CLI overrides applied to config entries', () => {
         { package: 'pkg-b@2.0.0', output: { path: './b' } },
       ],
     };
-    await runInstall(multiConfig, ['--dry-run', '--silent'], '/cwd');
+    await runInstall(
+      multiConfig,
+      ['--dry-run', '--silent'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.dryRun).toBe(true);
     expect(entries[0].silent).toBe(true);
@@ -183,6 +204,7 @@ describe('runInstall — CLI --packages does not apply applyArgvOverrides redund
       null,
       ['--packages', 'cli-pkg', '--force', '--dry-run', '--silent', '--gitignore=false'],
       '/cwd',
+      path.join('/cwd', '.filedist.lock'),
     );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries[0].output!.force).toBe(true);
@@ -201,13 +223,18 @@ describe('runInstall — preset filtering', () => {
   };
 
   it('passes all config entries when no presets specified', async () => {
-    await runInstall(configWithPresets, [], '/cwd');
+    await runInstall(configWithPresets, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries).toHaveLength(2);
   });
 
   it('filters config entries to matching preset', async () => {
-    await runInstall(configWithPresets, ['--presets', 'docs'], '/cwd');
+    await runInstall(
+      configWithPresets,
+      ['--presets', 'docs'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     const { entries } = mockActionInstall.mock.calls[0][0];
     expect(entries).toHaveLength(1);
     expect(entries[0].package).toBe('pkg-docs@1.0.0');
@@ -215,7 +242,12 @@ describe('runInstall — preset filtering', () => {
 
   it('does not call actionInstall when no entries match preset', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runInstall(configWithPresets, ['--presets', 'nonexistent'], '/cwd');
+    await runInstall(
+      configWithPresets,
+      ['--presets', 'nonexistent'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     spy.mockRestore();
     expect(mockActionInstall).not.toHaveBeenCalled();
   });
@@ -223,21 +255,28 @@ describe('runInstall — preset filtering', () => {
 
 describe('runInstall — error handling', () => {
   it('throws on invalid argv and skips actionInstall', async () => {
-    await expect(runInstall(CONFIG_WITH_SETS, ['--force', '--mutable'], '/cwd')).rejects.toThrow(
-      '--force and --mutable are mutually exclusive',
-    );
+    await expect(
+      runInstall(
+        CONFIG_WITH_SETS,
+        ['--force', '--mutable'],
+        '/cwd',
+        path.join('/cwd', '.filedist.lock'),
+      ),
+    ).rejects.toThrow('--force and --mutable are mutually exclusive');
     expect(mockActionInstall).not.toHaveBeenCalled();
   });
 
   it('propagates error when actionInstall throws', async () => {
     mockActionInstall.mockRejectedValue(new Error('extract failed'));
-    await expect(runInstall(CONFIG_WITH_SETS, [], '/cwd')).rejects.toThrow('extract failed');
+    await expect(
+      runInstall(CONFIG_WITH_SETS, [], '/cwd', path.join('/cwd', '.filedist.lock')),
+    ).rejects.toThrow('extract failed');
   });
 });
 
 describe('runInstall — --help', () => {
   it('prints usage and returns without calling actionInstall', async () => {
-    await runInstall(CONFIG_WITH_SETS, ['--help'], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, ['--help'], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(mockPrintUsage).toHaveBeenCalledWith('install');
     expect(mockActionInstall).not.toHaveBeenCalled();
   });
@@ -247,7 +286,7 @@ describe('runInstall — summary output', () => {
   it('prints correct summary line after successful extract', async () => {
     mockActionInstall.mockResolvedValue({ added: 3, modified: 1, deleted: 2, skipped: 4 });
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runInstall(CONFIG_WITH_SETS, [], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(spy).toHaveBeenCalledWith(
       'Install complete: 3 added, 1 modified, 2 deleted, 4 skipped.',
     );
@@ -255,7 +294,7 @@ describe('runInstall — summary output', () => {
   });
 
   it('passes cwd and config through to actionInstall', async () => {
-    await runInstall(CONFIG_WITH_SETS, [], '/my/cwd');
+    await runInstall(CONFIG_WITH_SETS, [], '/my/cwd', path.join('/my/cwd', '.filedist.lock'));
     const callArg = mockActionInstall.mock.calls[0][0];
     expect(callArg.cwd).toBe('/my/cwd');
   });
@@ -278,7 +317,7 @@ describe('runInstall — onProgress handler', () => {
       logs.push(args.join(' '));
     });
 
-    await runInstall(config, [], '/cwd');
+    await runInstall(config, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     capturedOnProgress!(event);
     spy.mockRestore();
     return logs;
@@ -379,7 +418,7 @@ describe('runInstall — postExtractCmd', () => {
   };
 
   it('runs array postExtractCmd without shell', async () => {
-    await runInstall(configWithArrayCmd, ['--silent'], '/cwd');
+    await runInstall(configWithArrayCmd, ['--silent'], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(mockSpawnSync).toHaveBeenCalledWith('node', ['scripts/post-extract.js', '--silent'], {
       cwd: '/cwd',
       stdio: 'pipe',
@@ -396,6 +435,7 @@ describe('runInstall — postExtractCmd', () => {
         },
         [],
         '/cwd',
+        path.join('/cwd', '.filedist.lock'),
       ),
     ).rejects.toThrow(
       '"postExtractCmd" must be an array of strings, for example ["node", "scripts/post-extract.js"]. ' +
@@ -412,6 +452,7 @@ describe('runInstall — postExtractCmd', () => {
         },
         [],
         '/cwd',
+        path.join('/cwd', '.filedist.lock'),
       ),
     ).rejects.toThrow('"postExtractCmd" must include the executable as the first array item');
   });
@@ -425,6 +466,7 @@ describe('runInstall — postExtractCmd', () => {
         } as FiledistConfig & { postExtractScript: string[] },
         [],
         '/cwd',
+        path.join('/cwd', '.filedist.lock'),
       ),
     ).rejects.toThrow(
       '"postExtractScript" was renamed to "postExtractCmd". Use "postExtractCmd": ["node", "scripts/post-extract.js"].',
@@ -432,12 +474,17 @@ describe('runInstall — postExtractCmd', () => {
   });
 
   it('does not run postExtractCmd when --dry-run', async () => {
-    await runInstall(configWithArrayCmd, ['--dry-run'], '/cwd');
+    await runInstall(
+      configWithArrayCmd,
+      ['--dry-run'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+    );
     expect(mockSpawnSync).not.toHaveBeenCalled();
   });
 
   it('does not run postExtractCmd when config has no command', async () => {
-    await runInstall(CONFIG_WITH_SETS, [], '/cwd');
+    await runInstall(CONFIG_WITH_SETS, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(mockSpawnSync).not.toHaveBeenCalled();
   });
 
@@ -451,7 +498,9 @@ describe('runInstall — postExtractCmd', () => {
       signal: null,
       error: new Error('spawn ENOENT'),
     });
-    await expect(runInstall(configWithArrayCmd, [], '/cwd')).rejects.toThrow('spawn ENOENT');
+    await expect(
+      runInstall(configWithArrayCmd, [], '/cwd', path.join('/cwd', '.filedist.lock')),
+    ).rejects.toThrow('spawn ENOENT');
   });
 
   it('does not throw when spawnSync exits with non-zero status but no OS error', async () => {
@@ -465,7 +514,9 @@ describe('runInstall — postExtractCmd', () => {
       // eslint-disable-next-line no-undefined
       error: undefined,
     });
-    await expect(runInstall(configWithArrayCmd, [], '/cwd')).resolves.toBeUndefined();
+    await expect(
+      runInstall(configWithArrayCmd, [], '/cwd', path.join('/cwd', '.filedist.lock')),
+    ).resolves.toBeUndefined();
   });
 
   it('does not print summary after script failure', async () => {
@@ -479,7 +530,9 @@ describe('runInstall — postExtractCmd', () => {
       error: new Error('fail'),
     });
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await expect(runInstall(configWithArrayCmd, [], '/cwd')).rejects.toThrow();
+    await expect(
+      runInstall(configWithArrayCmd, [], '/cwd', path.join('/cwd', '.filedist.lock')),
+    ).rejects.toThrow();
     spy.mockRestore();
     expect(spy).not.toHaveBeenCalledWith(expect.stringContaining('Extract complete'));
   });

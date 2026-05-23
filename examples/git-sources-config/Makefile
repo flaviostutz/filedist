@@ -20,7 +20,7 @@ install:
 
 prepare-config:
 	PARENT_REPO_URL="file://$$(pwd)/repos/parent-repo"; \
-	jq --arg parentRepo "$$PARENT_REPO_URL" '.filedist.sets[0].package = ("git:" + $$parentRepo + "@$(PARENT_TAG)")' package.json.orig > package.json
+	printf "sets:\n  - package: \"git:$$PARENT_REPO_URL@$(PARENT_TAG)\"\n    output:\n      path: output\n" > .filedist.yml
 
 prepare-repos:
 	rm -rf repos
@@ -28,7 +28,7 @@ prepare-repos:
 	mkdir -p repos/parent-repo/docs
 	printf '{"ok":true}\n' > repos/child-repo/child/data.json
 	CHILD_REPO_URL="file://$$(pwd)/repos/child-repo"; \
-	jq -n --arg childRepo "$$CHILD_REPO_URL" --arg childTag "$(CHILD_TAG)" '{sets:[{output:{path:".",gitignore:false}},{package:("git:" + $$childRepo + "@" + $$childTag),output:{path:"nested",gitignore:false}}]}' > repos/parent-repo/.filedistrc
+	printf "sets:\n  - output:\n      path: .\n      gitignore: false\n  - package: \"git:$$CHILD_REPO_URL@$(CHILD_TAG)\"\n    output:\n      path: nested\n      gitignore: false\n" > repos/parent-repo/.filedist-package.yml
 	printf '# Parent Guide\n' > repos/parent-repo/docs/guide.md
 	git -C repos/child-repo init
 	git -C repos/child-repo config user.email 'filedist@example.com'
@@ -48,16 +48,16 @@ test: prepare-repos
 	@echo ">>>> git-sources-config"
 	@rm -rf output
 
-	# --- Test 1: config from package.json "filedist" key ---
+	# --- Test 1: config from .filedist.yml ---
 	make prepare-config
 	pnpm exec filedist install
 	test -e output/docs/guide.md
 	test -e output/nested/child/data.json
 	test -e .filedist.lock
 	test ! -e output/.git
-	test ! -e output/.filedistrc
+	test ! -e output/.filedist-package.yml
 	test ! -e output/nested/.git
-	test ! -e output/nested/.filedistrc
+	test ! -e output/nested/.filedist-package.yml
 	grep -F "file://$$(pwd)/repos/parent-repo" .filedist.lock
 	grep -F "file://$$(pwd)/repos/child-repo" .filedist.lock
 	test ! -e .filedist-tmp
@@ -68,27 +68,6 @@ test: prepare-repos
 	test ! -e output/nested/child/data.json
 	test ! -e .filedist-tmp
 
-	# --- Test 2: config from .filedistrc ---
-	make prepare-config
-	jq '.filedist' package.json > .filedistrc
-	jq 'del(.filedist)' package.json > package.json.tmp && mv package.json.tmp package.json
-	pnpm exec filedist install
-	test -e output/docs/guide.md
-	test -e output/nested/child/data.json
-	test -e .filedist.lock
-	test ! -e output/.git
-	test ! -e output/.filedistrc
-	test ! -e output/nested/.git
-	test ! -e output/nested/.filedistrc
-	pnpm exec filedist check
-	pnpm exec filedist remove --all
-	test ! -e output/docs/guide.md
-	test ! -e output/nested/child/data.json
-
-	# restore original package.json
-	cp package.json.orig package.json
-	rm -f .filedistrc
-
 	@echo "All git-prefixed source config tests passed"
 
 clean:
@@ -97,6 +76,5 @@ clean:
 	@rm -rf repos
 	@rm -rf .filedist-tmp
 	@rm -f pnpm-lock.yaml
-	@rm -f .filedistrc
+	@rm -f .filedist.yml
 	@rm -f .filedist.lock
-	@cp -f package.json.orig package.json

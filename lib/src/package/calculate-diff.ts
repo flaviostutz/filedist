@@ -26,6 +26,7 @@ export async function calculateDiff(
   cwd?: string,
   relevantPackagesByOutputDir?: Map<string, Set<string>>,
   compareWithSource?: boolean,
+  lockfilePath?: string,
 ): Promise<DiffResult> {
   const result: DiffResult = { ok: [], missing: [], extra: [], conflict: [] };
 
@@ -57,6 +58,7 @@ export async function calculateDiff(
       relevantPackagesByOutputDir?.get(outputDir),
       compareWithSource,
       cwd,
+      lockfilePath,
     );
 
     if (verbose) {
@@ -78,8 +80,12 @@ async function appendOutputDirDiff(
   relevantPackages?: Set<string>,
   compareWithSource?: boolean,
   cwd?: string,
+  lockfilePath?: string,
 ): Promise<void> {
-  const existingMarker = cwd ? readManagedFilesForDir(cwd, outputDir) : [];
+  let existingMarker: ManagedFileMetadata[] = [];
+  if (lockfilePath && cwd) {
+    existingMarker = readManagedFilesForDir(lockfilePath, cwd, outputDir);
+  }
   const managedByPath = new Map<string, ManagedFileMetadata>(
     existingMarker.map((m) => [m.path, m]),
   );

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { FiledistConfig, ProgressEvent } from '../../types';
+import { ProgressEvent } from '../../types';
 import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { formatProgressFile } from '../progress';
@@ -12,11 +12,7 @@ import { actionUpdate } from '../../package/action-update';
  * Reads set definitions from .filedist.lock, bumps all packages to their
  * latest available versions, runs a full install and writes an updated lockfile.
  */
-export async function runUpdate(
-  config: FiledistConfig | null,
-  argv: string[],
-  cwd: string,
-): Promise<void> {
+export async function runUpdate(argv: string[], cwd: string, lockfilePath: string): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('update');
     return;
@@ -28,6 +24,7 @@ export async function runUpdate(
     cwd,
     verbose: parsed.verbose,
     dryRun: parsed.dryRun,
+    lockfilePath,
     onProgress: (event: ProgressEvent) => {
       if (parsed.silent) return;
       if (event.type === 'file-added') console.log(`  + ${formatProgressFile(event)}`);

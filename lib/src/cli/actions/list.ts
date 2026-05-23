@@ -12,6 +12,7 @@ export async function runList(
   config: FiledistConfig | null,
   argv: string[],
   cwd: string,
+  lockfilePath: string,
 ): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('list');
@@ -24,6 +25,7 @@ export async function runList(
     cwd,
     outputDir: parsed.output ?? cwd,
     verbose: parsed.verbose,
+    lockfilePath,
   });
 
   if (files.length === 0) {

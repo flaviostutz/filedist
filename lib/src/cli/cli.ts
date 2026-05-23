@@ -2,11 +2,11 @@
 import path from 'node:path';
 
 import {
-  searchAndLoadFiledistConfig,
+  loadDefaultConfig,
   loadFiledistConfigFile,
-  loadFiledistLocalConfig,
   upsertFiledistConfigEntries,
 } from '../package/config';
+import { getLockfilePath } from '../package/lockfile';
 import { FiledistConfig } from '../types';
 
 import { printUsage, printVersion } from './usage';
@@ -66,9 +66,7 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
   const effectiveConfigSearchCwd = configSearchCwd ?? effectiveCwd;
 
   const ignoreConfig = args.includes('--no-save') || args.includes('--no-save=true');
-  // A positional package arg triggers the save-to-config flow, but only for the install command.
-  const packageSpecified =
-    action === 'install' && cmdArgs.length > 0 && !cmdArgs[0].startsWith('-');
+  const packageSpecified = action === 'install' && !ignoreConfig && !!parseArgv(cmdArgs).package;
 
   try {
     if (!KNOWN_COMMANDS.has(action)) {
@@ -76,7 +74,7 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
         `Unknown command: "${action}". Run 'filedist --help' for available commands.`,
       );
     }
-    const { config, configFilePath, installArgv } = await resolveConfig(
+    const { config, configFilePath, lockfilePath, installArgv } = await resolveConfig(
       args,
       cmdArgs,
       effectiveCwd,
@@ -85,7 +83,14 @@ export async function cli(argv: string[], cwd?: string, configSearchCwd?: string
       packageSpecified,
     );
 
-    await dispatch(action, config, installArgv ?? cmdArgs, effectiveCwd, configFilePath);
+    await dispatch(
+      action,
+      config,
+      installArgv ?? cmdArgs,
+      effectiveCwd,
+      configFilePath,
+      lockfilePath,
+    );
     return 0;
   } catch (error) {
     console.error((error as Error).message);
@@ -102,57 +107,51 @@ async function resolveConfig(
   packageSpecified: boolean,
 ): Promise<{
   config: FiledistConfig | null;
-  configFilePath: string | undefined;
+  configFilePath: string;
+  lockfilePath: string;
   installArgv?: string[];
 }> {
   const configFlagIdx = args.indexOf('--config');
-  const configFilePath =
+  const configFileArg =
     configFlagIdx !== -1 && configFlagIdx + 1 < args.length
       ? args[configFlagIdx + 1]
       : // eslint-disable-next-line no-undefined
         undefined;
 
+  const configFilePath = configFileArg
+    ? path.resolve(effectiveCwd, configFileArg)
+    : path.join(effectiveConfigSearchCwd, '.filedist.yml');
+  const lockfilePath = getLockfilePath(configFilePath);
+
   let config: FiledistConfig | null;
-  if (configFilePath) {
-    config = await loadFiledistConfigFile(path.resolve(effectiveCwd, configFilePath));
+  if (configFileArg) {
+    config = loadFiledistConfigFile(configFilePath);
   } else if (ignoreConfig) {
     // eslint-disable-next-line unicorn/no-null
     config = null;
   } else {
-    // Try .filedistrc.local.yml first (only in the current directory, not parents).
-    // This allows a package that publishes its own sets to also run filedist for
-    // its own workspace needs without those entries leaking into the published config.
-    const localConfig = await loadFiledistLocalConfig(effectiveConfigSearchCwd);
-    config = localConfig ?? (await searchAndLoadFiledistConfig(effectiveConfigSearchCwd));
+    config = loadDefaultConfig(effectiveConfigSearchCwd);
   }
 
-  // When a positional package arg is specified, persist the entry to the config file (yml only),
+  // When a positional package arg is specified, persist the entry to the config file,
   // then reload the full config and run install from the config file (ignoring the positional arg).
   if (packageSpecified && !ignoreConfig) {
     const parsed = parseArgv(cmdArgs);
     const entries = buildEntriesFromArgv(parsed);
     if (entries && entries.length > 0) {
-      // eslint-disable-next-line no-undefined
-      const saveTarget = configFilePath ? path.resolve(effectiveCwd, configFilePath) : undefined;
-      const targetPath = saveTarget ?? path.join(effectiveCwd, '.filedistrc.yml');
-      const isYml = targetPath.endsWith('.yml') || targetPath.endsWith('.yaml');
-      if (isYml) {
-        if (parsed.verbose) {
-          console.log(`[verbose] Auto-saving packages to config file: ${targetPath}`);
-        }
-        await upsertFiledistConfigEntries(effectiveCwd, entries, saveTarget);
-        // Reload config from the now-updated file so install sees all sets (not just the new one).
-        const reloadedConfig = await loadFiledistConfigFile(targetPath);
-        // Strip package-specific flags — install will be driven entirely by the config file.
-        const installArgv = stripPackageFlags(cmdArgs);
-        return { config: reloadedConfig, configFilePath, installArgv };
-      } else if (parsed.verbose) {
-        console.log(`[verbose] Skipping auto-save: config file is not a YAML file (${targetPath})`);
+      if (parsed.verbose) {
+        console.log(`[verbose] Auto-saving packages to config file: ${configFilePath}`);
       }
+      await upsertFiledistConfigEntries(effectiveCwd, configFilePath, entries);
+      // Reload config from the now-updated file so install sees all sets (not just the new one).
+      const reloadedConfig = loadFiledistConfigFile(configFilePath);
+      // Strip package-specific flags — install will be driven entirely by the config file.
+      const installArgv = stripPackageFlags(cmdArgs);
+      return { config: reloadedConfig, configFilePath, lockfilePath, installArgv };
     }
   }
 
-  return { config, configFilePath };
+  return { config, configFilePath, lockfilePath };
 }
 
 /**
@@ -188,23 +187,24 @@ async function dispatch(
   config: FiledistConfig | null,
   cmdArgs: string[],
   cwd: string,
-  configFilePath?: string,
+  configFilePath: string,
+  lockfilePath: string,
 ): Promise<void> {
   switch (action) {
     case 'install':
-      await runInstall(config, cmdArgs, cwd);
+      await runInstall(config, cmdArgs, cwd, lockfilePath);
       break;
     case 'check':
-      await runCheck(config, cmdArgs, cwd);
+      await runCheck(cmdArgs, cwd, lockfilePath);
       break;
     case 'list':
-      await runList(config, cmdArgs, cwd);
+      await runList(config, cmdArgs, cwd, lockfilePath);
       break;
     case 'remove':
-      await runRemove(config, cmdArgs, cwd, configFilePath);
+      await runRemove(cmdArgs, cwd, lockfilePath, configFilePath);
       break;
     case 'update':
-      await runUpdate(config, cmdArgs, cwd);
+      await runUpdate(cmdArgs, cwd, lockfilePath);
       break;
     case 'init':
       await runInit(config, cmdArgs, cwd);

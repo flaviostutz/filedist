@@ -36,15 +36,18 @@ import {
   buildLockfileData,
   readManagedFilesForDir,
   outputDirKey,
-  LOCKFILE_NAME,
 } from './lockfile';
 
 export type InstallOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
   /**
-   * When true, read .filedist.lock and use it to pin package versions.
+   * Absolute path to the lock file. Derived from the config file path via getLockfilePath().
+   */
+  lockfilePath: string;
+  /**
+   * When true, read the lock file and use it to pin package versions.
    * Fails if no lock file is found. Does not update the lock file.
-   * When false (default), resolve normally and write/update .filedist.lock.
+   * When false (default), resolve normally and write/update the lock file.
    */
   frozenLockfile?: boolean;
 };
@@ -91,6 +94,7 @@ function mergePackagesFromLockfile(
 export async function actionInstall(options: InstallOptions): Promise<InstallResult> {
   const { cwd, verbose = false, onProgress, dryRun, entries: configEntries } = options;
   const frozenLockfile = options.frozenLockfile ?? false;
+  const { lockfilePath } = options;
   const hasForce = configEntries.some((e) => e.output?.force === true);
   const sourceRuntime = createSourceRuntime(cwd, verbose);
 
@@ -99,13 +103,14 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
   // downstream reads get a valid (empty) lockfile rather than throwing.
   if (hasForce && !frozenLockfile) {
     try {
-      readLockfile(cwd);
+      readLockfile(lockfilePath);
     } catch {
+      const lockName = path.basename(lockfilePath);
       console.warn(
-        `Warning: ${LOCKFILE_NAME} is corrupt and will be recreated from scratch. ` +
+        `Warning: ${lockName} is corrupt and will be recreated from scratch. ` +
           `Dependencies may be bumped to newer versions.`,
       );
-      writeLockfile(cwd, { version: 1, packages: {} as Record<string, string> });
+      writeLockfile(lockfilePath, { version: 1, packages: {} as Record<string, string> });
     }
   }
 
@@ -113,10 +118,11 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
   let lockedVersions: Map<string, string> | undefined;
   let entries = configEntries;
   if (frozenLockfile) {
-    const lockfileData = readLockfile(cwd);
+    const lockfileData = readLockfile(lockfilePath);
     if (!lockfileData) {
+      const lockName = path.basename(lockfilePath);
       throw new Error(
-        `Lock file ${LOCKFILE_NAME} not found. ` +
+        `Lock file ${lockName} not found. ` +
           `Run 'filedist install' without --frozen-lockfile first.`,
       );
     }
@@ -164,7 +170,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // relevantPackagesByOutputDir so calculateDiff identifies files from removed
     // packages as "extra" and cleans them up. Skip in frozen mode.
     if (!frozenLockfile) {
-      const existingLock = readLockfile(cwd);
+      const existingLock = readLockfile(lockfilePath);
       if (existingLock?.files) {
         mergePackagesFromLockfile(cwd, relevantPackagesByOutputDir, existingLock.files);
       }
@@ -177,6 +183,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
       cwd,
       relevantPackagesByOutputDir,
       true,
+      lockfilePath,
     );
 
     if (verbose) {
@@ -194,7 +201,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // In frozen mode the managed files list must not change. Fail early if the
     // desired file set differs from what is recorded in the lock file.
     if (frozenLockfile && !isDryRun) {
-      const frozenLockData = readLockfile(cwd);
+      const frozenLockData = readLockfile(lockfilePath);
       if (frozenLockData?.files) {
         const outputDirs = new Set<string>([
           ...resolvedFiles.map((f) => f.outputDir),
@@ -344,7 +351,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     for (const outputDir of outputDirs) {
       const dirFiles = resolvedFiles.filter((f) => f.outputDir === outputDir);
       const relevantPackages = relevantPackagesByOutputDir.get(outputDir);
-      const existingMarker = readManagedFilesForDir(cwd, outputDir);
+      const existingMarker = readManagedFilesForDir(lockfilePath, cwd, outputDir);
       const desiredSymlinkEntries = collectManagedSymlinkEntries(outputDir, dirFiles);
       const desiredSymlinkPaths = new Set(desiredSymlinkEntries.map((entry) => entry.path));
       const managedSymlinks = findManagedSymlinkEntries(existingMarker, relevantPackages);
@@ -384,6 +391,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         relevantPackages,
         noSyncOutputDirs.has(outputDir),
         cwd,
+        lockfilePath,
         verbose,
       );
       managedFilesByOutputDir.set(outputDir, updatedEntries);
@@ -399,7 +407,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
     // ── Write/update lock file ───────────────────────────────────────────────
     // Skip all lock file writes when dry-run or frozen.
     if (!isDryRun && !frozenLockfile) {
-      const existingLock = readLockfile(cwd) ?? { version: 1, packages: {} };
+      const existingLock = readLockfile(lockfilePath) ?? { version: 1, packages: {} };
       const managedFilesMap: Record<string, string[]> = {};
       for (const [outputDir, entries] of managedFilesByOutputDir) {
         if (entries.length > 0) {
@@ -419,7 +427,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         // writeLockfile deletes the key when the map is empty.
         files: managedFilesMap,
       };
-      writeLockfile(cwd, updatedLock);
+      writeLockfile(lockfilePath, updatedLock);
       if (verbose) {
         const pkgCount = Object.keys(updatedLock.packages).length;
         const dirCount = Object.keys(managedFilesMap).length;
@@ -468,9 +476,11 @@ async function updateOutputDirMetadata(
   relevantPackages: Set<string> | undefined,
   noSync: boolean,
   cwd: string,
+  lockfilePath: string,
   verbose?: boolean,
 ): Promise<ManagedFileMetadata[]> {
-  const existingMarker = readManagedFilesForDir(cwd, outputDir);
+  const effectiveLockfilePath = lockfilePath;
+  const existingMarker = readManagedFilesForDir(effectiveLockfilePath, cwd, outputDir);
 
   // Paths removed by this run (extra files that were deleted)
   const deletedPaths = new Set(

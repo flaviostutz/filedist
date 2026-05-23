@@ -28,7 +28,7 @@ describe('lockfile', () => {
 
   describe('readLockfile', () => {
     it('returns undefined when lock file does not exist', () => {
-      expect(readLockfile(tmpDir)).toBeUndefined();
+      expect(readLockfile(path.join(tmpDir, '.filedist.lock'))).toBeUndefined();
     });
 
     it('returns parsed data for a valid lock file', () => {
@@ -36,8 +36,8 @@ describe('lockfile', () => {
         version: 1,
         packages: { 'eslint@^8': '8.57.0' },
       };
-      writeLockfile(tmpDir, data);
-      const result = readLockfile(tmpDir);
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+      const result = readLockfile(path.join(tmpDir, '.filedist.lock'));
       expect(result).not.toBeUndefined();
       expect(result!.version).toBe(1);
       expect(result!.packages['eslint@^8']).toBe('8.57.0');
@@ -45,12 +45,12 @@ describe('lockfile', () => {
 
     it('throws when lock file contains invalid YAML', () => {
       fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), 'key: [unclosed');
-      expect(() => readLockfile(tmpDir)).toThrow('invalid YAML');
+      expect(() => readLockfile(path.join(tmpDir, '.filedist.lock'))).toThrow('invalid YAML');
     });
 
     it('throws when lock file has unexpected format', () => {
       fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), yaml.dump({ foo: 'bar' }));
-      expect(() => readLockfile(tmpDir)).toThrow('unexpected format');
+      expect(() => readLockfile(path.join(tmpDir, '.filedist.lock'))).toThrow('unexpected format');
     });
 
     it('throws when checksum is present but does not match', () => {
@@ -60,7 +60,7 @@ describe('lockfile', () => {
         checksum: 'deadbeef',
       };
       fs.writeFileSync(path.join(tmpDir, '.filedist.lock'), yaml.dump(data));
-      expect(() => readLockfile(tmpDir)).toThrow('corrupted');
+      expect(() => readLockfile(path.join(tmpDir, '.filedist.lock'))).toThrow('corrupted');
     });
 
     it('passes when checksum is valid', () => {
@@ -68,8 +68,8 @@ describe('lockfile', () => {
         version: 1,
         packages: { 'pkg@1': '1.0.0' },
       };
-      writeLockfile(tmpDir, data);
-      expect(() => readLockfile(tmpDir)).not.toThrow();
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+      expect(() => readLockfile(path.join(tmpDir, '.filedist.lock'))).not.toThrow();
     });
   });
 
@@ -79,7 +79,7 @@ describe('lockfile', () => {
         version: 1,
         packages: { 'my-pkg@^1': '1.2.3' },
       };
-      writeLockfile(tmpDir, data);
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
       const lockPath = path.join(tmpDir, '.filedist.lock');
       expect(fs.existsSync(lockPath)).toBe(true);
       const raw = fs.readFileSync(lockPath, 'utf8');
@@ -89,7 +89,10 @@ describe('lockfile', () => {
     });
 
     it('writes a checksum field', () => {
-      writeLockfile(tmpDir, { version: 1, packages: { 'p@1': '1.0.0' } });
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), {
+        version: 1,
+        packages: { 'p@1': '1.0.0' },
+      });
       const raw = fs.readFileSync(path.join(tmpDir, '.filedist.lock'), 'utf8');
       const parsed = yaml.load(raw) as LockfileData;
       expect(parsed.checksum).toBeDefined();
@@ -97,7 +100,7 @@ describe('lockfile', () => {
     });
 
     it('ends with a newline', () => {
-      writeLockfile(tmpDir, { version: 1, packages: {} });
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), { version: 1, packages: {} });
       const raw = fs.readFileSync(path.join(tmpDir, '.filedist.lock'), 'utf8');
       expect(raw.endsWith('\n')).toBe(true);
     });
@@ -162,8 +165,8 @@ describe('lockfile', () => {
           'git:host/repo.git@v3': 'dead1234beef',
         },
       };
-      writeLockfile(tmpDir, data);
-      const result = readLockfile(tmpDir);
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+      const result = readLockfile(path.join(tmpDir, '.filedist.lock'));
       expect(result!.version).toBe(data.version);
       expect(result!.packages).toEqual(data.packages);
     });
@@ -176,8 +179,8 @@ describe('lockfile', () => {
           output: ['file.md|pkg|1.0.0|file|abc123|0'],
         },
       };
-      writeLockfile(tmpDir, data);
-      const result = readLockfile(tmpDir);
+      writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+      const result = readLockfile(path.join(tmpDir, '.filedist.lock'));
       expect(result?.files).toEqual(data.files);
     });
   });
@@ -197,16 +200,20 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
   });
 
   it('returns empty array when lock file does not exist', () => {
-    expect(readManagedFilesForDir(tmpDir, outputDir)).toEqual([]);
+    expect(readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir)).toEqual(
+      [],
+    );
   });
 
   it('returns empty array when managed_files key is absent', () => {
-    writeLockfile(tmpDir, { version: 1, packages: {} });
-    expect(readManagedFilesForDir(tmpDir, outputDir)).toEqual([]);
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), { version: 1, packages: {} });
+    expect(readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir)).toEqual(
+      [],
+    );
   });
 
   it('writes and reads back managed file entries', () => {
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'docs/guide.md',
         packageName: 'my-pkg',
@@ -216,7 +223,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: false,
       },
     ]);
-    const result = readManagedFilesForDir(tmpDir, outputDir);
+    const result = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(result).toHaveLength(1);
     expect(result[0].path).toBe('docs/guide.md');
     expect(result[0].packageName).toBe('my-pkg');
@@ -225,8 +232,11 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
   });
 
   it('preserves packages when writing managed files', () => {
-    writeLockfile(tmpDir, { version: 1, packages: { 'my-pkg': '1.0.0' } });
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), {
+      version: 1,
+      packages: { 'my-pkg': '1.0.0' },
+    });
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.md',
         packageName: 'my-pkg',
@@ -236,12 +246,12 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: false,
       },
     ]);
-    const lock = readLockfile(tmpDir);
+    const lock = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lock?.packages['my-pkg']).toBe('1.0.0');
   });
 
   it('round-trips checksum and mutable fields', () => {
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'file.ts',
         packageName: 'pkg',
@@ -251,13 +261,13 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: true,
       },
     ]);
-    const result = readManagedFilesForDir(tmpDir, outputDir);
+    const result = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(result[0].checksum).toBe('abc123');
     expect(result[0].mutable).toBe(true);
   });
 
   it('round-trips symlink kind', () => {
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'links/guide.md',
         packageName: 'pkg',
@@ -267,12 +277,12 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: false,
       },
     ]);
-    const result = readManagedFilesForDir(tmpDir, outputDir);
+    const result = readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir);
     expect(result[0].kind).toBe('symlink');
   });
 
   it('removes entry when entries is empty', () => {
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.md',
         packageName: 'pkg',
@@ -282,13 +292,13 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: false,
       },
     ]);
-    writeManagedFilesForDir(tmpDir, outputDir, []);
-    const lock = readLockfile(tmpDir);
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, []);
+    const lock = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lock?.files).toBeUndefined();
   });
 
   it('uses relative path as key in files', () => {
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.md',
         packageName: 'pkg',
@@ -298,7 +308,7 @@ describe('readManagedFilesForDir / writeManagedFilesForDir', () => {
         mutable: false,
       },
     ]);
-    const lock = readLockfile(tmpDir);
+    const lock = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lock?.files?.['output']).toBeDefined();
   });
 });
@@ -315,26 +325,26 @@ describe('readSetsFromLockfile', () => {
   });
 
   it('returns undefined when lockfile does not exist', () => {
-    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+    expect(readSetsFromLockfile(path.join(tmpDir, '.filedist.lock'))).toBeUndefined();
   });
 
   it('returns undefined when lockfile has no sets key', () => {
     const data: LockfileData = { version: 1, packages: {} };
-    writeLockfile(tmpDir, data);
-    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+    expect(readSetsFromLockfile(path.join(tmpDir, '.filedist.lock'))).toBeUndefined();
   });
 
   it('returns undefined when lockfile has empty sets array', () => {
     const data: LockfileData = { version: 1, packages: {}, sets: [] };
-    writeLockfile(tmpDir, data);
-    expect(readSetsFromLockfile(tmpDir)).toBeUndefined();
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+    expect(readSetsFromLockfile(path.join(tmpDir, '.filedist.lock'))).toBeUndefined();
   });
 
   it('returns sets when lockfile has non-empty sets', () => {
     const sets = [{ package: 'pkg@1.0.0', output: { path: './out', gitignore: false } }];
     const data: LockfileData = { version: 1, packages: {}, sets };
-    writeLockfile(tmpDir, data);
-    const result = readSetsFromLockfile(tmpDir);
+    writeLockfile(path.join(tmpDir, '.filedist.lock'), data);
+    const result = readSetsFromLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(result).not.toBeUndefined();
     expect(result![0].package).toBe('pkg@1.0.0');
   });

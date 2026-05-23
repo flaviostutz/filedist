@@ -19,16 +19,17 @@ test:
 	@echo ""
 	@echo ">>>> cli-config"
 	@rm -rf output
+	cp -f .filedist.yml.orig .filedist.yml
 
-	# --- Test 1: config from package.json "filedist" key ---
-	# extract without --packages: reads entries from the "filedist" key in package.json
-	# and applies filedist.defaultPresets=["basic"]
+	# --- Test 1: config from .filedist.yml ---
+	# extract entries from .filedist.yml
+	# and applies defaultPresets=["basic"]
 	pnpm exec filedist install
 	node ../../.github/scripts/check-cli-config-symlinks.cjs
 	test ! -e output/eslint/conf/globals.js
 	test -e output/lastUpdated
 
-	# check without --packages: reads entries from package.json
+	# check without --packages: reads entries from .filedist.yml
 	pnpm exec filedist check
 
 	# check detects symlink drift and extract repairs it
@@ -43,7 +44,7 @@ test:
 	pnpm exec filedist install
 	node ../../.github/scripts/check-cli-config-symlinks.cjs
 
-	# remove without --packages: reads entries from lockfile
+	# remove entries from lockfile
 	pnpm exec filedist remove --all
 	test ! -e output/docs/README.md
 	test ! -e output/data/users-dataset/user1.json
@@ -51,29 +52,9 @@ test:
 	test ! -e output/data-symlink/users-dataset
 	test -e output/lastUpdated
 
-	# --- Test 2: config from .filedistrc ---
-	# temporarily move the "filedist" field out of package.json and write .filedistrc
-	jq '.filedist' package.json > .filedistrc
-	jq 'del(.filedist)' package.json > package.json.tmp && mv package.json.tmp package.json
-
-	pnpm exec filedist install
-	node ../../.github/scripts/check-cli-config-symlinks.cjs
-	test ! -e output/eslint/conf/globals.js
-	test -e output/lastUpdated
-
-	pnpm exec filedist check
-	test -e output/docs/README.md
-	pnpm exec filedist remove --all
-	test ! -e output/docs/README.md
-	test ! -e output/data-symlink/user1.json
-	test ! -e output/data-symlink/users-dataset
-	test -e output/lastUpdated
-
-	# restore original package.json
-	cp package.json.orig package.json
-	rm .filedistrc
-
-	# --- Test 3: explicit --presets overrides defaultPresets ---
+	# --- Test 2: explicit --presets overrides defaultPresets ---
+	cp -f .filedist.yml.orig .filedist.yml
+	rm -f .filedist.lock
 	rm -rf output
 	pnpm exec filedist install --presets "nested-eslint"
 	test -e output/nested-eslint/conf/globals.js
@@ -84,12 +65,17 @@ test:
 	pnpm exec filedist remove --all
 	test ! -e output/nested-eslint/conf/globals.js
 
-	# --- Test 4: presets command lists all preset tags ---
+	# --- Test 3: presets command lists all preset tags ---
+	cp -f .filedist.yml.orig .filedist.yml
+	rm -f .filedist.lock
+	rm -rf output
 	pnpm exec filedist presets | grep -x "basic"
 	pnpm exec filedist presets | grep -x "extra"
 	pnpm exec filedist presets | grep -x "nested-eslint"
 
-	# --- Test 5: --all ignores defaultPresets and processes every configured entry ---
+	# --- Test 4: --all ignores defaultPresets and processes every configured entry ---
+	cp -f .filedist.yml.orig .filedist.yml
+	rm -f .filedist.lock
 	rm -rf output
 	pnpm exec filedist install --all
 	node ../../.github/scripts/check-cli-config-symlinks.cjs
@@ -103,10 +89,9 @@ test:
 	test ! -e output/data-symlink/users-dataset
 	test ! -e output/nested-eslint/conf/globals.js
 
-	# --- Test 6: remove only a specific package leaves other packages' files intact ---
-	# use .filedistrc so actionRemove can parse sets from a standalone config file
-	jq '.filedist' package.json > .filedistrc
-	jq 'del(.filedist)' package.json > package.json.tmp && mv package.json.tmp package.json
+	# --- Test 5: remove only a specific package leaves other packages' files intact ---
+	cp -f .filedist.yml.orig .filedist.yml
+	rm -f .filedist.lock
 	rm -rf output
 	pnpm exec filedist install --all
 	test -e output/eslint/conf/globals.js
@@ -119,9 +104,6 @@ test:
 	test ! -e output/data/users-dataset/user1.json
 	test ! -e output/nested-eslint/conf/globals.js
 	test -e output/eslint/conf/globals.js
-	# restore original package.json
-	cp package.json.orig package.json
-	rm -f .filedistrc
 
 	@echo "All config-file mode tests passed"
 
@@ -129,6 +111,5 @@ clean:
 	@rm -rf node_modules
 	@rm -rf output
 	@rm -f pnpm-lock.yaml
-	@rm -f .filedistrc
 	@rm -f .filedist.lock
-	@cp -f package.json.orig package.json
+	@cp -f .filedist.yml.orig .filedist.yml

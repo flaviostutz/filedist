@@ -15,8 +15,9 @@ export const DEFAULT_FILE_PATTERNS = ['**'];
  */
 export const DEFAULT_EXCLUDE_PATTERNS = [
   'package.json',
-  '.filedistrc',
-  '.filedistrc.*',
+  '.filedist.yml',
+  '.filedist-package.yml',
+  '.filedist.lock',
   '.git/**',
   'bin/**',
   'README.md',

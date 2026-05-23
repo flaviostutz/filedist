@@ -31,27 +31,10 @@ describe('binpkg', () => {
     binDir = path.join(fakePkgRoot, 'bin');
     fs.mkdirSync(binDir, { recursive: true });
 
-    // The data package's package.json also contains a filedist config with an external set.
-    // binpkg must NOT use this config — it should only extract DATA_PKG_NAME itself.
+    // The data package's package.json only needs name + version. filedist config is in .filedist-package.yml.
     fs.writeFileSync(
       path.join(fakePkgRoot, 'package.json'),
-      JSON.stringify({
-        name: DATA_PKG_NAME,
-        version: '1.0.0',
-        filedist: {
-          sets: [
-            {
-              package: DATA_PKG_NAME,
-              selector: { files: ['data/**'] },
-              output: { path: '.' },
-            },
-            {
-              package: 'nonexistent-external-pkg', // must NOT be extracted by binpkg
-              output: { path: '.' },
-            },
-          ],
-        },
-      }),
+      JSON.stringify({ name: DATA_PKG_NAME, version: '1.0.0' }),
     );
 
     // Move cwd to tmpDir so the CLI resolves packages from tmpDir/node_modules
@@ -100,11 +83,11 @@ describe('binpkg', () => {
     expect(fs.existsSync(path.join(outputDir, 'docs/readme.md'))).toBe(true);
   }, 60_000);
 
-  it('applies --files selector from CLI args — ignores data package filedist config selector', async () => {
+  it('applies --files selector from CLI args — overrides defaultPresets', async () => {
     const outputDir = path.join(tmpDir, 'output-files');
 
-    // The data package filedist config only selects 'data/**', but we pass 'docs/**' via CLI.
-    // binpkg must use the CLI arg, not the config.
+    // The data package .filedist-package.yml has defaultPresets pointing to 'data', but we pass 'docs/**' via CLI.
+    // binpkg must use the CLI --files arg, not the defaultPresets.
     await expect(
       binpkg(binDir, ['--output', outputDir, '--gitignore=false', '--files', 'docs/**']),
     ).rejects.toThrow('process.exit(0)');
@@ -114,11 +97,11 @@ describe('binpkg', () => {
     expect(fs.existsSync(path.join(outputDir, 'data/file2.md'))).toBe(false);
   }, 60_000);
 
-  it('does not extract external packages listed in data package filedist config', async () => {
+  it('only extracts the data package itself — does not install any other packages', async () => {
     const outputDir = path.join(tmpDir, 'output-no-ext');
 
-    // If binpkg used the filedist config it would try to install 'nonexistent-external-pkg',
-    // which does not exist, and would fail. A clean exit(0) proves it was not attempted.
+    // binpkg builds a synthetic single-set config for its own package only.
+    // A clean exit(0) proves only the named data package was installed.
     await expect(binpkg(binDir, ['--output', outputDir, '--gitignore=false'])).rejects.toThrow(
       'process.exit(0)',
     );

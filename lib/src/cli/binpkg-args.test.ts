@@ -42,11 +42,11 @@ describe('binpkg defaultPresets forwarding', () => {
   it('injects defaultPresets when the user does not pass --presets', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({
-        name: 'example-files-package',
-        version: '1.0.0',
-        filedist: { defaultPresets: ['basic', 'eslint'] },
-      }),
+      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'pkg', '.filedist-package.yml'),
+      'defaultPresets:\n  - basic\n  - eslint\n',
     );
 
     await expect(binpkg(binDir, ['install', '--output', 'output'])).rejects.toThrow(
@@ -71,11 +71,11 @@ describe('binpkg defaultPresets forwarding', () => {
   it('does not inject defaultPresets when the user already passed --presets', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({
-        name: 'example-files-package',
-        version: '1.0.0',
-        filedist: { defaultPresets: ['basic'] },
-      }),
+      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'pkg', '.filedist-package.yml'),
+      'defaultPresets:\n  - basic\n',
     );
 
     await expect(
@@ -100,11 +100,11 @@ describe('binpkg defaultPresets forwarding', () => {
   it('does not inject defaultPresets when the user passes --all', async () => {
     fs.writeFileSync(
       path.join(tmpDir, 'pkg', 'package.json'),
-      JSON.stringify({
-        name: 'example-files-package',
-        version: '1.0.0',
-        filedist: { defaultPresets: ['basic'] },
-      }),
+      JSON.stringify({ name: 'example-files-package', version: '1.0.0' }),
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'pkg', '.filedist-package.yml'),
+      'defaultPresets:\n  - basic\n',
     );
 
     await expect(binpkg(binDir, ['install', '--output', 'output', '--all'])).rejects.toThrow(

@@ -2,23 +2,32 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
 import { detect } from 'package-manager-detector/detect';
 import { resolveCommand } from 'package-manager-detector/commands';
 
 import { FiledistExtractEntry } from '../types';
 import { spawnWithLog } from '../utils';
 
+import { PACKAGE_CONFIG_FILENAME } from './config';
+
 export type InitConfig = {
   /** File glob patterns to include in the package and use as selector for filesets. */
   files?: string[];
   /** External package specs (e.g. "eslint@8") to add as filedist sets and dependencies. */
   packages?: string[];
+  /**
+   * Optional config filename to embed in the generated bin shim so consumers use a
+   * named config file (e.g. `.mypackage.yml`) instead of the default `.filedist.yml`.
+   */
+  baseConfigFile?: string;
 };
 
 /**
  * Scaffold or update a publishable npm data package.
  * If package.json already exists, updates it in place.
  * Creates bin/filedist.js if it does not already exist.
+ * Writes .filedist-package.yml with the sets configuration.
  */
 export async function actionInit(
   outputDir: string,
@@ -28,8 +37,12 @@ export async function actionInit(
   const pkgJsonPath = path.join(outputDir, 'package.json');
   const binDir = path.join(outputDir, 'bin');
   const binPath = path.join(binDir, 'filedist.js');
+  const packageConfigPath = path.join(outputDir, PACKAGE_CONFIG_FILENAME);
 
-  const binShim = `#!/usr/bin/env node\n'use strict';\nrequire('filedist').binpkg(__dirname, process.argv.slice(2));\n`;
+  const baseConfigFileArg = config?.baseConfigFile;
+  const binShim = baseConfigFileArg
+    ? `#!/usr/bin/env node\n'use strict';\nrequire('filedist').binpkg(__dirname, process.argv.slice(2), ${JSON.stringify(baseConfigFileArg)});\n`
+    : `#!/usr/bin/env node\n'use strict';\nrequire('filedist').binpkg(__dirname, process.argv.slice(2));\n`;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -53,9 +66,21 @@ export async function actionInit(
   // Set bin entry
   pkgJson.bin = 'bin/filedist.js';
 
-  // Update npm files list to include data patterns and the bin shim
-  const npmFiles = new Set<string>([...filePatterns, 'package.json', 'bin/filedist.js']);
+  // Update npm files list to include data patterns, the bin shim, and the package config
+  const npmFiles = new Set<string>([
+    ...filePatterns,
+    'package.json',
+    'bin/filedist.js',
+    PACKAGE_CONFIG_FILENAME,
+  ]);
   pkgJson.files = Array.from(npmFiles);
+
+  // Remove legacy filedist field if present (config now lives in .filedist-package.yml)
+  delete pkgJson.filedist;
+
+  // Write updated package.json (dependencies are managed by the `add` command below)
+  // eslint-disable-next-line unicorn/no-null
+  fs.writeFileSync(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`, 'utf8');
 
   // Build filedist sets: self entry first (no package field), then external packages
   const selfEntry: FiledistExtractEntry = {
@@ -67,11 +92,8 @@ export async function actionInit(
     output: { path: '.' },
     ...(filePatterns.length > 0 ? { selector: { files: filePatterns } } : {}),
   }));
-  pkgJson.filedist = { sets: [selfEntry, ...externalEntries] };
-
-  // Write updated package.json (dependencies are managed by the `add` command below)
-  // eslint-disable-next-line unicorn/no-null
-  fs.writeFileSync(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`, 'utf8');
+  const packageConfigData = { sets: [selfEntry, ...externalEntries] };
+  fs.writeFileSync(packageConfigPath, yaml.dump(packageConfigData, { indent: 2 }), 'utf8');
 
   // Create bin/filedist.js only if it does not already exist
   if (!fs.existsSync(binPath)) {
@@ -92,6 +114,7 @@ export async function actionInit(
 
   if (verbose) {
     console.log(`Updated: ${pkgJsonPath}`);
+    console.log(`Written: ${packageConfigPath}`);
     console.log(`Created: ${binPath}`);
   }
 }

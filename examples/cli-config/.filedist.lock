@@ -1,0 +1,15 @@
+version: 1
+packages:
+  eslint@8: 8.57.1
+sets:
+  - package: eslint@8
+    selector:
+      files:
+        - conf/globals.js
+    output:
+      path: output/eslint
+      managed: false
+    presets:
+      - extra
+checksum: 1aebee73d2e6
+

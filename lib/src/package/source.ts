@@ -324,15 +324,7 @@ async function resolveGitPackage(
     true,
   );
 
-  const configFilePatterns = [
-    'package.json',
-    '.filedistrc',
-    '.filedistrc.json',
-    '.filedistrc.yaml',
-    '.filedistrc.yml',
-    'filedist.config.js',
-    'filedist.config.cjs',
-  ];
+  const configFilePatterns = ['.filedist-package.yml'];
   const phase1Patterns = [...new Set([...configFilePatterns, ...sparsePatterns])];
   spawnWithLog(
     'git',

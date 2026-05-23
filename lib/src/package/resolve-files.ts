@@ -11,7 +11,7 @@ import {
 import { filterEntriesByPresets, formatDisplayPath } from '../utils';
 import { enumeratePackageFiles } from '../fileset/package-files';
 
-import { loadFiledistConfigFromDirectory } from './config';
+import { loadPackageConfig } from './config';
 import { mergeOutputConfig, mergeSelectorConfig } from './config-merge';
 import { createSourceRuntime, parsePackageTarget, SourceRuntime } from './source';
 
@@ -214,7 +214,7 @@ async function resolveFilesInternal(
       }
 
       // Check whether this package declares its own filedist.sets
-      const depConfig = await loadFiledistConfigFromDirectory(pkgPath);
+      const depConfig = loadPackageConfig(pkgPath);
       const pkgFiledistSets = depConfig?.sets;
 
       // Phase 2 sparse expansion (git only, no explicit caller patterns):

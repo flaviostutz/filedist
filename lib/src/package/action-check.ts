@@ -9,10 +9,14 @@ import { resolveFilesDetailed } from './resolve-files';
 import { calculateDiff } from './calculate-diff';
 import { isManagedSymlinkEntry } from './symlinks';
 import { createSourceRuntime } from './source';
-import { readLockfile, readManagedFilesForDir, LOCKFILE_NAME } from './lockfile';
+import { readLockfile, readManagedFilesForDir } from './lockfile';
 
 export type CheckOptions = BasicPackageOptions & {
   onProgress?: (event: ProgressEvent) => void;
+  /**
+   * Absolute path to the lock file. Derived from the config file path via getLockfilePath().
+   */
+  lockfilePath: string;
   /**
    * When true, skip all package installs and git clones.
    * Integrity is verified solely against the checksums stored in .filedist markers.
@@ -47,6 +51,43 @@ export type CheckSummary = {
  * conflicts are excluded since gitignore state is managed by extract, not a data
  * integrity issue.
  */
+/** Run a local-only integrity check for a set of managed entries. */
+async function checkLocalOnly(
+  managedEntries: FiledistExtractEntry[],
+  cwd: string,
+  lockfilePath: string,
+  verbose: boolean,
+): Promise<CheckSummary> {
+  const summary: CheckSummary = { ok: 0, missing: [], conflict: [], extra: [] };
+  if (verbose) {
+    console.log(`[verbose] actionCheck: local-only mode (cwd: ${formatDisplayPath(cwd, cwd)})`);
+  }
+  const checkedDirs = new Set<string>();
+  for (const entry of managedEntries) {
+    const outputDir = path.resolve(cwd, entry.output?.path ?? '.');
+    if (checkedDirs.has(outputDir)) continue;
+    checkedDirs.add(outputDir);
+
+    // readManagedFilesForDir verifies managed files from .filedist.lock.
+    const marker = readManagedFilesForDir(lockfilePath, cwd, outputDir);
+    // eslint-disable-next-line unicorn/no-null
+    const checkResult = await checkFileset(null, outputDir, marker);
+
+    summary.missing.push(...checkResult.missing);
+    summary.conflict.push(...checkResult.modified);
+    // extra is skipped in local-only mode (no package source to enumerate)
+    summary.ok += marker.length - checkResult.missing.length - checkResult.modified.length;
+
+    if (verbose) {
+      console.log(
+        `[verbose] actionCheck local-only: ${formatDisplayPath(outputDir, cwd)}: ` +
+          `missing=${checkResult.missing.length} modified=${checkResult.modified.length}`,
+      );
+    }
+  }
+  return summary;
+}
+
 export async function actionCheck(options: CheckOptions): Promise<CheckSummary> {
   const {
     cwd,
@@ -56,12 +97,18 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
     frozenLockfile = false,
     entries: initialEntries,
   } = options;
+  const { lockfilePath } = options;
   let entries = initialEntries;
   let lockedVersions: Map<string, string> | undefined;
 
   // ── Frozen mode: read entries and locked versions from lockfile ──────────
   if (frozenLockfile) {
-    const resolved = resolveFrozenLockfileContext(cwd, initialEntries, verbose, 'actionCheck');
+    const resolved = resolveFrozenLockfileContext(
+      lockfilePath,
+      initialEntries,
+      verbose,
+      'actionCheck',
+    );
     ({ entries, lockedVersions } = resolved);
   }
 
@@ -73,33 +120,7 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
 
   // --local-only: verify only against .filedist markers without touching any package source.
   if (localOnly) {
-    if (verbose) {
-      console.log(`[verbose] actionCheck: local-only mode (cwd: ${formatDisplayPath(cwd, cwd)})`);
-    }
-    const checkedDirs = new Set<string>();
-    for (const entry of managedEntries) {
-      const outputDir = path.resolve(cwd, entry.output?.path ?? '.');
-      if (checkedDirs.has(outputDir)) continue;
-      checkedDirs.add(outputDir);
-
-      // readManagedFilesForDir verifies managed files from .filedist.lock.
-      const marker = readManagedFilesForDir(cwd, outputDir);
-      // eslint-disable-next-line unicorn/no-null
-      const checkResult = await checkFileset(null, outputDir, marker);
-
-      summary.missing.push(...checkResult.missing);
-      summary.conflict.push(...checkResult.modified);
-      // extra is skipped in local-only mode (no package source to enumerate)
-      summary.ok += marker.length - checkResult.missing.length - checkResult.modified.length;
-
-      if (verbose) {
-        console.log(
-          `[verbose] actionCheck local-only: ${formatDisplayPath(outputDir, cwd)}: ` +
-            `missing=${checkResult.missing.length} modified=${checkResult.modified.length}`,
-        );
-      }
-    }
-    return summary;
+    return checkLocalOnly(managedEntries, cwd, lockfilePath, verbose);
   }
 
   const sourceRuntime = createSourceRuntime(cwd, verbose);
@@ -130,6 +151,9 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
       verbose,
       cwd,
       resolved.relevantPackagesByOutputDir,
+      // eslint-disable-next-line no-undefined
+      undefined,
+      lockfilePath,
     );
 
     summary.ok += diff.ok.length;
@@ -165,18 +189,19 @@ export async function actionCheck(options: CheckOptions): Promise<CheckSummary> 
 }
 
 /**
- * Shared helper: read entries and locked package versions from .filedist.lock.
+ * Shared helper: read entries and locked package versions from a lock file.
  * Throws when the lock file is absent.
  */
 export function resolveFrozenLockfileContext(
-  cwd: string,
+  lockfilePath: string,
   fallbackEntries: FiledistExtractEntry[],
   verbose: boolean,
   caller = 'action',
 ): { entries: FiledistExtractEntry[]; lockedVersions: Map<string, string> } {
-  const lockfileData = readLockfile(cwd);
+  const lockfileData = readLockfile(lockfilePath);
   if (!lockfileData) {
-    throw new Error(`Lock file ${LOCKFILE_NAME} not found. Run 'filedist install' first.`);
+    const lockName = path.basename(lockfilePath);
+    throw new Error(`Lock file ${lockName} not found. Run 'filedist install' first.`);
   }
   const entries =
     lockfileData.sets && lockfileData.sets.length > 0 ? lockfileData.sets : fallbackEntries;

@@ -43,6 +43,7 @@ describe('actionUpdate', () => {
     await actionInstall({
       entries: [{ package: 'update-files-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
     expect(fs.existsSync(path.join(outputDir, 'docs/v1.md'))).toBe(true);
 
@@ -54,6 +55,7 @@ describe('actionUpdate', () => {
     const result = await actionUpdate({
       entries: [{ package: 'update-files-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       upgrade: false,
     });
 
@@ -68,9 +70,10 @@ describe('actionUpdate', () => {
     await actionInstall({
       entries: [{ package: 'update-lock-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
-    const lockBefore = readLockfile(tmpDir);
+    const lockBefore = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lockBefore?.packages['update-lock-pkg']).toBe('1.0.0');
 
     // Publish v2
@@ -79,10 +82,11 @@ describe('actionUpdate', () => {
     await actionUpdate({
       entries: [{ package: 'update-lock-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       upgrade: false,
     });
 
-    const lockAfter = readLockfile(tmpDir);
+    const lockAfter = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lockAfter?.packages['update-lock-pkg']).toBe('2.0.0');
   }, 90_000);
 
@@ -97,6 +101,7 @@ describe('actionUpdate', () => {
     await actionInstall({
       entries: [{ package: 'update-config-a', output: { path: outputA, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Now user has updated their config to include pkg-b as well
@@ -107,6 +112,7 @@ describe('actionUpdate', () => {
         { package: 'update-config-b', output: { path: outputB, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       upgrade: false,
     });
 
@@ -115,7 +121,7 @@ describe('actionUpdate', () => {
     expect(fs.existsSync(path.join(outputB, 'b.md'))).toBe(true);
 
     // Lockfile sets should now include both packages
-    const lock = readLockfile(tmpDir);
+    const lock = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lock?.sets).toHaveLength(2);
   }, 90_000);
 
@@ -126,20 +132,27 @@ describe('actionUpdate', () => {
     await actionInstall({
       entries: [{ package: 'update-fallback-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Publish v2
     await installMockPackage('update-fallback-pkg', '2.0.0', { 'doc.md': '# v2' }, tmpDir);
 
     // Call update WITHOUT entries — must read lockfile sets; upgrade:false avoids registry
-    const result = await actionUpdate({ cwd: tmpDir, upgrade: false });
+    const result = await actionUpdate({
+      cwd: tmpDir,
+      upgrade: false,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
 
     expect(result.modified).toBeGreaterThan(0);
     expect(fs.readFileSync(path.join(outputDir, 'doc.md'), 'utf8')).toBe('# v2');
   }, 90_000);
 
   it('throws when no entries and no lockfile exists', async () => {
-    await expect(actionUpdate({ cwd: tmpDir })).rejects.toThrow();
+    await expect(
+      actionUpdate({ cwd: tmpDir, lockfilePath: path.join(tmpDir, '.filedist.lock') }),
+    ).rejects.toThrow();
   });
 
   it('dry-run reports changes without writing files', async () => {
@@ -149,6 +162,7 @@ describe('actionUpdate', () => {
     await actionInstall({
       entries: [{ package: 'update-dry-pkg', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Publish v2 with different files
@@ -159,6 +173,7 @@ describe('actionUpdate', () => {
         { package: 'update-dry-pkg', output: { path: outputDir, gitignore: false, dryRun: true } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       upgrade: false,
     });
 

@@ -192,13 +192,8 @@ describe('cli', () => {
 
   it('routes to presets command — lists preset tags from config', async () => {
     fs.writeFileSync(
-      path.join(tmpDir, '.filedistrc.json'),
-      JSON.stringify({
-        sets: [
-          { package: PKG_NAME, presets: ['prod', 'staging'] },
-          { package: PKG_NAME, presets: ['dev'] },
-        ],
-      }),
+      path.join(tmpDir, '.filedist.yml'),
+      `sets:\n  - package: ${PKG_NAME}\n    presets:\n      - prod\n      - staging\n  - package: ${PKG_NAME}\n    presets:\n      - dev\n`,
     );
 
     const lines: string[] = [];
@@ -401,61 +396,12 @@ describe('cli', () => {
     );
   });
 
-  it('.filedistrc.local.yml is used when present and no --config is given', async () => {
-    const outputLocal = path.join(tmpDir, 'output-local');
-    const outputDefault = path.join(tmpDir, 'output-default');
-
-    // Write a standard config that points to outputDefault
-    fs.writeFileSync(
-      path.join(tmpDir, '.filedistrc.yml'),
-      `sets:\n  - package: ${PKG_NAME}\n    output:\n      path: ${outputDefault}\n      gitignore: false\n`,
-    );
-
-    // Write a local config that points to outputLocal
-    fs.writeFileSync(
-      path.join(tmpDir, '.filedistrc.local.yml'),
-      `sets:\n  - package: ${PKG_NAME}\n    output:\n      path: ${outputLocal}\n      gitignore: false\n`,
-    );
-
-    await cli(['node', 'filedist', 'install'], tmpDir);
-
-    // Only the local config output should be populated
-    expect(fs.existsSync(path.join(outputLocal, 'docs/guide.md'))).toBe(true);
-    expect(fs.existsSync(path.join(outputDefault, 'docs/guide.md'))).toBe(false);
-  }, 60_000);
-
-  it('.filedistrc.local.yml is ignored when --config is explicitly given', async () => {
-    const outputLocal = path.join(tmpDir, 'output-local-ignored');
-    const outputExplicit = path.join(tmpDir, 'output-explicit');
-    const configFile = path.join(tmpDir, 'explicit.json');
-
-    // Write a local config
-    fs.writeFileSync(
-      path.join(tmpDir, '.filedistrc.local.yml'),
-      `sets:\n  - package: ${PKG_NAME}\n    output:\n      path: ${outputLocal}\n      gitignore: false\n`,
-    );
-
-    // Write an explicit config
-    fs.writeFileSync(
-      configFile,
-      JSON.stringify({
-        sets: [{ package: PKG_NAME, output: { path: outputExplicit, gitignore: false } }],
-      }),
-    );
-
-    await cli(['node', 'filedist', 'install', '--config', configFile], tmpDir);
-
-    // Only the explicit config output should be populated
-    expect(fs.existsSync(path.join(outputExplicit, 'docs/guide.md'))).toBe(true);
-    expect(fs.existsSync(path.join(outputLocal, 'docs/guide.md'))).toBe(false);
-  }, 60_000);
-
-  it('.filedistrc.local.yml falls through to standard config search when absent', async () => {
+  it('.filedist.yml is loaded from cwd when no --config is given', async () => {
     const outputStandard = path.join(tmpDir, 'output-standard');
 
-    // Only a standard config exists, no local config
+    // Only a standard config exists
     fs.writeFileSync(
-      path.join(tmpDir, '.filedistrc.yml'),
+      path.join(tmpDir, '.filedist.yml'),
       `sets:\n  - package: ${PKG_NAME}\n    output:\n      path: ${outputStandard}\n      gitignore: false\n`,
     );
 

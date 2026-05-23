@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import path from 'node:path';
 
-import { FiledistConfig } from '../../types';
 import { parseArgv } from '../argv';
 import { printUsage } from '../usage';
 import { formatProgressFile } from '../progress';
@@ -26,10 +25,10 @@ import { actionRemove } from '../../package/action-remove';
  *   filedist remove --all [--dry-run]
  */
 export async function runRemove(
-  config: FiledistConfig | null,
   argv: string[],
   cwd: string,
-  configFilePath?: string,
+  lockfilePath: string,
+  configFilePath: string,
 ): Promise<void> {
   if (argv.includes('--help')) {
     printUsage('remove');
@@ -61,6 +60,7 @@ export async function runRemove(
     const summary = await actionRemove({
       all: true,
       cwd,
+      lockfilePath,
       configFilePath: resolvedConfigFilePath,
       dryRun: parsed.dryRun,
       verbose: parsed.verbose,
@@ -82,6 +82,7 @@ export async function runRemove(
     packageSpec,
     outputPath: parsed.output,
     presets: parsed.presets,
+    lockfilePath,
     configFilePath: resolvedConfigFilePath,
     dryRun: parsed.dryRun,
     verbose: parsed.verbose,

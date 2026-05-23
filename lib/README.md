@@ -24,29 +24,29 @@ npx filedist install --packages git:github.com/flaviostutz/xdrs-core@1.3.0 --out
 
 Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
 
-#### Auto-save to `.filedistrc.yml`
+#### Auto-save to `.filedist.yml`
 
-Whenever `--packages` is used, filedist automatically creates or updates a `.filedistrc.yml` file in the current directory with the packages and selectors from that run. This means subsequent updates can be done with a single command — no flags needed:
+Whenever `--packages` is used, filedist automatically creates or updates a `.filedist.yml` file in the current directory with the packages and selectors from that run. This means subsequent updates can be done with a single command — no flags needed:
 
 ```sh
-# First run: extract and save to .filedistrc.yml automatically
+# First run: extract and save to .filedist.yml automatically
 npx filedist install --packages my-shared-assets@^2.0.0 --output ./data
 
-# .filedistrc.yml is now created:
+# .filedist.yml is now created:
 # sets:
 #   - package: my-shared-assets@^2.0.0
 #     output:
 #       path: ./data
 
-# Future bumps: just run extract (reads .filedistrc.yml)
+# Future bumps: just run extract (reads .filedist.yml)
 npx filedist install
 
 # Or bump to a newer version
 npx filedist install --packages my-shared-assets@^3.0.0 --output ./data
-# .filedistrc.yml is updated in place (same entry, new version)
+# .filedist.yml is updated in place (same entry, new version)
 ```
 
-If the entry already exists in `.filedistrc.yml` with identical content, the file is left unchanged. Use `--no-save` to run a one-off extraction without reading or updating `.filedistrc.yml`:
+If the entry already exists in `.filedist.yml` with identical content, the file is left unchanged. Use `--no-save` to run a one-off extraction without reading or updating `.filedist.yml`:
 
 ```sh
 npx filedist install --packages my-shared-assets@^2.0.0 --output ./tmp --no-save
@@ -54,34 +54,32 @@ npx filedist install --packages my-shared-assets@^2.0.0 --output ./tmp --no-save
 
 ### Pattern 2 — Data packages with embedded configuration
 
-Create a dedicated npm package whose `package.json` declares an `filedist` config block. That config encodes the extraction sources, output directories, filtering rules, and any combination of upstream packages. Consumers install the data package and run its bundled script — they don't need to know the internals.
+Create a dedicated npm package with a `.filedist-package.yml` file that encodes the extraction sources, output directories, filtering rules, and any combination of upstream packages. Consumers install the data package and run its bundled script — they don't need to know the internals.
 
-**Publisher** — add an `filedist` block to the data package's `package.json`:
+**Publisher** — create a `.filedist-package.yml` in the data package root:
 
-```json
-{
-  "name": "my-org-configs",
-  "version": "1.0.0",
-  "filedist": {
-    "sets": [
-      {
-        "package": "base-datasets@^3.0.0",
-        "selector": { "files": ["datasets/**"] },
-        "output": { "path": "./data/base" }
-      },
-      {
-        "package": "org-configs@^1.2.0",
-        "selector": { "contentRegexes": ["env: production"] },
-        "output": { "path": "./configs" }
-      },
-      {
-        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
-        "selector": { "files": ["docs/**"] },
-        "output": { "path": "./xdrs" }
-      }
-    ]
-  }
-}
+```yaml
+sets:
+  - package: base-datasets@^3.0.0
+    selector:
+      files:
+        - datasets/**
+    output:
+      path: ./data/base
+
+  - package: org-configs@^1.2.0
+    selector:
+      contentRegexes:
+        - env: production
+    output:
+      path: ./configs
+
+  - package: git:github.com/flaviostutz/xdrs-core@1.3.0
+    selector:
+      files:
+        - docs/**
+    output:
+      path: ./xdrs
 ```
 
 Run `pnpm dlx filedist init` in that package and then `npm publish` to release it.
@@ -98,72 +96,40 @@ No knowledge of the upstream packages or transformation rules is required.
 
 ### Pattern 3 — Config file mode
 
-Add an `filedist` configuration directly to a project's own `package.json` (or a `.filedistrc` file) and then run `filedist install` without `--packages`. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
+Add a `.filedist.yml` file to your project and run `filedist install` without `--packages`. The CLI automatically loads the configuration and runs every entry, reusing the same runner logic as data packages.
 
-**Consumer** — declare the config inline in `package.json`:
+**Consumer** — create a `.filedist.yml` in the project root:
 
-```json
-{
-  "name": "my-project",
-  "filedist": {
-    "defaultPresets": ["prod"],
-    "sets": [
-      {
-        "package": "base-datasets@^3.0.0",
-        "selector": { "files": ["datasets/**"] },
-        "output": { "path": "./data" }
-      },
-      {
-        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
-        "selector": { "files": ["docs/**"] },
-        "output": { "path": "./xdrs" }
-      }
-    ]
-  }
-}
+```yaml
+defaultPresets:
+  - prod
+sets:
+  - package: base-datasets@^3.0.0
+    selector:
+      files:
+        - datasets/**
+    output:
+      path: ./data
+
+  - package: git:github.com/flaviostutz/xdrs-core@1.3.0
+    selector:
+      files:
+        - docs/**
+    output:
+      path: ./xdrs
 ```
 
-Or write a standalone `.filedistrc` (JSON object at the top level):
-
-```json
-{
-  "sets": [
-    {
-      "package": "base-datasets@^3.0.0",
-      "selector": { "files": ["datasets/**"] },
-      "output": { "path": "./data" }
-    },
-    {
-      "package": "git:file:///absolute/path/to/local-repo@v2.0.0",
-      "selector": { "files": ["conf/**"] },
-      "output": { "path": "./local-conf" }
-    }
-  ]
-}
-```
-
-For a local Windows path, use the same `file://` form with a drive letter, for example `git:file:///C:/work/local-repo@v2.0.0`.
+For a local git repository, use the `file://` form with an absolute path, for example `git:file:///absolute/path/to/local-repo@v2.0.0`. On Windows use a drive letter: `git:file:///C:/work/local-repo@v2.0.0`.
 
 Then run any command without `--packages`:
 
 ```sh
 npx filedist           # same as 'npx filedist install'
-npx filedist install   # reads config, extracts all entries or only defaultPresets when defined
+npx filedist install   # reads .filedist.yml, extracts all entries or only defaultPresets when defined
 npx filedist check     # checks the same effective set selection
 ```
 
-Config is resolved using [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig). Sources searched in order from the current directory:
-
-| Source | Key / format | Notes |
-|---|---|---|
-| `.filedistrc.local.yml` | YAML object with `"sets"` array | Local-only override; checked first; not searched in parent dirs |
-| `package.json` | `"filedist"` key — object with `"sets"` array | |
-| `.filedistrc` | JSON or YAML object with `"sets"` array | |
-| `.filedistrc.json` | JSON object with `"sets"` array | |
-| `.filedistrc.yaml` / `.filedistrc.yml` | YAML object with `"sets"` array | |
-| `filedist.config.js` | CommonJS module exporting object with `sets` array | |
-
-When `.filedistrc.local.yml` is present in the current directory it takes full priority over all other config sources. This is useful when you are developing a package that already ships its own filedist config (e.g. in `package.json`) but you need to run extra extractions locally — for example to pull other packages into your workspace — without those entries being part of the published package config.
+filedist reads only `.filedist.yml` from the current working directory. No parent-directory traversal is performed.
 
 All runner flags (`--dry-run`, `--silent`, `--verbose`, `--gitignore=false`, `--managed=false`, `--presets`, `--output`) work as usual.
 When `filedist.defaultPresets` is defined, `extract` and `check` behave as if `--presets <tags>` had been passed automatically. Passing `--presets` explicitly overrides that configured default for the current invocation.
@@ -242,7 +208,7 @@ npx my-shared-assets extract --output ./data
 npx my-shared-assets check  --output ./data
 ```
 
-When the data package defines multiple `filedist` entries in its `package.json`, you can limit which entries are processed using the `--presets` option. Only entries whose `presets` list includes at least one of the requested presets will be extracted; entries with no presets are skipped when a preset filter is active.
+When the data package defines multiple entries in its `.filedist-package.yml`, you can limit which entries are processed using the `--presets` option. Only entries whose `presets` list includes at least one of the requested presets will be extracted; entries with no presets are skipped when a preset filter is active.
 
 ```sh
 # run only entries tagged with "prod"
@@ -252,17 +218,21 @@ npx my-shared-assets --presets prod
 npx my-shared-assets --presets prod,staging
 ```
 
-To use presets, add a `presets` array to each `filedist` entry in the data package's `package.json`:
+To use presets, add a `presets` array to each entry in the data package's `.filedist-package.yml`:
 
-```json
-{
-  "filedist": {
-    "sets": [
-      { "package": "my-shared-assets", "output": { "path": "./data" }, "presets": ["prod"] },
-      { "package": "my-dev-assets",    "output": { "path": "./dev-data" }, "presets": ["dev", "staging"] }
-    ]
-  }
-}
+```yaml
+sets:
+  - package: my-shared-assets
+    output:
+      path: ./data
+    presets:
+      - prod
+  - package: my-dev-assets
+    output:
+      path: ./dev-data
+    presets:
+      - dev
+      - staging
 ```
 
 Check the /examples folder to see this in action
@@ -346,48 +316,42 @@ After extraction, for each config the runner finds workspace files matching `fil
 
 Example with multiple options:
 
-```json
-{
-  "filedist": {
-    "sets": [
-      {
-        "package": "my-shared-assets@^2.0.0",
-        "selector": {
-          "files": ["docs/**", "configs/*.json"],
-          "upgrade": true
-        },
-        "output": {
-          "path": "./data",
-          "gitignore": true,
-          "symlinks": [
-            { "source": "**\/skills\/**", "target": ".github/skills" }
-          ],
-          "contentReplacements": [
-            { "files": "docs/**\/*.md", "match": "<!-- version: .* -->", "replace": "<!-- version: 2.0.0 -->" }
-          ]
-        },
-        "presets": ["prod"]
-      },
-      {
-        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
-        "selector": {
-          "files": ["docs/**"],
-          "upgrade": true
-        },
-        "output": {
-          "path": "./xdrs",
-          "gitignore": false
-        },
-        "presets": ["prod"]
-      }
-    ]
-  }
-}
+```yaml
+sets:
+  - package: my-shared-assets@^2.0.0
+    selector:
+      files:
+        - docs/**
+        - configs/*.json
+      upgrade: true
+    output:
+      path: ./data
+      gitignore: true
+      symlinks:
+        - source: "**/skills/**"
+          target: .github/skills
+      contentReplacements:
+        - files: docs/**/*.md
+          match: "<!-- version: .* -->"
+          replace: "<!-- version: 2.0.0 -->"
+    presets:
+      - prod
+
+  - package: git:github.com/flaviostutz/xdrs-core@1.3.0
+    selector:
+      files:
+        - docs/**
+      upgrade: true
+    output:
+      path: ./xdrs
+      gitignore: false
+    presets:
+      - prod
 ```
 
 ### 3. Check files are in sync
 
-Verifies that every file in the output directory matches what was installed. `check` reads exclusively from `.filedist.lock` — it does **not** read your `package.json` / `.filedistrc` configuration and does **not** require `--packages`. The lockfile must exist (run `filedist install` first).
+Verifies that every file in the output directory matches what was installed. `check` reads exclusively from `.filedist.lock` — it does **not** read your `.filedist.yml` configuration and does **not** require `--packages`. The lockfile must exist (run `filedist install` first).
 
 ```sh
 npx filedist check
@@ -443,7 +407,7 @@ another-pkg@1.0.0
 
 ### 5. Remove a package set
 
-Remove one or more set entries from your config file and delete their managed files from disk. `remove` reads your `.filedistrc` / `package.json` config — **not** `.filedist.lock`. It deletes the matching entries from the config file, then runs a full install with the remaining entries so the lockfile is updated and orphaned files are deleted. This is equivalent to manually deleting the sets from your config and running `filedist install`.
+Remove one or more set entries from your config file and delete their managed files from disk. `remove` reads your `.filedist.yml` config — **not** `.filedist.lock`. It deletes the matching entries from the config file, then runs a full install with the remaining entries so the lockfile is updated and orphaned files are deleted. This is equivalent to manually deleting the sets from your config and running `filedist install`.
 
 ```sh
 # remove all entries for a package (version is ignored during matching)
@@ -479,7 +443,7 @@ npx filedist update --dry-run
 
 ## Hierarchical package resolution
 
-`extract` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
+`extract` and `check` are all hierarchy-aware: when a target package or git repository carries its own `.filedist-package.yml`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -518,18 +482,14 @@ Settings that are undefined on the caller are left as-is so the transitive packa
 
 Set `selector.presets` on an entry to control which sets inside the target package are recursed into. Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
 
-```json
-{
-  "filedist": {
-    "sets": [
-      {
-        "package": "my-org-configs@^2.0.0",
-        "output": { "path": "./data" },
-        "selector": { "presets": ["prod"] }
-      }
-    ]
-  }
-}
+```yaml
+sets:
+  - package: my-org-configs@^2.0.0
+    output:
+      path: ./data
+    selector:
+      presets:
+        - prod
 ```
 
 The same filtering is applied during `check` so they stay in sync with what `extract` originally wrote.
@@ -549,7 +509,7 @@ Commands:
   install   Extract files from a published package into a local directory (alias: extract)
   check     Verify local files are in sync with the lockfile (reads .filedist.lock)
   list      List all files managed by filedist in an output directory
-  remove    Remove a package set from config and delete its managed files (reads .filedistrc)
+  remove    Remove a package set from config and delete its managed files (reads .filedist.yml)
   update    Bump packages to latest versions, update lockfile, and re-extract
 
 Global options:
@@ -568,7 +528,7 @@ Init options:
 Extract options:
   --packages <specs>       Comma-separated package specs.
                            When omitted, filedist searches for a configuration file
-                           (package.json "filedist" key, .filedistrc, etc.) and runs all
+                           (.filedist.yml) and runs all
                            entries defined there.
                            Each spec is `name`, `name@version`, `npm:name@version`, or
                            `git:github.com/org/repo.git@ref`, e.g.
@@ -587,9 +547,9 @@ Extract options:
   --upgrade                Reinstall the package even if already present
   --silent                 Print only the final result line, suppressing per-file output
   --verbose, -v            Print detailed progress information for each step
-  --no-save                Skip loading and updating the local .filedistrc.yml config file.
+  --no-save                Skip loading and updating the local .filedist.yml config file.
                            By default, when --packages is provided the run is saved to
-                           .filedistrc.yml so future `filedist install` calls (without
+                           .filedist.yml so future `filedist install` calls (without
                            --packages) reuse the same config automatically.
   --frozen-lockfile        Use .filedist.lock exclusively; fail if the lock file does not
                            exist. Does not update the lock file.
@@ -608,7 +568,7 @@ Remove options:
   --output, -o <dir>       Only remove entries whose output.path equals this value
   --all                    Remove every set entry from the config
   --dry-run                Preview changes without modifying config or disk
-  --config <file>          Path to a config file (overrides auto-discovered .filedistrc)
+  --config <file>          Path to a config file (overrides default .filedist.yml)
   --silent                 Suppress per-file output
   --verbose, -v            Print detailed progress information
 
@@ -720,7 +680,7 @@ Each `install` run writes a `.filedist.lock` file in the working directory that 
 
 This file makes installs **reproducible** — even if a newer version of a package is published between runs, repeating `install` will fetch exactly the versions that were used the first time.
 
-`check` reads **exclusively from `.filedist.lock`** (using the `sets` stored there) and does not read your `package.json` / `.filedistrc` configuration. This ensures it always operates on the same entry definitions that were used during install, regardless of any local config changes.
+`check` reads **exclusively from `.filedist.lock`** (using the `sets` stored there) and does not read your `.filedist.yml` configuration. This ensures it always operates on the same entry definitions that were used during install, regardless of any local config changes.
 
 When `--frozen-lockfile` is passed to `install`, it also validates that the current managed files match the list stored in the lockfile, failing if they differ.
 
@@ -740,7 +700,7 @@ Behaviour:
 
 ### Commit `.filedist.lock`
 
-Commit `.filedist.lock` alongside `.filedistrc.yml` so that everyone on the team and all CI jobs install identical file versions.
+Commit `.filedist.lock` alongside `.filedist.yml` so that everyone on the team and all CI jobs install identical file versions.
 
 ---
 

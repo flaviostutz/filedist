@@ -21,10 +21,10 @@ test:
 	@echo ">>>> split-set-config"
 	@rm -rf output
 
-	# --- Test 1: split-set extraction from myconfig.json (no 'filedist' key in package.json) ---
+	# --- Test 1: split-set extraction from myconfig.yml (no 'filedist' key in package.json) ---
 	# Set 1 extracts .configs/** and docs/** but EXCLUDES .configs/database.config.json
 	# Set 2 extracts ONLY .configs/database.config.json as managed=false with mutable
-	pnpm exec filedist install --config myconfig.json
+	pnpm exec filedist install --config myconfig.yml
 	test -e output/.configs/app.config.json
 	test -e output/docs/README.md
 	test -e output/docs/adrs/adr-001-sample1.md
@@ -34,30 +34,30 @@ test:
 	grep -e ".configs/app.config.json" output/.gitignore
 	! grep -e "output/.configs/database.config.json" output/.gitignore
 	# check: all managed files should be in sync
-	pnpm exec filedist check --config myconfig.json
+	pnpm exec filedist check --config myconfig.yml
 
 	# temper with managed file and check should fail
 	chmod +w output/docs/adrs/adr-001-sample1.md
 	echo "custom local content" > output/docs/adrs/adr-001-sample1.md
-	! pnpm exec filedist check --config myconfig.json
+	! pnpm exec filedist check --config myconfig.yml
 
 	# restore the file and check should pass again
-	pnpm exec filedist install --config myconfig.json
-	pnpm exec filedist check --config myconfig.json
+	pnpm exec filedist install --config myconfig.yml
+	pnpm exec filedist check --config myconfig.yml
 
 	# --- Test 2: mutable prevents overwriting a pre-existing file ---
 	# Overwrite the managed=false file with custom content (it is not read-only, being managed=false)
 	echo "custom local content" > output/.configs/database.config.json
 	# Re-extract (without purge): Set 2 sees the file already exists and skips it
-	pnpm exec filedist install --config myconfig.json
+	pnpm exec filedist install --config myconfig.yml
 	# Custom content must be preserved — mutable skips extraction when file exists
 	grep -q "custom local content" output/.configs/database.config.json
 
 	# check: all managed files should be in sync (database.config.json is drifted, but is managed=false)
-	pnpm exec filedist check --config myconfig.json
+	pnpm exec filedist check --config myconfig.yml
 
 	# --- Test 3: purge removes managed files but leaves the managed=false file behind ---
-	pnpm exec filedist remove --all --config myconfig.json
+	pnpm exec filedist remove --all --config myconfig.yml
 	# managed files are removed
 	test ! -e output/.configs/app.config.json
 	test ! -e output/docs/README.md
@@ -66,12 +66,12 @@ test:
 	test -e output/.configs/database.config.json
 
 	# check should now pass because remove --all also cleared the config entries
-	pnpm exec filedist check --config myconfig.json
+	pnpm exec filedist check --config myconfig.yml
 
 	# restore config and re-install to verify round-trip
-	cp -f myconfig.json.orig myconfig.json
-	pnpm exec filedist install --config myconfig.json
-	pnpm exec filedist check --config myconfig.json
+	cp -f myconfig.yml.orig myconfig.yml
+	pnpm exec filedist install --config myconfig.yml
+	pnpm exec filedist check --config myconfig.yml
 
 	@echo "All split-set config tests passed"
 
@@ -80,4 +80,4 @@ clean:
 	@rm -rf output
 	@rm -f pnpm-lock.yaml
 	@cp -f package.json.orig package.json
-	@cp -f myconfig.json.orig myconfig.json
+	@cp -f myconfig.yml.orig myconfig.yml

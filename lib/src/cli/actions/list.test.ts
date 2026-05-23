@@ -1,3 +1,4 @@
+import path from 'node:path';
 /* eslint-disable @typescript-eslint/no-empty-function */
 
 import { actionList } from '../../package/action-list';
@@ -49,7 +50,7 @@ afterEach(() => {
 
 describe('runList — --help', () => {
   it('prints usage and returns without calling actionList', async () => {
-    await runList(CONFIG, ['--help'], '/cwd');
+    await runList(CONFIG, ['--help'], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(mockPrintUsage).toHaveBeenCalledWith('list');
     expect(mockActionList).not.toHaveBeenCalled();
   });
@@ -62,7 +63,7 @@ describe('runList — file listing', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       logs.push(args.join(' '));
     });
-    await runList(CONFIG, [], '/cwd');
+    await runList(CONFIG, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     spy.mockRestore();
     expect(logs).toContain('docs/guide.md  my-pkg@1.0.0');
     expect(logs).toContain('docs/api.md  my-pkg@1.0.0');
@@ -74,7 +75,7 @@ describe('runList — file listing', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       logs.push(args.join(' '));
     });
-    await runList(CONFIG, ['--verbose'], '/cwd');
+    await runList(CONFIG, ['--verbose'], '/cwd', path.join('/cwd', '.filedist.lock'));
     spy.mockRestore();
     expect(logs).toContain('No managed files found');
   });
@@ -84,14 +85,14 @@ describe('runList — exit code', () => {
   it('does not set exitCode on success (even with files)', async () => {
     mockActionList.mockReturnValue(SAMPLE_FILES);
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runList(CONFIG, [], '/cwd');
+    await runList(CONFIG, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     spy.mockRestore();
     expect(process.exitCode).toBeUndefined();
   });
 
   it('does not set exitCode on success with empty result', async () => {
     mockActionList.mockReturnValue([]);
-    await runList(CONFIG, [], '/cwd');
+    await runList(CONFIG, [], '/cwd', path.join('/cwd', '.filedist.lock'));
     expect(process.exitCode).toBeUndefined();
   });
 });
@@ -101,13 +102,17 @@ describe('runList — error handling', () => {
     mockActionList.mockImplementation(() => {
       throw new Error('list failed');
     });
-    await expect(runList(CONFIG, [], '/cwd')).rejects.toThrow('list failed');
+    await expect(runList(CONFIG, [], '/cwd', path.join('/cwd', '.filedist.lock'))).rejects.toThrow(
+      'list failed',
+    );
   });
 
   it('propagates error message when actionList throws', async () => {
     mockActionList.mockImplementation(() => {
       throw new Error('something went wrong');
     });
-    await expect(runList(CONFIG, [], '/cwd')).rejects.toThrow('something went wrong');
+    await expect(runList(CONFIG, [], '/cwd', path.join('/cwd', '.filedist.lock'))).rejects.toThrow(
+      'something went wrong',
+    );
   });
 });

@@ -6,6 +6,8 @@ export type ListOptions = {
   cwd: string;
   outputDir: string;
   verbose?: boolean;
+  /** Absolute path to the lock file. */
+  lockfilePath: string;
 };
 
 /**
@@ -13,5 +15,6 @@ export type ListOptions = {
  * Note: list always ignores --presets; reports all managed files.
  */
 export function actionList(options: ListOptions): ManagedFileMetadata[] {
-  return readManagedFilesForDir(options.cwd, options.outputDir);
+  const { lockfilePath, cwd, outputDir } = options;
+  return readManagedFilesForDir(lockfilePath, cwd, outputDir);
 }

@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { cosmiconfig } from 'cosmiconfig';
 import yaml from 'js-yaml';
 
 import { FiledistConfig, FiledistExtractEntry } from '../types';
@@ -13,15 +12,17 @@ type RawFiledistConfig = FiledistConfig & {
 
 const POST_EXTRACT_CMD_EXAMPLE = '["node", "scripts/post-extract.js"]';
 
-const CONFIG_BASENAMES = [
-  '.filedistrc',
-  '.filedistrc.json',
-  '.filedistrc.yaml',
-  '.filedistrc.yml',
-  'filedist.config.js',
-  'filedist.config.cjs',
-  'package.json',
-] as const;
+/** Default bootstrap config filename. */
+export const DEFAULT_CONFIG_FILENAME = '.filedist.yml';
+
+/** Represents the structure of a .filedist.yml or .filedist-package.yml file. */
+export type FiledistConfigFile = {
+  version: number;
+  sets: FiledistExtractEntry[];
+};
+
+/** Package config filename used by data packages to define their own sets. */
+export const PACKAGE_CONFIG_FILENAME = '.filedist-package.yml';
 
 function validateFiledistConfig(
   cfg: RawFiledistConfig | null | undefined,
@@ -56,86 +57,10 @@ function validateFiledistConfig(
   return cfg as FiledistConfig;
 }
 
-/**
- * Search for a filedist configuration using cosmiconfig, starting from the given cwd.
- * Looks for (in priority order):
- *   - .filedistrc (JSON or YAML)
- *   - .filedistrc.json / .filedistrc.yaml / .filedistrc.js
- *   - filedist.config.js
- *   - "filedist" key in package.json
- *
- * Returns the FiledistConfig when found, or null when no configuration is present.
- */
-export async function searchAndLoadFiledistConfig(cwd: string): Promise<FiledistConfig | null> {
-  const explorer = cosmiconfig('filedist');
-  const result = await explorer.search(cwd);
-  if (!result || result.isEmpty) {
-    // eslint-disable-next-line unicorn/no-null
-    return null;
-  }
-  return validateFiledistConfig(result.config as RawFiledistConfig, result.filepath);
-}
-
-/**
- * Load a filedist configuration from an explicit file path using cosmiconfig.
- * Supports JSON, YAML, and JS config files.
- *
- * Returns the FiledistConfig when found, or null when the file is empty or invalid.
- */
-export async function loadFiledistConfigFile(filePath: string): Promise<FiledistConfig | null> {
-  const explorer = cosmiconfig('filedist');
-  const result = await explorer.load(filePath);
-  if (!result || result.isEmpty) {
-    // eslint-disable-next-line unicorn/no-null
-    return null;
-  }
-  return validateFiledistConfig(result.config as RawFiledistConfig, result.filepath);
-}
-
-/**
- * Load filedist config only from the given directory, without searching parent folders.
- */
-export async function loadFiledistConfigFromDirectory(
-  directory: string,
-): Promise<FiledistConfig | null> {
-  const explorer = cosmiconfig('filedist');
-
-  for (const basename of CONFIG_BASENAMES) {
-    let result;
-    try {
-      result = await explorer.load(`${directory}/${basename}`);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        continue;
-      }
-      throw error;
-    }
-    if (!result || result.isEmpty) continue;
-
-    const cfg = validateFiledistConfig(result.config as RawFiledistConfig, result.filepath);
-    if (cfg) {
-      return cfg;
-    }
-  }
-
-  // eslint-disable-next-line unicorn/no-null
-  return null;
-}
-
-const RC_FILENAME = '.filedistrc.yml';
-const LOCAL_RC_FILENAME = '.filedistrc.local.yml';
-
-/**
- * Load a filedist configuration from `.filedistrc.local.yml` in the given directory.
- * Returns the config when found, or null when the file does not exist or is empty.
- * The local config file is intentionally not searched in parent directories.
- */
-export async function loadFiledistLocalConfig(directory: string): Promise<FiledistConfig | null> {
-  const filePath = path.join(directory, LOCAL_RC_FILENAME);
-  const explorer = cosmiconfig('filedist');
-  let result;
+function loadYamlConfig(filePath: string): FiledistConfig | null {
+  let raw: string;
   try {
-    result = await explorer.load(filePath);
+    raw = fs.readFileSync(filePath, 'utf8');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // eslint-disable-next-line unicorn/no-null
@@ -143,12 +68,40 @@ export async function loadFiledistLocalConfig(directory: string): Promise<Filedi
     }
     throw error;
   }
-  if (!result || result.isEmpty) {
+  const parsed = yaml.load(raw) as RawFiledistConfig | null;
+  if (!parsed) {
     // eslint-disable-next-line unicorn/no-null
     return null;
   }
-  return validateFiledistConfig(result.config as RawFiledistConfig, result.filepath);
+  return validateFiledistConfig(parsed, filePath);
 }
+
+/**
+ * Load the default filedist bootstrap config (.filedist.yml) from the given directory.
+ * Returns the FiledistConfig when found, or null when absent or empty.
+ */
+export function loadDefaultConfig(cwd: string): FiledistConfig | null {
+  return loadYamlConfig(path.join(cwd, DEFAULT_CONFIG_FILENAME));
+}
+
+/**
+ * Load a filedist bootstrap config from an explicit YAML file path.
+ * Returns the FiledistConfig when found, or null when the file is empty or absent.
+ */
+export function loadFiledistConfigFile(filePath: string): FiledistConfig | null {
+  return loadYamlConfig(filePath);
+}
+
+/**
+ * Load a filedist package config (.filedist-package.yml) from the given directory.
+ * Data packages place this file in their root to define their sets, selectors, and presets.
+ * Returns the FiledistConfig when found, or null when absent or empty.
+ */
+export function loadPackageConfig(directory: string): FiledistConfig | null {
+  return loadYamlConfig(path.join(directory, PACKAGE_CONFIG_FILENAME));
+}
+
+const RC_FILENAME = DEFAULT_CONFIG_FILENAME;
 
 /**
  * Upsert entries into a filedist YAML config file.
@@ -203,18 +156,18 @@ function upsertSingleEntry(sets: FiledistExtractEntry[], addEntry: FiledistExtra
 
 export async function upsertFiledistConfigEntries(
   directory: string,
+  configFilePath: string,
   addEntries: FiledistExtractEntry[],
-  configFilePath?: string,
 ): Promise<void> {
-  const filePath = configFilePath ?? path.join(directory, RC_FILENAME);
+  const filePath = configFilePath;
 
   // Read and parse existing config, or start fresh
-  let existing: { sets: FiledistExtractEntry[] } = { sets: [] };
+  let existing: FiledistConfigFile = { version: 1, sets: [] };
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = yaml.load(raw) as { sets?: FiledistExtractEntry[] } | null;
-    if (parsed && Array.isArray(parsed.sets)) {
-      existing = { sets: parsed.sets };
+    const parsed = yaml.load(raw) as FiledistConfigFile;
+    if (parsed?.sets) {
+      existing = { version: parsed.version, sets: parsed.sets };
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

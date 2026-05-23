@@ -20,7 +20,11 @@ describe('actionList', () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    const result = actionList({ cwd: tmpDir, outputDir });
+    const result = actionList({
+      cwd: tmpDir,
+      outputDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result).toHaveLength(0);
   });
 
@@ -28,7 +32,7 @@ describe('actionList', () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'README.md',
         packageName: 'mypkg',
@@ -46,7 +50,11 @@ describe('actionList', () => {
         mutable: false,
       },
     ]);
-    const result = actionList({ cwd: tmpDir, outputDir });
+    const result = actionList({
+      cwd: tmpDir,
+      outputDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result).toHaveLength(2);
     expect(result.map((r) => r.path)).toContain('README.md');
     expect(result.map((r) => r.path)).toContain('docs/guide.md');
@@ -56,7 +64,7 @@ describe('actionList', () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'README.md',
         packageName: 'mypkg',
@@ -67,7 +75,11 @@ describe('actionList', () => {
       },
     ]);
 
-    const result = actionList({ cwd: tmpDir, outputDir });
+    const result = actionList({
+      cwd: tmpDir,
+      outputDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result).toHaveLength(1);
   });
 
@@ -75,7 +87,7 @@ describe('actionList', () => {
     const outputDir = path.join(tmpDir, 'out');
     fs.mkdirSync(outputDir, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, outputDir, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir, [
       {
         path: 'a.md',
         packageName: 'p',
@@ -86,7 +98,11 @@ describe('actionList', () => {
       },
     ]);
 
-    const result = actionList({ cwd: tmpDir, outputDir });
+    const result = actionList({
+      cwd: tmpDir,
+      outputDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.map((r) => r.path)).toContain('a.md');
   });
 
@@ -96,7 +112,7 @@ describe('actionList', () => {
     fs.mkdirSync(out1, { recursive: true });
     fs.mkdirSync(out2, { recursive: true });
 
-    writeManagedFilesForDir(tmpDir, out1, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, out1, [
       {
         path: 'a.md',
         packageName: 'pkg1',
@@ -106,7 +122,7 @@ describe('actionList', () => {
         mutable: false,
       },
     ]);
-    writeManagedFilesForDir(tmpDir, out2, [
+    writeManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, out2, [
       {
         path: 'b.md',
         packageName: 'pkg2',
@@ -117,11 +133,19 @@ describe('actionList', () => {
       },
     ]);
 
-    const result = actionList({ cwd: tmpDir, outputDir: out1 });
+    const result = actionList({
+      cwd: tmpDir,
+      outputDir: out1,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result.map((r) => r.path)).toContain('a.md');
     expect(result.map((r) => r.path)).not.toContain('b.md');
 
-    const result2 = actionList({ cwd: tmpDir, outputDir: out2 });
+    const result2 = actionList({
+      cwd: tmpDir,
+      outputDir: out2,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
     expect(result2.map((r) => r.path)).toContain('b.md');
     expect(result2.map((r) => r.path)).not.toContain('a.md');
   });

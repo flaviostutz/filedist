@@ -8,6 +8,10 @@ export type UpdateOptions = Omit<BasicPackageOptions, 'entries'> & {
   entries?: FiledistExtractEntry[];
   onProgress?: (event: ProgressEvent) => void;
   /**
+   * Absolute path to the lock file. Derived from the config file path via getLockfilePath().
+   */
+  lockfilePath: string;
+  /**
    * When true (default), forces every entry selector to upgrade=true so the
    * package manager fetches the latest matching version from the registry.
    * Set to false to re-resolve from whatever is currently installed locally
@@ -27,8 +31,9 @@ export type UpdateOptions = Omit<BasicPackageOptions, 'entries'> & {
  */
 export async function actionUpdate(options: UpdateOptions): Promise<InstallResult> {
   const { cwd, verbose = false, onProgress, dryRun, upgrade = true } = options;
+  const { lockfilePath } = options;
 
-  const lockfileData = readLockfile(cwd);
+  const lockfileData = readLockfile(lockfilePath);
 
   // Prefer caller-supplied entries (user config) — same precedence as actionInstall.
   // Fall back to set definitions recorded in .filedist.lock when no entries are provided.
@@ -61,6 +66,7 @@ export async function actionUpdate(options: UpdateOptions): Promise<InstallResul
     verbose,
     dryRun,
     onProgress,
+    lockfilePath,
     frozenLockfile: false,
   });
 }

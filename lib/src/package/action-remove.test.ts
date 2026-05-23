@@ -67,10 +67,12 @@ describe('actionRemove — config entry removal', () => {
     await actionInstall({
       entries: [{ package: 'pkg-a@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'pkg-a',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -90,11 +92,13 @@ describe('actionRemove — config entry removal', () => {
     await actionInstall({
       entries: [{ package: 'versioned-pkg@2.3.4', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Pass "versioned-pkg@2.3.4" — version part should be ignored for matching
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'versioned-pkg@2.3.4',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -119,10 +123,12 @@ describe('actionRemove — config entry removal', () => {
         { package: 'multi-out@1.0.0', output: { path: outB, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'multi-out',
       outputPath: outA,
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
@@ -141,6 +147,7 @@ describe('actionRemove — config entry removal', () => {
     await expect(
       actionRemove({
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         packageSpec: 'nonexistent-pkg',
         configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       }),
@@ -151,21 +158,23 @@ describe('actionRemove — config entry removal', () => {
     await expect(
       actionRemove({
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         packageSpec: 'any-pkg',
         configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       }),
     ).rejects.toThrow('No entries found for "any-pkg"');
   }, 60_000);
 
-  it('throws when no config file is found via auto-discovery', async () => {
-    // tmpDir has no .filedistrc.yml or any other config file — auto-discovery fails
+  it('throws when config file has no matching entry', async () => {
+    // tmpDir has no .filedist.yml — readConfigSets returns [], then throws "No entries found"
     await expect(
       actionRemove({
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
+        configFilePath: path.join(tmpDir, '.filedist.yml'),
         packageSpec: 'any-pkg',
-        // no configFilePath — relies on auto-discovery which will find nothing
       }),
-    ).rejects.toThrow('No filedist config file found');
+    ).rejects.toThrow('No entries found for "any-pkg"');
   }, 60_000);
 });
 
@@ -179,12 +188,14 @@ describe('actionRemove — file deletion via install', () => {
     await actionInstall({
       entries: [{ package: 'rm-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(outputDir, 'guide.md'))).toBe(true);
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'rm-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -208,10 +219,12 @@ describe('actionRemove — file deletion via install', () => {
         { package: 'drop-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'drop-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -229,18 +242,20 @@ describe('actionRemove — file deletion via install', () => {
     await actionInstall({
       entries: [{ package: 'lock-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
-    const lockBefore = readLockfile(tmpDir);
+    const lockBefore = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lockBefore?.sets?.length).toBeGreaterThan(0);
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'lock-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
 
-    const lockAfter = readLockfile(tmpDir);
+    const lockAfter = readLockfile(path.join(tmpDir, '.filedist.lock'));
     expect(lockAfter?.sets?.length ?? 0).toBe(0);
   }, 60_000);
 
@@ -254,6 +269,7 @@ describe('actionRemove — file deletion via install', () => {
     await actionInstall({
       entries: [{ package: 'full-check-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Place an unmanaged file alongside managed ones — it must survive removal
@@ -262,10 +278,17 @@ describe('actionRemove — file deletion via install', () => {
 
     expect(fs.existsSync(path.join(outputDir, 'managed.md'))).toBe(true);
     expect(
-      readManagedFilesForDir(tmpDir, outputDir).some((e) => e.packageName === 'full-check-pkg'),
+      readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir).some(
+        (e) => e.packageName === 'full-check-pkg',
+      ),
     ).toBe(true);
 
-    await actionRemove({ cwd: tmpDir, packageSpec: 'full-check-pkg', configFilePath });
+    await actionRemove({
+      cwd: tmpDir,
+      packageSpec: 'full-check-pkg',
+      configFilePath,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
+    });
 
     // 1. Only managed files removed from disk; unmanaged file untouched
     expect(fs.existsSync(path.join(outputDir, 'managed.md'))).toBe(false);
@@ -273,14 +296,16 @@ describe('actionRemove — file deletion via install', () => {
 
     // 2. files in lock no longer contains entries for the removed package
     expect(
-      readManagedFilesForDir(tmpDir, outputDir).filter((e) => e.packageName === 'full-check-pkg'),
+      readManagedFilesForDir(path.join(tmpDir, '.filedist.lock'), tmpDir, outputDir).filter(
+        (e) => e.packageName === 'full-check-pkg',
+      ),
     ).toHaveLength(0);
 
     // 3. User config set is updated — entry removed from .filedistrc.yml
     expect(readConfigSets()).toHaveLength(0);
 
     // 4. Lock set is updated — removed package absent from lockfile sets
-    const lockAfterRemove = readLockfile(tmpDir);
+    const lockAfterRemove = readLockfile(path.join(tmpDir, '.filedist.lock'));
     const lockSets = lockAfterRemove?.sets ?? [];
     expect(
       lockSets.every(
@@ -301,10 +326,12 @@ describe('actionRemove — dry-run', () => {
     await actionInstall({
       entries: [{ package: 'dry-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'dry-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       dryRun: true,
@@ -325,11 +352,13 @@ describe('actionRemove — progress events', () => {
     await actionInstall({
       entries: [{ package: 'evt-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const events: Array<{ type: string; file?: string }> = [];
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'evt-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       onProgress: (e) => events.push({ type: e.type, file: 'file' in e ? e.file : void 0 }),
@@ -353,11 +382,13 @@ describe('actionRemove — progress events', () => {
         { package: 'go-pkg@1.0.0', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const eventTypes: string[] = [];
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'go-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       onProgress: (e) => eventTypes.push(e.type),
@@ -376,11 +407,13 @@ describe('actionRemove — progress events', () => {
     await actionInstall({
       entries: [{ package: 'meta-pkg@1.0.0', output: { path: outputDir, gitignore: true } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const events: ProgressEvent[] = [];
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'meta-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       onProgress: (e) => events.push(e),
@@ -404,10 +437,12 @@ describe('actionRemove — verbose', () => {
     await actionInstall({
       entries: [{ package: 'verbose-rm@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'verbose-rm',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       verbose: true,
@@ -425,10 +460,12 @@ describe('actionRemove — verbose', () => {
     await actionInstall({
       entries: [{ package: 'vdry-rm@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'vdry-rm',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       verbose: true,
@@ -446,14 +483,18 @@ describe('actionRemove — hierarchical packages', () => {
     await installMockPackage('rm-parent', '1.0.0', { 'parent.md': 'parent content' }, tmpDir);
 
     // Patch parent to declare filedist.sets → child
-    const parentPkgJsonPath = path.join(tmpDir, 'node_modules', 'rm-parent', 'package.json');
-    const parentPkgJson = JSON.parse(fs.readFileSync(parentPkgJsonPath).toString()) as object;
+    const parentPkgYmlPath = path.join(
+      tmpDir,
+      'node_modules',
+      'rm-parent',
+      '.filedist-package.yml',
+    );
     fs.writeFileSync(
-      parentPkgJsonPath,
-      JSON.stringify({
-        ...parentPkgJson,
-        filedist: { sets: [{ package: 'rm-child@1.0.0', output: { path: 'child-out' } }] },
-      }),
+      parentPkgYmlPath,
+      yaml.dump(
+        { sets: [{ package: 'rm-child@1.0.0', output: { path: 'child-out' } }] },
+        { indent: 2 },
+      ),
     );
 
     const parentOutputDir = path.join(tmpDir, 'parent-out');
@@ -467,6 +508,7 @@ describe('actionRemove — hierarchical packages', () => {
         { package: 'rm-parent@1.0.0', output: { path: parentOutputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     expect(fs.existsSync(path.join(parentOutputDir, 'parent.md'))).toBe(true);
@@ -475,6 +517,7 @@ describe('actionRemove — hierarchical packages', () => {
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'rm-parent',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -494,14 +537,20 @@ describe('actionRemove — files cleanup', () => {
     await actionInstall({
       entries: [{ package: 'mf-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Verify files are tracked in files before removal
-    const markerBefore = readManagedFilesForDir(tmpDir, outputDir);
+    const markerBefore = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      outputDir,
+    );
     expect(markerBefore.some((e) => e.packageName === 'mf-pkg')).toBe(true);
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'mf-pkg',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
@@ -511,7 +560,11 @@ describe('actionRemove — files cleanup', () => {
     expect(fs.existsSync(path.join(outputDir, 'extra.md'))).toBe(false);
 
     // Marker file no longer has entries for the removed package
-    const markerAfter = readManagedFilesForDir(tmpDir, outputDir);
+    const markerAfter = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      outputDir,
+    );
     expect(markerAfter.filter((e) => e.packageName === 'mf-pkg')).toHaveLength(0);
   }, 60_000);
 
@@ -531,23 +584,33 @@ describe('actionRemove — files cleanup', () => {
         { package: 'stale-b@1.0.0', output: { path: outputDir, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     // Both packages managed before removal
-    const markerBefore = readManagedFilesForDir(tmpDir, outputDir);
+    const markerBefore = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      outputDir,
+    );
     expect(markerBefore.some((e) => e.packageName === 'stale-a')).toBe(true);
     expect(markerBefore.some((e) => e.packageName === 'stale-b')).toBe(true);
 
     // Remove stale-a; stale-b should still be tracked
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'stale-a',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
 
     // stale-a entries are gone from disk and marker
     expect(fs.existsSync(path.join(outputDir, 'a.md'))).toBe(false);
-    const markerAfter = readManagedFilesForDir(tmpDir, outputDir);
+    const markerAfter = readManagedFilesForDir(
+      path.join(tmpDir, '.filedist.lock'),
+      tmpDir,
+      outputDir,
+    );
     expect(markerAfter.filter((e) => e.packageName === 'stale-a')).toHaveLength(0);
 
     // stale-b entries still present on disk and in marker
@@ -564,19 +627,21 @@ describe('actionRemove — files cleanup', () => {
     await actionInstall({
       entries: [{ package: 'lf-clean@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
-    const lockBefore = readLockfile(tmpDir);
+    const lockBefore = readLockfile(path.join(tmpDir, '.filedist.lock'));
     // files should reference the output dir before removal
     expect(lockBefore?.files).toBeDefined();
 
     await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'lf-clean',
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
     });
 
-    const lockAfter = readLockfile(tmpDir);
+    const lockAfter = readLockfile(path.join(tmpDir, '.filedist.lock'));
     // After removal, no files for the removed package's output dir
     const filesAfter = lockAfter?.files ?? {};
     const allTrackedFiles = Object.values(filesAfter).flat();
@@ -591,6 +656,7 @@ describe('actionRemove — branch coverage', () => {
     await expect(
       actionRemove({
         cwd: tmpDir,
+        lockfilePath: path.join(tmpDir, '.filedist.lock'),
         configFilePath: path.join(tmpDir, '.filedistrc.yml'),
         // no packageSpec, no all
       }),
@@ -605,10 +671,12 @@ describe('actionRemove — branch coverage', () => {
     await actionInstall({
       entries: [{ package: 'all-v-pkg@1.0.0', output: { path: outputDir, gitignore: false } }],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       configFilePath: path.join(tmpDir, '.filedistrc.yml'),
       all: true,
       verbose: true,
@@ -648,10 +716,12 @@ describe('actionRemove — branch coverage', () => {
         { package: 'preset-pkg@1.0.0', output: { path: outB, gitignore: false } },
       ],
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
     });
 
     const result = await actionRemove({
       cwd: tmpDir,
+      lockfilePath: path.join(tmpDir, '.filedist.lock'),
       packageSpec: 'preset-pkg',
       presets: ['web'],
       configFilePath: filePath,

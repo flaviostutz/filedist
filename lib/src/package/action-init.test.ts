@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+import yaml from 'js-yaml';
+
 import { actionInit } from './action-init';
 
 // Mock spawnSync globally so no real package manager commands run during tests
@@ -112,7 +114,10 @@ describe('actionInit', () => {
     expect(pkgJson.files).toContain('data/**');
     expect(pkgJson.files).toContain('package.json');
     expect(pkgJson.files).toContain('bin/filedist.js');
-    expect(pkgJson.filedist.sets[0].selector.files).toEqual(['docs/**', 'data/**']);
+    const pkgConfig = yaml.load(
+      fs.readFileSync(path.join(outputDir, '.filedist-package.yml'), 'utf8'),
+    ) as { sets: Array<{ selector?: { files: string[] } }> };
+    expect(pkgConfig.sets[0].selector?.files).toEqual(['docs/**', 'data/**']);
   });
 
   it('adds --packages as external filedist sets', async () => {
@@ -122,10 +127,12 @@ describe('actionInit', () => {
       packages: ['eslint@8'],
     });
 
-    const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
-    expect(pkgJson.filedist.sets).toHaveLength(2);
-    expect(pkgJson.filedist.sets[1].package).toBe('eslint@8');
-    expect(pkgJson.filedist.sets[1].selector.files).toEqual(['conf/globals.js']);
+    const pkgConfig = yaml.load(
+      fs.readFileSync(path.join(outputDir, '.filedist-package.yml'), 'utf8'),
+    ) as { sets: Array<{ package?: string; selector?: { files: string[] } }> };
+    expect(pkgConfig.sets).toHaveLength(2);
+    expect(pkgConfig.sets[1].package).toBe('eslint@8');
+    expect(pkgConfig.sets[1].selector?.files).toEqual(['conf/globals.js']);
   });
 
   it('creates package-less self set as first entry in filedist sets', async () => {
@@ -135,9 +142,11 @@ describe('actionInit', () => {
       packages: ['some-pkg@1'],
     });
 
-    const pkgJson = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json')).toString());
-    expect(pkgJson.filedist.sets[0].package).toBeUndefined();
-    expect(pkgJson.filedist.sets[1].package).toBe('some-pkg@1');
+    const pkgConfig = yaml.load(
+      fs.readFileSync(path.join(outputDir, '.filedist-package.yml'), 'utf8'),
+    ) as { sets: Array<{ package?: string }> };
+    expect(pkgConfig.sets[0].package).toBeUndefined();
+    expect(pkgConfig.sets[1].package).toBe('some-pkg@1');
   });
 
   it('runs package manager add for filedist after writing package.json', async () => {

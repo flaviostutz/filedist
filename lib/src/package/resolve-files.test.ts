@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
 import { createMockGitRepo, installMockPackage } from '../fileset/test-utils';
 import { FiledistExtractEntry } from '../types';
 
@@ -41,20 +43,17 @@ describe('resolveFiles', () => {
 
     // Patch the installed package.json to include a self-package filedist set
     const pkgPath = path.join(tmpDir, 'node_modules', 'self-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             // Self-package entry: no package field
             { output: { path: '.' } },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -72,17 +71,12 @@ describe('resolveFiles', () => {
     await installMockPackage('self-pkg', '1.0.0', { 'data/sample.json': '{}' }, tmpDir);
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'self-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
-          sets: [{ output: { path: '.' }, selector: { files: ['data/**'] }, presets: ['basic'] }],
-        },
-      }),
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        { sets: [{ output: { path: '.' }, selector: { files: ['data/**'] }, presets: ['basic'] }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -100,20 +94,17 @@ describe('resolveFiles', () => {
 
     // Patch parent to declare filedist.sets with self-package and child entries
     const parentPath = path.join(tmpDir, 'node_modules', 'parent-pkg');
-    const parentPkgJson = JSON.parse(
-      fs.readFileSync(path.join(parentPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(parentPath, 'package.json'),
-      JSON.stringify({
-        ...parentPkgJson,
-        filedist: {
+      path.join(parentPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             { output: { path: '.' } }, // self-package entry
             { package: 'child-pkg', output: { path: 'child' } }, // external entry
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -133,20 +124,17 @@ describe('resolveFiles', () => {
     await installMockPackage('parent-pkg', '1.0.0', { 'docs/guide.md': '# Guide' }, tmpDir);
 
     const parentPath = path.join(tmpDir, 'node_modules', 'parent-pkg');
-    const parentPkgJson = JSON.parse(
-      fs.readFileSync(path.join(parentPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(parentPath, 'package.json'),
-      JSON.stringify({
-        ...parentPkgJson,
-        filedist: {
+      path.join(parentPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             { output: { path: '.' }, selector: { files: ['docs/**'] } },
             { package: 'dep-pkg', output: { path: '.' }, selector: { files: ['conf/dep.js'] } },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -175,17 +163,12 @@ describe('resolveFiles', () => {
     );
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'self-filter-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
-          sets: [{ output: { path: '.' }, selector: { files: ['data/**'] } }],
-        },
-      }),
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        { sets: [{ output: { path: '.' }, selector: { files: ['data/**'] } }] },
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -275,14 +258,10 @@ describe('resolveFiles', () => {
     );
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'split-self-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             {
               selector: {
@@ -297,7 +276,8 @@ describe('resolveFiles', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -323,14 +303,10 @@ describe('resolveFiles', () => {
     );
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'split-repeat-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             {
               selector: {
@@ -345,7 +321,8 @@ describe('resolveFiles', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -388,14 +365,10 @@ describe('resolveFiles', () => {
     );
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'explicit-selector-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             {
               selector: {
@@ -410,7 +383,8 @@ describe('resolveFiles', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -461,15 +435,12 @@ describe('resolveFiles', () => {
 
     // Patch to have two sets with different managed settings for the same path
     const pkgPath = path.join(tmpDir, 'node_modules', 'conflict-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     const outputDir = path.join(tmpDir, 'output');
 
     // This should throw because same file with managed=true vs managed=false
     // Actually they have the same selector so the second is deduplicated by visited check
     // Let's patch to create two separate entries with different package.json contents
-    void pkgJson; // suppress unused warning
+    void pkgPath; // suppress unused warning
 
     // The deduplication by entryKey prevents conflict here (same entry = same key)
     // A real conflict needs different entry keys (e.g., different selectors)
@@ -489,20 +460,17 @@ describe('resolveFiles', () => {
     );
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'presets-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             { presets: ['docs'], output: { path: '.' }, selector: { files: ['*.md'] } },
             { presets: ['data'], output: { path: '.' }, selector: { files: ['*.json'] } },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');
@@ -525,14 +493,10 @@ describe('resolveFiles', () => {
     await installMockPackage('preset-cleanup-pkg', '1.0.0', { 'data.json': '{"ok":true}' }, tmpDir);
 
     const pkgPath = path.join(tmpDir, 'node_modules', 'preset-cleanup-pkg');
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(pkgPath, 'package.json')).toString(),
-    ) as object;
     fs.writeFileSync(
-      path.join(pkgPath, 'package.json'),
-      JSON.stringify({
-        ...pkgJson,
-        filedist: {
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
           sets: [
             { presets: ['special'], output: { path: '.' }, selector: { files: ['data.json'] } },
             {
@@ -543,7 +507,8 @@ describe('resolveFiles', () => {
             },
           ],
         },
-      }),
+        { indent: 2 },
+      ),
     );
 
     const outputDir = path.join(tmpDir, 'output');

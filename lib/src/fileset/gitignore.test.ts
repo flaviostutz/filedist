@@ -20,7 +20,7 @@ describe('addToGitignore', () => {
     await addToGitignore(tmpDir, ['docs/file.md', 'README.md']);
     const content = fs.readFileSync(path.join(tmpDir, GITIGNORE_FILE), 'utf8');
     expect(content).toContain('# filedist:start');
-    expect(content).toContain(MARKER_FILE);
+    expect(content).not.toContain(MARKER_FILE);
     expect(content).toContain('docs/file.md');
     expect(content).toContain('README.md');
     expect(content).toContain('# filedist:end');
@@ -34,7 +34,7 @@ describe('addToGitignore', () => {
     expect(content).toContain('node_modules/');
     expect(content).toContain('dist/');
     expect(content).toContain('# filedist:start');
-    expect(content).toContain(MARKER_FILE);
+    expect(content).not.toContain(MARKER_FILE);
     expect(content).toContain('docs/file.md');
   });
 

@@ -1,2 +1,4 @@
-.filedistrc.yml
+.filedist.yml
 .filedist.lock
+.mytest.lock
+.mytest.yml

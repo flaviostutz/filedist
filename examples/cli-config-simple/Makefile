@@ -20,24 +20,26 @@ test:
 	@echo ">>>> cli-config-simple"
 	@rm -rf output
 	@rm -f .filedist.lock
-	@rm -f .filedistrc.yml
+	@rm -f .filedist.yml
+	@rm -f .mytest.lock
+	@rm -f .mytest.yml
 
 	# Nothing will be installed (no config file yet and no package in cli args)
 	! pnpm exec filedist install
 
 	# install eslint with pinned version 8.0.0
-	test ! -e .filedistrc.yml
+	test ! -e .filedist.yml
 	test ! -e .filedist.lock
 	test ! -e output/eslint/README.md
 	pnpm exec filedist install eslint@8.0.0 --files README.md,package.json --output output/eslint
-	test -e .filedistrc.yml
+	test -e .filedist.yml
 	test -e .filedist.lock
 	test -e output/eslint/README.md
 	grep "8.0.0" output/eslint/package.json
 
 	# change eslint to version range ^8.0.0
 	pnpm exec filedist install eslint@^8.0.0 --files README.md,package.json --output output/eslint
-	grep "eslint@^8.0.0" .filedistrc.yml
+	grep "eslint@^8.0.0" .filedist.yml
 	grep "8.0.0" output/eslint/package.json
 
 	# bump package to latest version possible 8.5.7
@@ -47,8 +49,8 @@ test:
 
 	# install chalk package
 	pnpm exec filedist install chalk@4 --files README.md,package.json --output output/chalk
-	grep "eslint@^8.0.0" .filedistrc.yml
-	grep "chalk@4" .filedistrc.yml
+	grep "eslint@^8.0.0" .filedist.yml
+	grep "chalk@4" .filedist.yml
 	grep "eslint@^8.0.0: 8.57.1" .filedist.lock
 	grep "chalk@4: 4.1.2" .filedist.lock
 	grep "8.57.1" output/eslint/package.json
@@ -56,21 +58,37 @@ test:
 
 	# remove eslint
 	pnpm exec filedist remove eslint
-	! grep "eslint@^8.0.0" .filedistrc.yml
+	! grep "eslint@^8.0.0" .filedist.yml
 	! grep "eslint@^8.0.0: 8.57.1" .filedist.lock
 	! grep "8.57.1" output/eslint/package.json
-	test ! -e output/eslint/README.md
-	grep "chalk@4" .filedistrc.yml
+	test ! -e output/eslint/package.json
+	grep "chalk@4" .filedist.yml
 	grep "4.1.2" output/chalk/package.json
 
 	pnpm exec filedist update
-	grep "chalk@4" .filedistrc.yml
+	grep "chalk@4" .filedist.yml
 	grep "4.1.2" output/chalk/package.json
 
-	# Remove all managed files
+	# use a second parallel file config
+	rm -f .mytest.lock
+	rm -f .mytest.yml
+	pnpm exec filedist install eslint@^8.0.0 --config .mytest.yml --files README.md,package.json --output output/eslint2
+	grep "eslint@^8.0.0" .mytest.yml
+	grep "8.57.1" output/eslint2/package.json
+	grep "eslint@^8.0.0: 8.57.1" .mytest.lock
+	pnpm exec filedist check --config .mytest.yml
+
+	# check if one config doesn't affect the other
+	test -e output/chalk/package.json
+	test -e output/eslint2/package.json
+	pnpm exec filedist remove --config .mytest.yml --all
+	test ! -e output/eslint2/package.json
+	test -e output/chalk/package.json
+	pnpm exec filedist check
+
 	pnpm exec filedist remove --all
-	! grep "eslint@^8.0.0" .filedistrc.yml
-	! grep "chalk@4" .filedistrc.yml
+	! grep "eslint@^8.0.0" .filedist.yml
+	! grep "chalk@4" .filedist.yml
 	! grep "eslint@^8.0.0: 8.57.1" .filedist.lock
 	! grep "chalk@4: 4.1.2" .filedist.lock
 	! grep "8.57.1" output/eslint/package.json
@@ -85,4 +103,6 @@ clean:
 	@rm -f pnpm-lock.yaml
 	@rm -rf output
 	@rm -f .filedist.lock
-	@rm -f .filedistrc.yml
+	@rm -f .filedist.yml
+	@rm -f .mytest.lock
+	@rm -f .mytest.yml

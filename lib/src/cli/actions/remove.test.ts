@@ -1,7 +1,8 @@
+import path from 'node:path';
 /* eslint-disable @typescript-eslint/no-empty-function */
 
 import { actionRemove } from '../../package/action-remove';
-import { FiledistConfig, ProgressEvent } from '../../types';
+import { ProgressEvent } from '../../types';
 import { printUsage } from '../usage';
 
 import { runRemove } from './remove';
@@ -17,10 +18,6 @@ const mockActionRemove = actionRemove as jest.MockedFunction<typeof actionRemove
 const DEFAULT_INSTALL = { added: 0, modified: 0, deleted: 0, skipped: 0 };
 const DEFAULT_RESULT = { removedEntries: 0, install: DEFAULT_INSTALL };
 
-const CONFIG: FiledistConfig = {
-  sets: [{ package: 'my-pkg@1.0.0', output: { path: './out', gitignore: false } }],
-};
-
 beforeEach(() => {
   jest.clearAllMocks();
   delete process.exitCode;
@@ -33,7 +30,12 @@ afterEach(() => {
 
 describe('runRemove — --help', () => {
   it('prints usage and returns without calling actionRemove', async () => {
-    await runRemove(CONFIG, ['--help'], '/cwd');
+    await runRemove(
+      ['--help'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     expect(mockPrintUsage).toHaveBeenCalledWith('remove');
     expect(mockActionRemove).not.toHaveBeenCalled();
   });
@@ -45,7 +47,12 @@ describe('runRemove — missing package argument', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation((...args) => {
       errors.push(args.join(' '));
     });
-    await runRemove(CONFIG, [], '/cwd');
+    await runRemove(
+      [],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(process.exitCode).toBe(1);
     expect(mockActionRemove).not.toHaveBeenCalled();
@@ -54,7 +61,12 @@ describe('runRemove — missing package argument', () => {
 
   it('skips flag-like args and still detects missing package', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    await runRemove(CONFIG, ['--dry-run', '--verbose'], '/cwd');
+    await runRemove(
+      ['--dry-run', '--verbose'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(process.exitCode).toBe(1);
   });
@@ -63,7 +75,12 @@ describe('runRemove — missing package argument', () => {
 describe('runRemove — --all flag', () => {
   it('calls actionRemove with all=true when --all is given', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['--all'], '/cwd');
+    await runRemove(
+      ['--all'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove).toHaveBeenCalledTimes(1);
     expect(mockActionRemove.mock.calls[0][0]).toMatchObject({ all: true });
@@ -72,7 +89,12 @@ describe('runRemove — --all flag', () => {
 
   it('does not require a package arg when --all is given', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['--all', '--dry-run'], '/cwd');
+    await runRemove(
+      ['--all', '--dry-run'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(process.exitCode).toBeUndefined();
     expect(mockActionRemove).toHaveBeenCalled();
@@ -82,21 +104,36 @@ describe('runRemove — --all flag', () => {
 describe('runRemove — package spec extraction', () => {
   it('passes the first positional arg as packageSpec', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['xdrs-core'], '/cwd');
+    await runRemove(
+      ['xdrs-core'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].packageSpec).toBe('xdrs-core');
   });
 
   it('ignores flag args and picks the positional arg', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['--dry-run', 'my-package'], '/cwd');
+    await runRemove(
+      ['--dry-run', 'my-package'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].packageSpec).toBe('my-package');
   });
 
   it('skips --output flag value and picks the package name', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['--output', './out', 'target-pkg'], '/cwd');
+    await runRemove(
+      ['--output', './out', 'target-pkg'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].packageSpec).toBe('target-pkg');
   });
@@ -105,42 +142,72 @@ describe('runRemove — package spec extraction', () => {
 describe('runRemove — options forwarding', () => {
   it('passes cwd to actionRemove', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg'], '/my/cwd');
+    await runRemove(
+      ['my-pkg'],
+      '/my/cwd',
+      path.join('/my/cwd', '.filedist.lock'),
+      path.join('/my/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].cwd).toBe('/my/cwd');
   });
 
   it('passes dryRun=true when --dry-run flag given', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg', '--dry-run'], '/cwd');
+    await runRemove(
+      ['my-pkg', '--dry-run'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].dryRun).toBe(true);
   });
 
   it('passes verbose=true when --verbose flag given', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg', '--verbose'], '/cwd');
+    await runRemove(
+      ['my-pkg', '--verbose'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].verbose).toBe(true);
   });
 
   it('passes outputPath when --output flag given', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg', '--output', './docs'], '/cwd');
+    await runRemove(
+      ['my-pkg', '--output', './docs'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].outputPath).toBe('./docs');
   });
 
   it('passes configFilePath from caller when --config not in argv', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg'], '/cwd', '/project/.filedistrc.yml');
+    await runRemove(
+      ['my-pkg'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      '/project/.filedistrc.yml',
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].configFilePath).toBe('/project/.filedistrc.yml');
   });
 
   it('resolves --config flag to absolute configFilePath', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg', '--config', 'custom.yml'], '/cwd');
+    await runRemove(
+      ['my-pkg', '--config', 'custom.yml'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(mockActionRemove.mock.calls[0][0].configFilePath).toBe('/cwd/custom.yml');
   });
@@ -156,7 +223,12 @@ describe('runRemove — summary output', () => {
     const spy = jest.spyOn(console, 'log').mockImplementation((...args) => {
       logs.push(args.join(' '));
     });
-    await runRemove(CONFIG, ['my-pkg'], '/cwd');
+    await runRemove(
+      ['my-pkg'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(
       logs.some((l) => l.includes('2 config entries removed') && l.includes('3 deleted')),
@@ -165,7 +237,12 @@ describe('runRemove — summary output', () => {
 
   it('does not set exitCode on success', async () => {
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    await runRemove(CONFIG, ['my-pkg'], '/cwd');
+    await runRemove(
+      ['my-pkg'],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     spy.mockRestore();
     expect(process.exitCode).toBeUndefined();
   });
@@ -184,7 +261,12 @@ describe('runRemove — onProgress handler', () => {
       logs.push(args.join(' '));
     });
 
-    await runRemove(CONFIG, ['my-pkg', ...argv], '/cwd');
+    await runRemove(
+      ['my-pkg', ...argv],
+      '/cwd',
+      path.join('/cwd', '.filedist.lock'),
+      path.join('/cwd', '.filedist.yml'),
+    );
     capturedOnProgress!(event);
     spy.mockRestore();
     return logs;

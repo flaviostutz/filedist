@@ -1,6 +1,6 @@
 package.json
 pnpm-lock.yaml
-.filedistrc
+.filedist.yml
 repos
 output
 .filedist-tmp

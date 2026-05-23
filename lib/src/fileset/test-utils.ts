@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import archiver from 'archiver';
+import yaml from 'js-yaml';
 
 function runCommand(command: string, args: string[], cwd: string): string {
   const result = spawnSync(command, args, {
@@ -102,8 +103,8 @@ export const createMockGitRepo = async (
 
   if (options?.filedistConfig) {
     fs.writeFileSync(
-      path.join(repoDir, '.filedistrc.json'),
-      JSON.stringify(options.filedistConfig),
+      path.join(repoDir, '.filedist-package.yml'),
+      yaml.dump(options.filedistConfig),
     );
   }
 
