@@ -23,6 +23,9 @@ export type { ListOptions } from './package/action-list';
 export { actionRemove } from './package/action-remove';
 export type { RemoveOptions, RemoveSummary } from './package/action-remove';
 
+export { actionUpdate } from './package/action-update';
+export type { UpdateOptions } from './package/action-update';
+
 export { resolveFiles } from './package/resolve-files';
 export type { ResolveOptions } from './package/resolve-files';
 

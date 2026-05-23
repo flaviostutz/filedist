@@ -452,7 +452,7 @@ consumer project
             └─ raw-assets     (leaf package)
 ```
 
-Running `npx filedist install --packages my-org-configs --output ./data` will extract files from every package in the chain, not just `my-org-configs` itself.
+Running `npx filedist install my-org-configs --output ./data` will extract files from every package in the chain, not just `my-org-configs` itself.
 
 When the source is git, filedist clones repositories into `.filedist-tmp` inside the working directory, adds that folder to `.gitignore` if needed, resolves nested config from the cloned repository, and removes `.filedist-tmp` when the command ends.
 
@@ -460,9 +460,9 @@ When the source is git, filedist clones repositories into `.filedist-tmp` inside
 
 Each level's `output.path` is resolved relative to the caller's own `output.path`. A package at depth 1 with `output.path: "./configs"` and a transitive dependency with `output.path: "./shared"` will land at `./configs/shared`.
 
-### Caller overrides (extract only)
+### Caller overrides (install only)
 
-When `extract` recurses, the caller's `output` flags are inherited by every transitive dependency, with caller-defined values always winning:
+When `install` recurses, the caller's `output` flags are inherited by every transitive dependency, with caller-defined values always winning:
 
 | Caller sets | Effect on transitive entries |
 |---|---|
@@ -516,20 +516,13 @@ Global options:
 Init options:
   --files <patterns>       Comma-separated glob patterns of files to publish
                            e.g. "docs/**,data/**,configs/*.json"
-  --packages <specs>       Comma-separated additional package specs to bundle as data sources.
-                           Each spec is "name" or "name@version", e.g.
-                           "shared-configs@^1.0.0,base-templates@2.x".
-                           Added to `dependencies` so consumers pull data from all of them.
   --output, -o <dir>       Directory to scaffold into (default: current directory)
 
-Extract options:
-  --packages <specs>       Comma-separated package specs.
-                           When omitted, filedist searches for a configuration file
-                           (.filedist.yml) and runs all
-                           entries defined there.
-                           Each spec is `name`, `name@version`, `npm:name@version`, or
-                           `git:github.com/org/repo.git@ref`, e.g.
-                           "my-pkg@^1.0.0,git:github.com/org/repo.git@main"
+Install options:
+  [<package>]              Package spec to add/install (positional; omit to use config file).
+                           When provided, the entry is saved to .filedist.yml automatically.
+                           Spec formats: name, name@version, npm:name@version, or
+                           git:github.com/org/repo.git@ref
   --output, -o <dir>       Output directory (default: current directory)
   --force                  Overwrite existing files or files owned by a different package
   --mutable                Skip files that already exist; mark extracted files as mutable (check ignores
@@ -545,9 +538,8 @@ Extract options:
   --silent                 Print only the final result line, suppressing per-file output
   --verbose, -v            Print detailed progress information for each step
   --no-save                Skip loading and updating the local .filedist.yml config file.
-                           By default, when --packages is provided the run is saved to
-                           .filedist.yml so future `filedist install` calls (without
-                           --packages) reuse the same config automatically.
+                           By default, when a positional package is provided the entry is saved to
+                           .filedist.yml so future `filedist install` calls reuse the same config.
   --frozen-lockfile        Use .filedist.lock exclusively; fail if the lock file does not
                            exist. Does not update the lock file.
 
@@ -580,6 +572,7 @@ List options:
 ```typescript
 import { actionInstall, actionCheck, actionList, actionRemove, actionUpdate } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
+import path from 'node:path';
 
 const entries: FiledistExtractEntry[] = [
   { package: 'my-shared-assets@^2.0.0', output: { path: './data' } },
@@ -599,9 +592,9 @@ await actionInstall({
   entries,
   cwd,
   onProgress: (event: ProgressEvent) => {
-    if (event.type === 'file-added')    console.log('A', event.file);
-    if (event.type === 'file-modified') console.log('M', event.file);
-    if (event.type === 'file-deleted')  console.log('D', event.file);
+    if (event.type === 'file-added')    console.log('+', event.file);
+    if (event.type === 'file-modified') console.log('~', event.file);
+    if (event.type === 'file-deleted')  console.log('-', event.file);
   },
 });
 
@@ -610,20 +603,31 @@ const frozenResult = await actionInstall({ entries, cwd, frozenLockfile: true })
 console.log(frozenResult.added, frozenResult.modified);
 
 // check sync status (reads .filedist.lock; pass entries:[] to let lockfile drive)
-const summary = await actionCheck({ entries: [], cwd, frozenLockfile: true });
-const hasDrift = summary.missing.length > 0 || summary.modified.length > 0 || summary.extra.length > 0;
+const lockfilePath = '.filedist.lock';
+const summary = await actionCheck({ entries: [], cwd, lockfilePath, frozenLockfile: true });
+const hasDrift = summary.missing.length > 0 || summary.conflict.length > 0 || summary.extra.length > 0;
 if (hasDrift) {
   console.log('Missing:', summary.missing);
-  console.log('Modified:', summary.modified);
+  console.log('Conflict:', summary.conflict);
   console.log('Extra:', summary.extra);
 }
 
 // remove a specific package set from config and delete its managed files
-const removeResult = await actionRemove({ cwd, packageSpec: 'my-shared-assets' });
+const removeResult = await actionRemove({
+  cwd,
+  packageSpec: 'my-shared-assets',
+  configFilePath: path.join(cwd, '.filedist.yml'),
+  lockfilePath: path.join(cwd, '.filedist.lock'),
+});
 console.log('Removed entries:', removeResult.removedEntries, 'deleted files:', removeResult.install.deleted);
 
 // remove all sets from config (clears all managed files)
-await actionRemove({ cwd, all: true });
+await actionRemove({
+  cwd,
+  all: true,
+  configFilePath: path.join(cwd, '.filedist.yml'),
+  lockfilePath: path.join(cwd, '.filedist.lock'),
+});
 
 // update all packages to latest versions
 const updateResult = await actionUpdate({ cwd });
@@ -648,7 +652,7 @@ type ProgressEvent =
 
 ### `postExtractCmd`
 
-Set `postExtractCmd` at the top level of your config to run a command after a successful non-dry-run `extract`.
+Set `postExtractCmd` at the top level of your config to run a command after a successful non-dry-run `install`.
 Use an argv array such as `["node", "scripts/post-extract.js"]`; shell strings are rejected so common quoting mistakes fail clearly.
 
 See the root [README.md](../README.md) for the full documentation.
