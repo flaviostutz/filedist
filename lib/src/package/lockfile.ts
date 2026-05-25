@@ -164,7 +164,8 @@ export function buildLockfileData(
  */
 export function outputDirKey(cwd: string, outputDir: string): string {
   const rel = path.relative(cwd, outputDir);
-  return rel.split(path.sep).join('/');
+  const normalized = rel.split(path.sep).join('/');
+  return normalized === '' ? '.' : normalized;
 }
 
 function parseManagedFileLine(line: string): ManagedFileMetadata {
