@@ -59,7 +59,7 @@ Package specs support optional source prefixes. Use `git:` for git repositories 
 - **Publisher**: a project, npm package, or plain git repository whose folders you want to share. Running `init` prepares its `package.json` so those folders are included when published.
 - **Consumer**: any project that installs that package and runs `install` to pull the files locally. A `.filedist` marker file tracks ownership and enables safe updates.
 
-Publishers can also carry their own `filedist` config in `package.json` or `.filedistrc`, including `sets` entries. That works the same whether the publisher is consumed from npm or directly from git.
+Publishers can also carry their own `filedist` config in `.filedist-package.yml`, including `sets` entries. That works the same whether the publisher is consumed from npm or directly from git.
 
 ---
 
@@ -85,34 +85,37 @@ npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs 
 
 ## Scenario 2 — Config file in your project
 
-Declare sources in `.filedistrc` (or `package.json`) and run `install` without a package argument:
+Declare sources in `.filedist.yml` and run `install` without a package argument:
 
-```json
-{
-  "defaultPresets": ["prod"],
-  "sets": [
-    {
-      "package": "base-datasets@^3.0.0",
-      "selector": { "files": ["datasets/**"] },
-      "output": { "path": "./data" }
-    },
-    {
-      "package": "org-templates@^1.2.0",
-      "selector": { "files": ["templates/**"] },
-      "output": { "path": "./templates" }
-    },
-    {
-      "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
-      "selector": { "files": ["docs/**"] },
-      "output": { "path": "./xdrs" }
-    },
-    {
-      "package": "git:file:///absolute/path/to/local-repo@v2.0.0",
-      "selector": { "files": ["conf/**"] },
-      "output": { "path": "./local-conf" }
-    }
-  ]
-}
+```yaml
+# .filedist.yml
+defaultPresets:
+  - prod
+sets:
+  - package: "base-datasets@^3.0.0"
+    selector:
+      files:
+        - datasets/**
+    output:
+      path: ./data
+  - package: "org-templates@^1.2.0"
+    selector:
+      files:
+        - templates/**
+    output:
+      path: ./templates
+  - package: "git:github.com/flaviostutz/xdrs-core@1.3.0"
+    selector:
+      files:
+        - docs/**
+    output:
+      path: ./xdrs
+  - package: "git:file:///absolute/path/to/local-repo@v2.0.0"
+    selector:
+      files:
+        - conf/**
+    output:
+      path: ./local-conf
 ```
 
 For a local Windows path, use the same `file://` form with a drive letter, for example `git:file:///C:/work/local-repo@v2.0.0`.
@@ -133,20 +136,20 @@ After `install`, the output directory will contain the selected files alongside 
   .filedist              ← tracks file ownership (package name + version)
 ```
 
-Config is resolved looking at files: `package.json` (`"filedist"` key), `.filedistrc`, `.filedistrc.json`, `.filedistrc.yaml`, or `filedist.config.js`. Pass `--config <file>` to point to an explicit config file and skip auto-discovery.
+Config is loaded from `.filedist.yml` in the current directory by default. Pass `--config <file>` to use a different file instead.
 
 When `defaultPresets` is defined at the root of the config, `install` and `check` behave the same as if `--presets <tags>` had been passed. An explicit `--presets` flag overrides the configured default for that invocation.
 Use `--all` to ignore `defaultPresets` for one command and process every configured entry.
 
-The same config file can mix npm packages and git repositories. Use the `git:` prefix for git entries. A git repository source can also provide its own `.filedistrc` or `package.json#filedist` with `sets`, and those nested sets participate in the same hierarchical resolution.
+The same config file can mix npm packages and git repositories. Use the `git:` prefix for git entries. A git repository source can also provide its own `.filedist-package.yml` with `sets`, and those nested sets participate in the same hierarchical resolution.
 
 ### Example — Prepare a git repository source
 
-If you want a plain git repository to behave like a publisher, put the files you want to expose in the repo and add a root `.filedistrc` describing its own files and any nested upstream sources:
+If you want a plain git repository to behave like a publisher, put the files you want to expose in the repo and add a root `.filedist-package.yml` describing its own files and any nested upstream sources:
 
 ```text
 shared-assets-repo/
-  .filedistrc
+  .filedist-package.yml
   docs/
     README.md
   data/
@@ -155,28 +158,32 @@ shared-assets-repo/
     app.json
 ```
 
-.filedistrc
-```json
-{
-  "sets": [
-    {
-      "selector": { "files": ["docs/**", "data/**"] },
-      "output": { "path": "." },
-      "presets": ["base"]
-    },
-    {
-      "selector": { "files": ["configs/**"] },
-      "output": { "path": "./conf" },
-      "presets": ["runtime"]
-    },
-    {
-      "package": "git:github.com/my-org/shared-policies@v1.4.0",
-      "selector": { "files": ["policies/**"] },
-      "output": { "path": "./vendor/policies" },
-      "presets": ["runtime"]
-    }
-  ]
-}
+.filedist-package.yml
+```yaml
+sets:
+  - selector:
+      files:
+        - docs/**
+        - data/**
+    output:
+      path: .
+    presets:
+      - base
+  - selector:
+      files:
+        - configs/**
+    output:
+      path: ./conf
+    presets:
+      - runtime
+  - package: "git:github.com/my-org/shared-policies@v1.4.0"
+    selector:
+      files:
+        - policies/**
+    output:
+      path: ./vendor/policies
+    presets:
+      - runtime
 ```
 
 Commit and tag that repository, then consume it like any other source:
@@ -186,7 +193,7 @@ npx filedist install git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./
 npx filedist install git:github.com/my-org/shared-assets-repo@v1.0.0 --output ./assets --presets runtime
 ```
 
-In this setup, filedist clones the repository, reads the root `.filedistrc`, extracts the repo's own files from the self entries that omit `package`, and then follows any external `sets` entries recursively.
+In this setup, filedist clones the repository, reads the root `.filedist-package.yml`, extracts the repo's own files from the self entries that omit `package`, and then follows any external `sets` entries recursively.
 
 ---
 
@@ -229,46 +236,51 @@ Then:
 npm publish
 ```
 
-**Step 2 — Add configuration to the data package's `package.json`**
+**Step 2 — Extend `.filedist-package.yml` with upstream sources**
 
-```json
-{
-  "name": "my-org-configs",
-  "version": "1.0.0",
-  "filedist": {
-    "sets": [
-      {
-        "selector": { "files": ["docs/**", "data/**"] },
-        "output": { "path": "." },
-        "presets": ["prod"]
-      },
-      {
-        "package": "base-datasets@^3.0.0",
-        "selector": { "files": ["datasets/**"] },
-        "output": { "path": "./data/base" },
-        "presets": ["prod"]
-      },
-      {
-        "package": "org-configs@^1.2.0",
-        "selector": {
-          "contentRegexes": ["env: production"],
-          "presets": ["reports"]
-        },
-        "output": { "path": "./configs" },
-        "presets": ["prod", "staging"]
-      },
-      {
-        "package": "git:github.com/flaviostutz/xdrs-core@1.3.0",
-        "selector": { "files": ["docs/**"] },
-        "output": { "path": "./xdrs" },
-        "presets": ["prod"]
-      }
-    ]
-  }
-}
+To pull from additional upstream npm packages or git repositories, add entries to `.filedist-package.yml` (generated by `init`):
+
+```yaml
+# .filedist-package.yml
+sets:
+  - selector:
+      files:
+        - docs/**
+        - data/**
+    output:
+      path: .
+    presets:
+      - prod
+  - package: "base-datasets@^3.0.0"
+    selector:
+      files:
+        - datasets/**
+    output:
+      path: ./data/base
+    presets:
+      - prod
+  - package: "org-configs@^1.2.0"
+    selector:
+      contentRegexes:
+        - "env: production"
+      presets:
+        - reports
+    output:
+      path: ./configs
+    presets:
+      - prod
+      - staging
+  - package: "git:github.com/flaviostutz/xdrs-core@1.3.0"
+    selector:
+      files:
+        - docs/**
+    output:
+      path: ./xdrs
+    presets:
+      - prod
 ```
 
-In a package's own `filedist.sets`, omit `package` to mean "extract files from this package itself". Use `package` only for external dependencies.
+In a package's own sets, omit `package` to mean "extract files from this package itself". Use `package` only for external dependencies.
 
 > **`presets` vs `selector.presets`**
 > - `sets[].presets` — tags **this entry** so it is only processed when `--presets <tag>` matches. Use this in a consumer config to pick which source packages to extract.
@@ -303,7 +315,7 @@ npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs 
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run          # preview only
 npx filedist install my-pkg --output ./data --nosync             # keep stale managed files on disk
 npx filedist install my-pkg --output ./data --frozen-lockfile    # use .filedist.lock exclusively
-# For multiple packages, use a config file (.filedistrc) and run: npx filedist install
+# For multiple packages, use a config file (.filedist.yml) and run: npx filedist install
 ```
 
 `install` logs every file change:
@@ -391,7 +403,7 @@ Applies regex replacements to workspace files after extraction.
 
 ## Hierarchical package resolution
 
-`install` and `check` are all hierarchy-aware: when a target package or git repository carries its own `filedist.sets` block in its `package.json` or `.filedistrc*`, the command automatically recurses into those transitive dependencies.
+`install` and `check` are all hierarchy-aware: when a target package or git repository carries its own `.filedist-package.yml` with `sets`, the command automatically recurses into those transitive dependencies.
 
 This lets you build layered data package chains:
 
@@ -504,8 +516,9 @@ Presets:  --config <file>       Explicit config file path (overrides auto-discov
                                 Lists all preset tags defined in configuration,
                                 sorted alphabetically, one per line
 
-Init:     --files <patterns>    Glob patterns of files to publish
-          --output, -o <dir>    Directory to scaffold into (default: cwd)
+Init:     --files <patterns>           Glob patterns of files to publish
+          --output, -o <dir>           Directory to scaffold into (default: cwd)
+          --package-config <file>      Config filename embedded in bin/filedist.js (default: .filedist.yml)
 ```
 
 ---
@@ -513,7 +526,7 @@ Init:     --files <patterns>    Glob patterns of files to publish
 ## Programmatic API
 
 ```typescript
-import { actionInstall, actionCheck, actionList, actionRemove } from 'filedist';
+import { actionInstall, actionCheck, actionList, actionRemove, actionUpdate } from 'filedist';
 import type { FiledistExtractEntry, ProgressEvent } from 'filedist';
 import path from 'node:path';
 
@@ -558,6 +571,10 @@ await actionRemove({
   configFilePath: path.join(cwd, '.filedist.yml'),
   lockfilePath: path.join(cwd, '.filedist.lock'),
 });
+
+// update all packages to latest versions and re-extract
+const updateResult = await actionUpdate({ cwd });
+console.log(updateResult.added, updateResult.modified, updateResult.deleted);
 
 // list managed files
 const managed = await actionList({ entries, config: null, cwd });
