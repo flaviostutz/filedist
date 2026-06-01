@@ -422,8 +422,17 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
       const updatedLock = {
         ...existingLock,
         packages,
-        // Store the set definitions so check/purge/frozen-install can operate without config
-        sets: configEntries,
+        // Store the set definitions so check/purge/frozen-install can operate without config.
+        // Strip `upgrade` from selectors — it is a transient runtime flag and must not be
+        // persisted; otherwise a `filedist update` run would permanently mark every set with
+        // upgrade:true in the lockfile even when the user config never requested it.
+        sets: configEntries.map((e) => {
+          // eslint-disable-next-line no-undefined
+          if (e.selector?.upgrade === undefined) return e;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { upgrade: _upgrade, ...selectorWithoutUpgrade } = e.selector;
+          return { ...e, selector: selectorWithoutUpgrade };
+        }),
         // Always override files with the freshly computed map so entries
         // from removed sets are not carried over from the existingLock spread.
         // writeLockfile deletes the key when the map is empty.
