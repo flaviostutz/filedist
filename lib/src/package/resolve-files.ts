@@ -36,7 +36,7 @@ export type ResolveFilesDetailedResult = {
    * All packages resolved during traversal.
    * Key: original spec string. Value: source kind and exact resolved version.
    */
-  resolvedPackages: Map<string, { source: 'npm' | 'git'; resolvedVersion: string }>;
+  resolvedPackages: Map<string, { source: 'npm' | 'git' | 'local'; resolvedVersion: string }>;
 };
 
 function addRelevantPackage(

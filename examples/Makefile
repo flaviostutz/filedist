@@ -30,3 +30,7 @@ SHELL := /bin/bash
 	@echo ""
 	@echo ">>>>Running '$@' in split-set-config..."
 	make -C split-set-config $@
+	@echo ""
+	@echo ""
+	@echo ">>>>Running '$@' in local-source-config..."
+	make -C local-source-config $@

@@ -12,6 +12,9 @@ npx filedist install my-shared-assets --output ./data
 
 # extract directly from git
 npx filedist install git:github.com/flaviostutz/xdrs-core --output ./xdrs
+
+# extract directly from a local directory
+npx filedist install file:///path/to/local-folder --output ./data
 ```
 
 If you want to syncronise later with the latest versions of the files published in npm or git, run
@@ -44,7 +47,7 @@ const result = await actionInstall({ entries, cwd: process.cwd() });
 console.log(result.added, result.modified, result.deleted);
 ```
 
-Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
+Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`. Use `file://` to extract from a local directory on disk — relative paths (`file://./relative/dir`) and absolute paths (`file:///absolute/path`) are both supported.
 
 ---
 
@@ -79,6 +82,11 @@ npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --files "docs/**/*.md" --output ./docs
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --content-regex "Decision Outcome" --output ./filtered-docs
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run
+
+# local directory examples
+npx filedist install file:///path/to/local-folder --output ./data
+npx filedist install file://./relative/local-folder --files "**/*.md" --output ./docs
+npx filedist install file:///path/to/local-folder --output ./data --dry-run
 ```
 
 ---
@@ -116,9 +124,15 @@ sets:
         - conf/**
     output:
       path: ./local-conf
+  - package: "file:///absolute/path/to/local-folder"
+    selector:
+      files:
+        - assets/**
+    output:
+      path: ./local-assets
 ```
 
-For a local Windows path, use the same `file://` form with a drive letter, for example `git:file:///C:/work/local-repo@v2.0.0`.
+For a local git repository, use the `git:file://` form. For a plain local directory (no git), use `file://` directly (`file://./relative/path` or `file:///absolute/path`). For a local Windows path with git, use `git:file:///C:/work/local-repo@v2.0.0`.
 
 ```sh
 npx filedist install   # reads config, extracts all sets or only defaultPresets when defined
@@ -315,6 +329,9 @@ npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs 
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs --dry-run          # preview only
 npx filedist install my-pkg --output ./data --nosync             # keep stale managed files on disk
 npx filedist install my-pkg --output ./data --frozen-lockfile    # use .filedist.lock exclusively
+npx filedist install file:///path/to/local-folder --output ./data              # local directory
+npx filedist install file://./relative/local-folder --output ./data --force   # local directory, overwrite
+npx filedist install file:///path/to/local-folder --output ./data --dry-run   # local directory, preview
 # For multiple packages, use a config file (.filedist.yml) and run: npx filedist install
 ```
 
@@ -356,7 +373,7 @@ Each entry in `filedist.sets` supports:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `package` | `string` | none | Source spec for external entries: npm (`my-pkg`, `npm:my-pkg@^1.2.3`) or git (`git:github.com/org/repo.git@ref`, `git:file:///tmp/repo@main`, `git:file:///C:/tmp/repo@main`) |
+| `package` | `string` | none | Source spec for external entries: npm (`my-pkg`, `npm:my-pkg@^1.2.3`), git (`git:github.com/org/repo.git@ref`, `git:file:///tmp/repo@main`, `git:file:///C:/tmp/repo@main`), or local directory (`file:///absolute/path`, `file://./relative/path`) |
 | `presets` | `string[]` | none | Tags this entry so it is included only when the matching `--presets <tag>` flag is used. Listed by `filedist presets` |
 | `output.path` | `string` | `.` (cwd) | Extraction directory, relative to where the command runs |
 | `selector.files` | `string[]` | all files | Glob patterns to filter extracted files |

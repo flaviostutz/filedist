@@ -2014,4 +2014,66 @@ describe('actionInstall — frozenLockfile', () => {
       }),
     ).rejects.toThrow();
   }, 90_000);
+
+  it('extracts files from a local folder referenced with file://', async () => {
+    // Create a local package directory with a filedist config and some files
+    const localPkgDir = path.join(tmpDir, 'local-pkg');
+    fs.mkdirSync(path.join(localPkgDir, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(localPkgDir, 'docs/readme.md'), '# Local Pkg');
+    fs.writeFileSync(path.join(localPkgDir, 'docs/guide.md'), '# Guide');
+    fs.writeFileSync(
+      path.join(localPkgDir, 'package.json'),
+      JSON.stringify({ name: 'local-pkg', version: '0.0.0' }),
+    );
+
+    const outputDir = path.join(tmpDir, 'output-local');
+    const lockfilePath = path.join(tmpDir, '.filedist.lock');
+
+    const result = await actionInstall({
+      entries: [
+        {
+          package: `file://${localPkgDir}`,
+          selector: { files: ['docs/**'] },
+          output: { path: outputDir, gitignore: false },
+        },
+      ],
+      cwd: tmpDir,
+      lockfilePath,
+    });
+
+    expect(result.added).toBe(2);
+    expect(fs.existsSync(path.join(outputDir, 'docs/readme.md'))).toBe(true);
+    expect(fs.existsSync(path.join(outputDir, 'docs/guide.md'))).toBe(true);
+  }, 30_000);
+
+  it('records version "0" in the lock file for a local folder package', async () => {
+    const localPkgDir = path.join(tmpDir, 'local-lock-pkg');
+    fs.mkdirSync(path.join(localPkgDir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(localPkgDir, 'src/index.ts'), 'export {}');
+    fs.writeFileSync(
+      path.join(localPkgDir, 'package.json'),
+      JSON.stringify({ name: 'local-lock-pkg', version: '1.2.3' }),
+    );
+
+    const outputDir = path.join(tmpDir, 'output-lock');
+    const lockfilePath = path.join(tmpDir, '.filedist.lock');
+    const spec = `file://${localPkgDir}`;
+
+    await actionInstall({
+      entries: [
+        {
+          package: spec,
+          selector: { files: ['src/**'] },
+          output: { path: outputDir, gitignore: false },
+        },
+      ],
+      cwd: tmpDir,
+      lockfilePath,
+    });
+
+    const lockRaw = yaml.load(fs.readFileSync(lockfilePath, 'utf8')) as {
+      packages: Record<string, string>;
+    };
+    expect(lockRaw.packages[spec]).toBe('0');
+  }, 30_000);
 });

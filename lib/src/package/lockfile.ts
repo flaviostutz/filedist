@@ -147,7 +147,7 @@ export function readSetsFromLockfile(lockfilePath: string): FiledistExtractEntry
  * Build a LockfileData object from a map of spec → resolved version and source.
  */
 export function buildLockfileData(
-  resolvedPackages: Map<string, { source: 'npm' | 'git'; resolvedVersion: string }>,
+  resolvedPackages: Map<string, { source: 'npm' | 'git' | 'local'; resolvedVersion: string }>,
 ): LockfileData {
   const packages: Record<string, string> = {};
   for (const [spec, info] of resolvedPackages) {

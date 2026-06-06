@@ -8,14 +8,14 @@ import { FiledistExtractEntry } from '../types';
 import { formatDisplayPath, installOrUpgradePackage, spawnWithLog } from '../utils';
 
 export type PackageTarget = {
-  source: 'npm' | 'git';
+  source: 'npm' | 'git' | 'local';
   packageName: string;
   requestedVersion?: string;
   repository?: string;
 };
 
 export type ResolvedPackageSource = {
-  source: 'npm' | 'git';
+  source: 'npm' | 'git' | 'local';
   packageName: string;
   packageVersion: string;
   packagePath: string;
@@ -34,7 +34,10 @@ export type SourceRuntime = {
    * Returns all packages resolved during this runtime's lifetime.
    * Key is the original spec string (e.g. "eslint@^8"). Value contains source and resolved version.
    */
-  getResolvedPackages: () => Map<string, { source: 'npm' | 'git'; resolvedVersion: string }>;
+  getResolvedPackages: () => Map<
+    string,
+    { source: 'npm' | 'git' | 'local'; resolvedVersion: string }
+  >;
   /**
    * Pin exact versions for known specs. When set, resolvePackage substitutes
    * the pinned version instead of resolving from npm/git registries.
@@ -42,14 +45,17 @@ export type SourceRuntime = {
   setLockedVersions: (locked: Map<string, string>) => void;
 };
 
-type PackageSourceKind = 'npm' | 'git';
+type PackageSourceKind = 'npm' | 'git' | 'local';
 
 const GIT_SOURCE_REGEX = /^(?:https?|ssh|git|file):\/\/|^git@/i;
 const SOURCE_PREFIX_REGEX = /^(npm|git):(.*)$/s;
 const GIT_HOST_PATH_REGEX = /^[\d.A-Za-z-]+\.[A-Za-z]{2,}(?::\d+)?[/:].+/;
-
+const FILE_SOURCE_REGEX = /^file:\/\//i;
 export function parsePackageTarget(spec: string): PackageTarget {
   const { source, value } = parsePackageSpecWithSource(spec);
+  if (source === 'local') {
+    return { source, packageName: value };
+  }
   if (source === 'npm') {
     if (GIT_SOURCE_REGEX.test(value)) {
       throw new Error(
@@ -85,7 +91,10 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
   const cloneDirs = new Set<string>();
   let tempRoot = '';
   // Map from original spec string → resolved version info (populated during resolvePackage calls)
-  const resolvedSpecMap = new Map<string, { source: 'npm' | 'git'; resolvedVersion: string }>();
+  const resolvedSpecMap = new Map<
+    string,
+    { source: 'npm' | 'git' | 'local'; resolvedVersion: string }
+  >();
   // Optional frozen version map: spec → exact pinned version
 
   let lockedVersions: Map<string, string> | undefined;
@@ -137,10 +146,14 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
         }
       }
 
-      const resolved =
-        target.source === 'git'
-          ? resolveGitPackage(target, cwd, ensureTempRoot, verbose, sparsePatterns)
-          : resolveNpmPackage(target, upgrade, cwd, verbose);
+      let resolved: Promise<ResolvedPackageSource>;
+      if (target.source === 'git') {
+        resolved = resolveGitPackage(target, cwd, ensureTempRoot, verbose, sparsePatterns);
+      } else if (target.source === 'local') {
+        resolved = Promise.resolve(resolveLocalPackage(target, cwd));
+      } else {
+        resolved = resolveNpmPackage(target, upgrade, cwd, verbose);
+      }
 
       const packageSource = await resolved;
       packageCache.set(cacheKey, packageSource);
@@ -171,7 +184,10 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
       );
       spawnWithLog('git', ['-C', packagePath, 'checkout'], cwd, verbose, true);
     },
-    getResolvedPackages(): Map<string, { source: 'npm' | 'git'; resolvedVersion: string }> {
+    getResolvedPackages(): Map<
+      string,
+      { source: 'npm' | 'git' | 'local'; resolvedVersion: string }
+    > {
       return new Map(resolvedSpecMap);
     },
     setLockedVersions(locked: Map<string, string>): void {
@@ -197,6 +213,14 @@ export function createSourceRuntime(cwd: string, verbose = false): SourceRuntime
 }
 
 function parsePackageSpecWithSource(spec: string): { source: PackageSourceKind; value: string } {
+  if (FILE_SOURCE_REGEX.test(spec)) {
+    const value = spec.slice('file://'.length);
+    if (!value) {
+      throw new Error('Package spec is missing a path after the "file://" prefix.');
+    }
+    return { source: 'local', value };
+  }
+
   const match = spec.match(SOURCE_PREFIX_REGEX);
   if (!match) {
     return { source: 'npm', value: spec };
@@ -259,6 +283,32 @@ function splitGitSpec(spec: string): { repository: string; ref?: string } {
 
 function normalizeGitRepository(repository: string): string {
   return repository.replace(/\/+$/, '');
+}
+
+function resolveLocalPackage(target: PackageTarget, cwd: string): ResolvedPackageSource {
+  const resolvedPath = path.isAbsolute(target.packageName)
+    ? target.packageName
+    : path.resolve(cwd, target.packageName);
+
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(
+      `Local package directory not found: "${resolvedPath}". ` +
+        `Spec was "file://${target.packageName}".`,
+    );
+  }
+  if (!fs.statSync(resolvedPath).isDirectory()) {
+    throw new Error(
+      `Local package path is not a directory: "${resolvedPath}". ` +
+        `Spec was "file://${target.packageName}".`,
+    );
+  }
+
+  return {
+    source: 'local',
+    packageName: target.packageName,
+    packageVersion: '0',
+    packagePath: resolvedPath,
+  };
 }
 
 async function resolveNpmPackage(
