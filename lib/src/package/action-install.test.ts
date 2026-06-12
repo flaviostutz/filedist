@@ -247,6 +247,40 @@ describe('actionInstall', () => {
     expect(fs.readFileSync(path.join(outputDir, 'guide.md'), 'utf8')).toBe('pkg content');
   }, 60000);
 
+  it('strips transient CLI flags (force, dryRun, silent, verbose) from lockfile sets', async () => {
+    await installMockPackage('transient-pkg', '1.0.0', { 'guide.md': 'content' }, tmpDir);
+
+    const outputDir = path.join(tmpDir, 'output');
+    const lockfilePath = path.join(tmpDir, '.filedist.lock');
+    await actionInstall({
+      entries: [
+        {
+          package: 'transient-pkg',
+          output: { path: outputDir, force: true, dryRun: false, gitignore: false },
+          silent: true,
+          verbose: true,
+        },
+      ],
+      cwd: tmpDir,
+      lockfilePath,
+    });
+
+    const lock = yaml.load(fs.readFileSync(lockfilePath, 'utf8')) as Record<string, unknown>;
+    const sets = lock['sets'] as Array<Record<string, unknown>>;
+    expect(sets).toHaveLength(1);
+    const set = sets[0];
+
+    // Transient flags must not appear in the persisted set
+    expect((set['output'] as Record<string, unknown> | undefined)?.['force']).toBeUndefined();
+    expect((set['output'] as Record<string, unknown> | undefined)?.['dryRun']).toBeUndefined();
+    expect(set['silent']).toBeUndefined();
+    expect(set['verbose']).toBeUndefined();
+
+    // Non-transient output fields must be preserved
+    expect((set['output'] as Record<string, unknown>)?.['path']).toBe(outputDir);
+    expect((set['output'] as Record<string, unknown>)?.['gitignore']).toBe(false);
+  }, 60000);
+
   it('throws on conflict without force', async () => {
     await installMockPackage('conflict-pkg', '1.0.0', { 'guide.md': 'pkg content' }, tmpDir);
 

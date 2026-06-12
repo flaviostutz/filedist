@@ -423,15 +423,32 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         ...existingLock,
         packages,
         // Store the set definitions so check/purge/frozen-install can operate without config.
-        // Strip `upgrade` from selectors — it is a transient runtime flag and must not be
-        // persisted; otherwise a `filedist update` run would permanently mark every set with
-        // upgrade:true in the lockfile even when the user config never requested it.
+        // Strip transient CLI-only flags that must not be persisted:
+        //   selector.upgrade  — `filedist update` flag; persisting would permanently upgrade on every frozen install
+        //   output.force      — overwrite override; persisting would permanently force-overwrite managed files
+        //   output.dryRun     — preview mode; persisting would silently skip all writes on future installs
+        //   silent/verbose    — logging preferences; not meaningful outside the current invocation
         sets: configEntries.map((e) => {
-          // eslint-disable-next-line no-undefined
-          if (e.selector?.upgrade === undefined) return e;
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { upgrade: _upgrade, ...selectorWithoutUpgrade } = e.selector;
-          return { ...e, selector: selectorWithoutUpgrade };
+          const { silent: _silent, verbose: _verbose, ...entryWithoutLogging } = e;
+
+          // Strip upgrade from selector
+          let { selector } = entryWithoutLogging;
+          if (selector && 'upgrade' in selector) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { upgrade: _upgrade, ...selectorWithoutUpgrade } = selector;
+            selector = selectorWithoutUpgrade;
+          }
+
+          // Strip force and dryRun from output
+          const { output: rawOutput } = entryWithoutLogging;
+          const strippedOutput = rawOutput ? { ...rawOutput } : rawOutput;
+          if (strippedOutput) {
+            delete strippedOutput.force;
+            delete strippedOutput.dryRun;
+          }
+
+          return { ...entryWithoutLogging, selector, output: strippedOutput };
         }),
         // Always override files with the freshly computed map so entries
         // from removed sets are not carried over from the existingLock spread.
