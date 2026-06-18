@@ -31,6 +31,7 @@ export function mergeSelectorConfig(parent: SelectorConfig, child: SelectorConfi
     ...(filePatternGroups.length > 0 ? { filePatternGroups } : {}),
     exclude,
     contentRegexes,
+    basedir: child.basedir, // each level independent; child overrides, not inherited
     presets: child.presets, // not inherited from parent
     upgrade: child.upgrade, // each level independent
   };

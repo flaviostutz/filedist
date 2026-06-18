@@ -45,6 +45,14 @@ export async function enumeratePackageFiles(
   if (selector.presets && selector.presets.length > 0 && !selector.files) {
     return [];
   }
+
+  // Resolve the walk root: when basedir is set, enumeration starts from that subdirectory
+  // and returned paths are relative to it (not to pkgPath).
+  const walkRoot = selector.basedir ? path.join(pkgPath, selector.basedir) : pkgPath;
+  if (!fs.existsSync(walkRoot)) {
+    return [];
+  }
+
   const filePatterns = selector.files ?? DEFAULT_FILE_PATTERNS;
   const filePatternGroups = selector.filePatternGroups ?? (selector.files ? [selector.files] : []);
   const activeDefaultExcludes = DEFAULT_EXCLUDE_PATTERNS.filter((p) => !filePatterns.includes(p));
@@ -88,7 +96,7 @@ export async function enumeratePackageFiles(
     }
   };
 
-  walkDir(pkgPath);
+  walkDir(walkRoot);
   return results;
 }
 

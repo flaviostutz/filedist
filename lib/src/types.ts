@@ -21,6 +21,14 @@ export type BasicPackageOptions = {
  */
 export type SelectorConfig = {
   /**
+   * Subdirectory within the package to use as the root for file enumeration.
+   * Glob patterns in `files` and returned relative paths are relative to this subdirectory.
+   * When omitted, enumeration starts from the package root.
+   * Example: `basedir: 'manual'` with `files: ['**']` selects all files under
+   * `<packageRoot>/manual/` and places them in the output without the `manual/` prefix.
+   */
+  basedir?: string;
+  /**
    * Glob patterns; files must match at least one.
    * Default: all files except package.json, bin/**, README.md, node_modules/**
    */

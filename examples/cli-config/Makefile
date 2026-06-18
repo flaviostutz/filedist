@@ -110,6 +110,21 @@ test:
 	test ! -e output/nested-eslint/conf/globals.js
 	test -e output/eslint/conf/globals.js
 
+	# --- Test 6: selector.basedir scopes file extraction to a subdirectory ---
+	# With basedir: 'conf' on eslint@8, files are enumerated from <pkg>/conf/
+	# and placed in the output WITHOUT the 'conf/' prefix.
+	rm -f .filedist.lock
+	rm -rf output
+	printf 'sets:\n  - package: eslint@8\n    selector:\n      basedir: conf\n      files:\n        - "**"\n    output:\n      path: output/basedir-test\n      gitignore: false\n' > .filedist.yml
+	pnpm exec filedist install
+	test -e output/basedir-test/globals.js
+	test ! -e output/basedir-test/conf/globals.js
+	pnpm exec filedist check
+	pnpm exec filedist remove --all
+	test ! -e output/basedir-test/globals.js
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
+
 	@echo "All config-file mode tests passed"
 
 clean:

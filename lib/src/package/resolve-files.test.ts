@@ -707,4 +707,86 @@ describe('resolveFiles', () => {
     expect(relPaths).toContain('docs/guide.md');
     expect(relPaths).toContain('src/index.ts');
   }, 60000);
+
+  it('selector.basedir scopes file enumeration to a package subdirectory for external packages', async () => {
+    // Package has files under 'manual/' and also at root level
+    await installMockPackage(
+      'basedir-pkg',
+      '1.0.0',
+      {
+        'manual/install.md': '# Install',
+        'manual/config.md': '# Config',
+        'src/index.ts': 'export {}',
+      },
+      tmpDir,
+    );
+
+    const outputDir = path.join(tmpDir, 'output-basedir');
+    const files = await resolveFiles(
+      [
+        {
+          package: 'basedir-pkg',
+          output: { path: outputDir, gitignore: false },
+          selector: { basedir: 'manual', files: ['**'] },
+        },
+      ],
+      { cwd: tmpDir },
+    );
+
+    const relPaths = files.map((f) => f.relPath);
+    // Paths are relative to 'manual/', not the package root
+    expect(relPaths).toContain('install.md');
+    expect(relPaths).toContain('config.md');
+    // Files outside 'manual/' must not appear
+    expect(relPaths).not.toContain('src/index.ts');
+    expect(relPaths).not.toContain('manual/install.md');
+
+    // sourcePath must resolve into the 'manual/' subdirectory
+    const pkgPath = path.join(tmpDir, 'node_modules', 'basedir-pkg');
+    const installFile = files.find((f) => f.relPath === 'install.md');
+    expect(installFile?.sourcePath).toBe(path.join(pkgPath, 'manual', 'install.md'));
+  }, 60000);
+
+  it('selector.basedir in a self-package entry scopes files to package subdirectory', async () => {
+    await installMockPackage(
+      'basedir-self-pkg',
+      '1.0.0',
+      {
+        'manual/guide.md': '# Guide',
+        'data/info.json': '{}',
+      },
+      tmpDir,
+    );
+
+    // Patch the package with a self-set that uses basedir
+    const pkgPath = path.join(tmpDir, 'node_modules', 'basedir-self-pkg');
+    fs.writeFileSync(
+      path.join(pkgPath, '.filedist-package.yml'),
+      yaml.dump(
+        {
+          sets: [
+            {
+              selector: { basedir: 'manual', files: ['**/*.md'] },
+              output: { path: '.', gitignore: false },
+            },
+          ],
+        },
+        { indent: 2 },
+      ),
+    );
+
+    const outputDir = path.join(tmpDir, 'output-basedir-self');
+    const files = await resolveFiles(
+      [{ package: 'basedir-self-pkg', output: { path: outputDir, gitignore: false } }],
+      { cwd: tmpDir },
+    );
+
+    const relPaths = files.map((f) => f.relPath);
+    expect(relPaths).toContain('guide.md');
+    expect(relPaths).not.toContain('data/info.json');
+    expect(relPaths).not.toContain('manual/guide.md');
+
+    const guideFile = files.find((f) => f.relPath === 'guide.md');
+    expect(guideFile?.sourcePath).toBe(path.join(pkgPath, 'manual', 'guide.md'));
+  }, 60000);
 });

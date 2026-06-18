@@ -149,4 +149,24 @@ describe('enumeratePackageFiles', () => {
     expect(files).toContain('docs/guide.md');
     expect(files).toContain('docs/api.md');
   });
+
+  it('basedir restricts walk root and returns paths relative to that subdirectory', async () => {
+    const files = await enumeratePackageFiles(pkgPath, {
+      basedir: 'docs',
+      files: ['**/*.md'],
+    });
+    // Paths are relative to 'docs/', not to the package root
+    expect(files).toContain('guide.md');
+    expect(files).toContain('api.md');
+    // Files outside 'docs/' must not appear
+    expect(files).not.toContain('src/index.ts');
+    expect(files).not.toContain('docs/guide.md');
+  });
+
+  it('basedir returns empty array when the subdirectory does not exist', async () => {
+    const files = await enumeratePackageFiles(pkgPath, {
+      basedir: 'nonexistent-subdir',
+    });
+    expect(files).toHaveLength(0);
+  });
 });

@@ -173,6 +173,9 @@ async function resolveFilesInternal(
       addRelevantPackage(relevantPackagesByOutputDir, outputDir, currentPkgName);
       markNoSyncOutput(noSyncOutputDirs, outputDir, mergedOutput.noSync === true);
       const files = await enumeratePackageFiles(currentPkgPath, mergedSelector);
+      const selfSrcRoot = mergedSelector.basedir
+        ? path.join(currentPkgPath, mergedSelector.basedir)
+        : currentPkgPath;
 
       if (verbose) {
         console.log(
@@ -184,7 +187,7 @@ async function resolveFilesInternal(
         results.push(
           buildResolvedFile(
             relPath,
-            currentPkgPath,
+            selfSrcRoot,
             currentPkgName,
             currentPkgVersion ?? '0.0.0',
             outputDir,
@@ -238,6 +241,9 @@ async function resolveFilesInternal(
       // When a package declares self sets, those sets define how its own files are split
       // across outputs and managed flags. In that case, skip the blanket own-file pass.
       const ownFiles = hasSelfSet ? [] : await enumeratePackageFiles(pkgPath, mergedSelector);
+      const ownSrcRoot = mergedSelector.basedir
+        ? path.join(pkgPath, mergedSelector.basedir)
+        : pkgPath;
 
       if (verbose) {
         console.log(
@@ -249,7 +255,7 @@ async function resolveFilesInternal(
         results.push(
           buildResolvedFile(
             relPath,
-            pkgPath,
+            ownSrcRoot,
             resolvedPackage.packageName,
             installedVersion,
             outputDir,

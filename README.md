@@ -377,6 +377,7 @@ Each entry in `filedist.sets` supports:
 | `presets` | `string[]` | none | Tags this entry so it is included only when the matching `--presets <tag>` flag is used. Listed by `filedist presets` |
 | `output.path` | `string` | `.` (cwd) | Extraction directory, relative to where the command runs |
 | `selector.files` | `string[]` | all files | Glob patterns to filter extracted files |
+| `selector.basedir` | `string` | package root | Subdirectory within the package to use as the enumeration root. Glob patterns in `selector.files` are matched relative to this subdirectory, and extracted files preserve their path relative to it (the `basedir` prefix is stripped from the destination). `output.path` is unaffected. Defaults to the package root |
 | `selector.contentRegexes` | `string[]` | none | Regex patterns to filter files by content |
 | `selector.exclude` | `string[]` | none | Glob patterns to exclude files even if they match `selector.files` |
 | `selector.presets` | `string[]` | none | Filters which of the **target package's own** `filedist.sets` are recursively extracted. Only sets in the target whose `presets` matches are processed. Does not affect which files are selected from the target package itself |
@@ -454,7 +455,23 @@ When `install` recurses, the calling entry's `output` flags are inherited by eve
 | `symlinks` / `contentReplacements` | Appended to each transitive entry’s own lists |
 
 Settings that are undefined on the caller are left as-is so the transitive package’s own defaults apply.
+### Scoping file selection with `selector.basedir`
 
+Set `selector.basedir` on an entry (or in a package's own self-set) to start file enumeration from a subdirectory of the package instead of the package root. Glob patterns in `selector.files` and returned relative paths are relative to that subdirectory. The output path mirrors the structure under `basedir`, not under the full package root.
+
+```yaml
+sets:
+  - package: "my-shared-assets@^2.0.0"
+    selector:
+      basedir: packagedir
+      files:
+        - manual/**
+    output:
+      path: pkginstalled
+      gitignore: false
+```
+
+In this example, files under `<package-root>/packagedir/manual/` are selected. The `packagedir` prefix is stripped, so `manual/guide.md` (relative to `packagedir/`) is written to `pkginstalled/manual/guide.md` in the consuming project. `output.path` (`pkginstalled`) is always relative to the directory where the command is run, not to `basedir`.
 ### Filtering transitive sets with `selector.presets`
 
 Set `selector.presets` on an entry to control which sets inside the target package are recursed into (applies to `install` and `check`). Only sets whose `presets` tag overlaps with the filter are processed; sets with no `presets` are skipped when a filter is active.
