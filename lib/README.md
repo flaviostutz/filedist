@@ -18,11 +18,14 @@ Use `npx filedist install` directly from the command line whenever you need to p
 ```sh
 npx filedist install my-shared-assets@^2.0.0 --output ./data
 
-# or use a git repository as the source
+# or use a git repository as the source (GitHub shorthand)
 npx filedist install git:github.com/flaviostutz/xdrs-core@1.3.0 --output ./xdrs
+
+# or use a full HTTPS URL for any custom git host
+npx filedist install 'git:https://mycustomrepo.com/repos/mine1@main' --output ./mine1
 ```
 
-Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs and host/path shorthands such as `git:github.com/org/repo.git@ref`.
+Package specs support optional source prefixes. Use `git:` for git repositories and `npm:` when you want to make the npm source explicit. When no prefix is present, filedist treats the spec as npm. Git specs accept full repository URLs (e.g. `git:https://mycustomrepo.com/repos/mine1@main`) and host/path shorthands such as `git:github.com/org/repo.git@ref`.
 
 #### Auto-save to `.filedist.yml`
 
