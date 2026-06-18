@@ -142,7 +142,25 @@ async function resolveConfig(
       if (parsed.verbose) {
         console.log(`[verbose] Auto-saving packages to config file: ${configFilePath}`);
       }
-      await upsertFiledistConfigEntries(effectiveCwd, configFilePath, entries);
+      // Strip transient CLI-only flags before persisting to config:
+      //   output.force    — one-time overwrite override; persisting would permanently force-overwrite files
+      //   output.dryRun   — preview mode; persisting would silently skip all writes on future installs
+      //   selector.upgrade — one-time upgrade request; persisting would upgrade on every install
+      const entriesToSave = entries.map((entry) => {
+        let { output, selector } = entry;
+        if (output) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { force: _f, dryRun: _d, ...persistableOutput } = output;
+          output = persistableOutput;
+        }
+        if (selector) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { upgrade: _u, ...persistableSelector } = selector;
+          selector = persistableSelector;
+        }
+        return { ...entry, output, selector };
+      });
+      await upsertFiledistConfigEntries(effectiveCwd, configFilePath, entriesToSave);
       // Reload config from the now-updated file so install sees all sets (not just the new one).
       const reloadedConfig = loadFiledistConfigFile(configFilePath);
       // Strip package-specific flags — install will be driven entirely by the config file.

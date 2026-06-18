@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import yaml from 'js-yaml';
+
 import { installMockPackage } from '../fileset/test-utils';
 
 import { cli } from './cli';
@@ -433,4 +435,111 @@ describe('cli', () => {
     // The update command was dispatched (no "Unknown command" error)
     expect(errors.join('\n')).not.toContain('Unknown command');
   }, 90_000);
+
+  describe('transient CLI flag persistence', () => {
+    it('does not persist --force to config when auto-saving positional package', async () => {
+      const outputDir = path.join(tmpDir, 'output-force');
+      const configFile = path.join(tmpDir, '.filedist.yml');
+
+      await cli(
+        [
+          'node',
+          'filedist',
+          'install',
+          PKG_NAME,
+          '--output',
+          outputDir,
+          '--force',
+          '--gitignore=false',
+        ],
+        tmpDir,
+      );
+
+      const saved = yaml.load(fs.readFileSync(configFile, 'utf8')) as {
+        sets: Array<{ output?: Record<string, unknown> }>;
+      };
+      expect(saved.sets[0].output).not.toHaveProperty('force');
+    }, 60_000);
+
+    it('does not persist --dry-run to config when auto-saving positional package', async () => {
+      const outputDir = path.join(tmpDir, 'output-dryrun');
+      const configFile = path.join(tmpDir, '.filedist.yml');
+
+      // Run without dry-run first so files are actually written, then check config
+      await cli(
+        ['node', 'filedist', 'install', PKG_NAME, '--output', outputDir, '--gitignore=false'],
+        tmpDir,
+      );
+      // Re-run with --dry-run; this upserts the entry again
+      await cli(
+        [
+          'node',
+          'filedist',
+          'install',
+          PKG_NAME,
+          '--output',
+          outputDir,
+          '--dry-run',
+          '--gitignore=false',
+        ],
+        tmpDir,
+      );
+
+      const saved = yaml.load(fs.readFileSync(configFile, 'utf8')) as {
+        sets: Array<{ output?: Record<string, unknown> }>;
+      };
+      expect(saved.sets[0].output).not.toHaveProperty('dryRun');
+    }, 60_000);
+
+    it('does not persist --upgrade to config when auto-saving positional package', async () => {
+      const outputDir = path.join(tmpDir, 'output-upgrade');
+      const configFile = path.join(tmpDir, '.filedist.yml');
+
+      await cli(
+        [
+          'node',
+          'filedist',
+          'install',
+          PKG_NAME,
+          '--output',
+          outputDir,
+          '--upgrade',
+          '--gitignore=false',
+        ],
+        tmpDir,
+      );
+
+      const saved = yaml.load(fs.readFileSync(configFile, 'utf8')) as {
+        sets: Array<{ selector?: Record<string, unknown> }>;
+      };
+      // selector may be omitted entirely when no selectable fields remain — upgrade was stripped
+      expect(saved.sets[0].selector?.upgrade).toBeUndefined();
+    }, 60_000);
+
+    it('persists non-transient flags like --mutable and --nosync to config', async () => {
+      const outputDir = path.join(tmpDir, 'output-persistent');
+      const configFile = path.join(tmpDir, '.filedist.yml');
+
+      await cli(
+        [
+          'node',
+          'filedist',
+          'install',
+          PKG_NAME,
+          '--output',
+          outputDir,
+          '--mutable',
+          '--nosync',
+          '--gitignore=false',
+        ],
+        tmpDir,
+      );
+
+      const saved = yaml.load(fs.readFileSync(configFile, 'utf8')) as {
+        sets: Array<{ output?: Record<string, unknown> }>;
+      };
+      expect(saved.sets[0].output).toHaveProperty('mutable', true);
+      expect(saved.sets[0].output).toHaveProperty('noSync', true);
+    }, 60_000);
+  });
 });
