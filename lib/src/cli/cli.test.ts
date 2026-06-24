@@ -436,6 +436,48 @@ describe('cli', () => {
     expect(errors.join('\n')).not.toContain('Unknown command');
   }, 90_000);
 
+  it('update picks up new sets added to config since last install', async () => {
+    const outputA = path.join(tmpDir, 'output-update-a');
+    const outputB = path.join(tmpDir, 'output-update-b');
+    const configFile = path.join(tmpDir, 'multi-update.json');
+    const lockfilePath = path.join(tmpDir, 'multi-update.lock');
+
+    // Install a second package into node_modules for this test
+    await installMockPackage('cli-update-new-pkg', '1.0.0', { 'new.md': '# New' }, tmpDir);
+
+    // Initial install with only the first package
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({
+        sets: [{ package: PKG_NAME, output: { path: outputA, gitignore: false } }],
+      }),
+    );
+    await cli(['node', 'filedist', 'install', '--config', configFile], tmpDir);
+    expect(fs.existsSync(path.join(outputA, 'docs/guide.md'))).toBe(true);
+
+    // Now extend the config with a second set (simulates user adding a new set)
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({
+        sets: [
+          { package: PKG_NAME, output: { path: outputA, gitignore: false } },
+          { package: 'cli-update-new-pkg', output: { path: outputB, gitignore: false } },
+        ],
+      }),
+    );
+
+    // update (not install) — should pick up the new set from config, not just lockfile
+    // --upgrade=false avoids hitting the real npm registry (mock packages are in node_modules)
+    const exitCode = await cli(
+      ['node', 'filedist', 'update', '--config', configFile, '--upgrade=false'],
+      tmpDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(outputB, 'new.md'))).toBe(true);
+
+    void lockfilePath; // lock derives from configFile automatically
+  }, 90_000);
+
   describe('transient CLI flag persistence', () => {
     it('does not persist --force to config when auto-saving positional package', async () => {
       const outputDir = path.join(tmpDir, 'output-force');

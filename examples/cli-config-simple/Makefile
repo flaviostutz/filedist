@@ -97,6 +97,22 @@ test:
 	test ! -e output/eslint/README.md
 	test ! -e output/chalk/README.md
 
+	# --- Test: update picks up new sets added to config after last install ---
+	# Install only eslint; lockfile.sets = [eslint]
+	pnpm exec filedist install eslint@^8.0.0 --files README.md,package.json --output output/eslint
+	test -e output/eslint/README.md
+	test ! -e output/chalk/package.json
+	# Add chalk to the config WITHOUT running install (simulates user editing config)
+	printf '\n  - package: chalk@4\n    selector:\n      files:\n        - README.md\n        - package.json\n    output:\n      path: output/chalk\n      gitignore: false\n' >> .filedist.yml
+	grep "chalk@4" .filedist.yml
+	# update should read entries from config (not lockfile) and install chalk too
+	pnpm exec filedist update
+	test -e output/chalk/package.json
+	grep "chalk@4: 4.1.2" .filedist.lock
+	pnpm exec filedist remove --all
+	test ! -e .filedist.yml
+	test ! -e .filedist.lock
+
 	@echo "All cli-config-simple tests passed"
 
 clean:

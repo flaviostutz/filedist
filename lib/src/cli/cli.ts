@@ -222,7 +222,7 @@ async function dispatch(
       await runRemove(cmdArgs, cwd, lockfilePath, configFilePath);
       break;
     case 'update':
-      await runUpdate(cmdArgs, cwd, lockfilePath);
+      await runUpdate(config, cmdArgs, cwd, lockfilePath);
       break;
     case 'init':
       await runInit(config, cmdArgs, cwd);
