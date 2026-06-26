@@ -64,6 +64,10 @@ export async function applyContentReplacements(
   }
 }
 
+// Directories that are never valid targets for content replacements.
+// Skipping them avoids walking millions of files in large monorepos.
+const SKIP_DIRS = new Set(['node_modules', '.git', '.hg', '.svn', '.yarn', '.venv']);
+
 /**
  * Collect all files under cwd matching at least one replacement's files glob.
  */
@@ -76,6 +80,7 @@ function collectFilesForReplacements(
 
   const walk = (dir: string): void => {
     for (const entry of fs.readdirSync(dir)) {
+      if (SKIP_DIRS.has(entry)) continue;
       const fullPath = path.join(dir, entry);
       const stat = fs.lstatSync(fullPath);
       if (stat.isSymbolicLink()) continue;
