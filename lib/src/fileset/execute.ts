@@ -18,7 +18,7 @@ import { addToGitignore } from './gitignore';
 /**
  * Apply an ExtractionMap to disk:
  *  - Copy toAdd and toModify files from source to dest
- *  - Make managed files read-only (unless unmanaged mode)
+ *  - Make files read-only when readonly option is set
  *  - Delete toDelete files
  *  - Update .filedist marker file (unless dryRun or unmanaged)
  *  - Update .gitignore (unless dryRun, unmanaged, or gitignore=false)
@@ -46,6 +46,7 @@ export async function execute(
 ): Promise<ExecuteResult> {
   const dryRun = outputConfig.dryRun ?? false;
   const unmanaged = outputConfig.managed === false;
+  const readOnly = outputConfig.readonly === true;
   const updateGitignore = outputConfig.gitignore !== false;
   const displayBaseDir = _cwd ?? process.cwd();
 
@@ -71,7 +72,7 @@ export async function execute(
         fs.chmodSync(op.destPath, 0o644);
       }
       fs.copyFileSync(op.sourcePath, op.destPath);
-      if (!unmanaged) {
+      if (readOnly) {
         fs.chmodSync(op.destPath, 0o444); // read-only
       }
       result.newlyCreated.push(op.destPath);
@@ -92,7 +93,7 @@ export async function execute(
         fs.chmodSync(op.destPath, 0o644); // make writable before overwriting
       }
       fs.copyFileSync(op.sourcePath, op.destPath);
-      if (!unmanaged) {
+      if (readOnly) {
         fs.chmodSync(op.destPath, 0o444); // read-only
       }
     }

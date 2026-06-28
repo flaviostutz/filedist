@@ -60,7 +60,7 @@ describe('execute', () => {
     expect(fs.readFileSync(destPath, 'utf8')).toBe('# Guide');
   });
 
-  it('makes written files read-only (managed mode)', async () => {
+  it('does not make written files read-only by default', async () => {
     const srcPath = writeFile(pkgDir, 'guide.md', '# Guide');
     const destPath = path.join(outputDir, 'guide.md');
     const map = makeMap({
@@ -79,7 +79,115 @@ describe('execute', () => {
 
     const stat = fs.statSync(destPath);
 
+    expect(stat.mode & 0o200).not.toBe(0); // write bit must be set
+  });
+
+  it('makes written files read-only when readonly option is true', async () => {
+    const srcPath = writeFile(pkgDir, 'guide.md', '# Guide');
+    const destPath = path.join(outputDir, 'guide.md');
+    const map = makeMap({
+      toAdd: [{ relPath: 'guide.md', sourcePath: srcPath, destPath, hash: 'abc' }],
+    });
+
+    await execute(
+      map,
+      outputDir,
+      { path: '.', gitignore: false, readonly: true },
+      { name: 'my-pkg' },
+      '1.0.0',
+      [],
+      tmpDir,
+    );
+
+    const stat = fs.statSync(destPath);
+
     expect(stat.mode & 0o200).toBe(0); // no write bit
+  });
+
+  describe('readonly and managed are independent', () => {
+    it('managed=true readonly=false: writes marker, leaves file writable', async () => {
+      const srcPath = writeFile(pkgDir, 'a.md', '# A');
+      const destPath = path.join(outputDir, 'a.md');
+      const map = makeMap({
+        toAdd: [{ relPath: 'a.md', sourcePath: srcPath, destPath, hash: 'abc' }],
+      });
+
+      await execute(
+        map,
+        outputDir,
+        { path: '.', gitignore: false },
+        { name: 'p' },
+        '1.0.0',
+        [],
+        tmpDir,
+      );
+
+      expect(fs.existsSync(path.join(outputDir, MARKER_FILE))).toBe(true);
+      expect(fs.statSync(destPath).mode & 0o200).not.toBe(0); // writable
+    });
+
+    it('managed=true readonly=true: writes marker and sets file read-only', async () => {
+      const srcPath = writeFile(pkgDir, 'b.md', '# B');
+      const destPath = path.join(outputDir, 'b.md');
+      const map = makeMap({
+        toAdd: [{ relPath: 'b.md', sourcePath: srcPath, destPath, hash: 'abc' }],
+      });
+
+      await execute(
+        map,
+        outputDir,
+        { path: '.', gitignore: false, readonly: true },
+        { name: 'p' },
+        '1.0.0',
+        [],
+        tmpDir,
+      );
+
+      expect(fs.existsSync(path.join(outputDir, MARKER_FILE))).toBe(true);
+      expect(fs.statSync(destPath).mode & 0o200).toBe(0); // read-only
+    });
+
+    it('managed=false readonly=false: skips marker, leaves file writable', async () => {
+      const srcPath = writeFile(pkgDir, 'c.md', '# C');
+      const destPath = path.join(outputDir, 'c.md');
+      const map = makeMap({
+        toAdd: [{ relPath: 'c.md', sourcePath: srcPath, destPath, hash: 'abc' }],
+      });
+
+      await execute(
+        map,
+        outputDir,
+        { path: '.', gitignore: false, managed: false },
+        { name: 'p' },
+        '1.0.0',
+        [],
+        tmpDir,
+      );
+
+      expect(fs.existsSync(path.join(outputDir, MARKER_FILE))).toBe(false);
+      expect(fs.statSync(destPath).mode & 0o200).not.toBe(0); // writable
+    });
+
+    it('managed=false readonly=true: skips marker but sets file read-only', async () => {
+      const srcPath = writeFile(pkgDir, 'd.md', '# D');
+      const destPath = path.join(outputDir, 'd.md');
+      const map = makeMap({
+        toAdd: [{ relPath: 'd.md', sourcePath: srcPath, destPath, hash: 'abc' }],
+      });
+
+      await execute(
+        map,
+        outputDir,
+        { path: '.', gitignore: false, managed: false, readonly: true },
+        { name: 'p' },
+        '1.0.0',
+        [],
+        tmpDir,
+      );
+
+      expect(fs.existsSync(path.join(outputDir, MARKER_FILE))).toBe(false);
+      expect(fs.statSync(destPath).mode & 0o200).toBe(0); // read-only
+    });
   });
 
   it('updates .filedist marker file', async () => {

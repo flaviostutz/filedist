@@ -29,6 +29,8 @@ export type ParsedArgv = {
   gitignore?: boolean;
   /** --managed / --managed=true|false  (false ≡ unmanaged mode) */
   managed?: boolean;
+  /** --readonly / --readonly=true|false */
+  readonly?: boolean;
   dryRun?: boolean;
   upgrade?: boolean;
   silent?: boolean;
@@ -72,6 +74,7 @@ function buildOutputFromArgv(parsed: ParsedArgv): OutputConfig {
     ...(parsed.nosync !== undefined ? { noSync: parsed.nosync } : {}),
     ...(parsed.gitignore !== undefined ? { gitignore: parsed.gitignore } : {}),
     ...(parsed.managed !== undefined ? { managed: parsed.managed } : {}),
+    ...(parsed.readonly !== undefined ? { readonly: parsed.readonly } : {}),
     ...(parsed.dryRun !== undefined ? { dryRun: parsed.dryRun } : {}),
   };
 }
@@ -160,6 +163,7 @@ export function parseArgv(argv: string[]): ParsedArgv {
     nosync: getBoolFlag('--nosync'),
     gitignore: getBoolFlag('--gitignore'),
     managed: getBoolFlag('--managed'),
+    readonly: getBoolFlag('--readonly'),
     dryRun: getBoolFlag('--dry-run'),
     upgrade: getBoolFlag('--upgrade'),
     silent: getBoolFlag('--silent'),

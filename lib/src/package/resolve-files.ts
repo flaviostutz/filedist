@@ -369,6 +369,7 @@ function buildResolvedFile(
     force: output.force ?? false,
     mutable: output.mutable ?? false,
     noSync: output.noSync === true,
+    readonly: output.readonly ?? false,
     contentReplacements: output.contentReplacements ?? [],
     symlinks: output.symlinks ?? [],
   };

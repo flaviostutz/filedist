@@ -291,6 +291,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         desired.sourcePath,
         path.join(entry.outputDir, desired.relPath),
         desired.managed,
+        desired.readonly,
       );
       onProgress?.({
         type: 'file-added',
@@ -334,6 +335,7 @@ export async function actionInstall(options: InstallOptions): Promise<InstallRes
         desired.sourcePath,
         path.join(entry.outputDir, desired.relPath),
         desired.managed,
+        desired.readonly,
       );
       onProgress?.({
         type: 'file-modified',
@@ -491,11 +493,16 @@ function removeEmptyDirsUpTo(dir: string, rootDir: string): void {
 }
 
 /** Copy a source file to dest, creating parent dirs if needed, and set permissions. */
-function writeFileToOutput(srcPath: string, destPath: string, managed: boolean): void {
+function writeFileToOutput(
+  srcPath: string,
+  destPath: string,
+  managed: boolean,
+  readonly: boolean,
+): void {
   ensureDir(path.dirname(destPath));
   if (fs.existsSync(destPath)) fs.chmodSync(destPath, 0o644);
   fs.copyFileSync(srcPath, destPath);
-  if (managed) fs.chmodSync(destPath, 0o444);
+  if (readonly) fs.chmodSync(destPath, 0o444);
 }
 
 /** Serialize ManagedFileMetadata entries to pipe-separated strings for the lock file. */

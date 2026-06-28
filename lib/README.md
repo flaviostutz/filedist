@@ -280,7 +280,8 @@ Each entry in the `filedist.sets` array in `package.json` supports the following
 | `output.mutable` | `boolean` | `false` | Skip files that already exist; mark extracted files as mutable (check ignores content changes). Cannot be combined with `force`. |
 | `output.noSync` | `boolean` | `false` | Keep stale managed files on disk during extract instead of deleting them. `check` still reports them as extra drift until they are removed or synced. |
 | `output.gitignore` | `boolean` | `true` | Create/update a `.gitignore` file alongside each `.filedist` marker file. Set to `false` to disable. |
-| `output.managed` | `boolean` | `true` | Write files with a `.filedist` marker, `.gitignore` update, and read-only flag. Set to `false` to skip tracking. Existing files are skipped when set to `false`. |
+| `output.managed` | `boolean` | `true` | Write files with a `.filedist` marker and `.gitignore` update. Set to `false` to skip tracking. Existing files are skipped when set to `false`. |
+| `output.readonly` | `boolean` | `false` | Set extracted files to read-only (0o444) on disk. |
 | `output.dryRun` | `boolean` | `false` | Simulate extraction without writing anything to disk. |
 | `selector.upgrade` | `boolean` | `false` | Force a fresh install of the package even when a satisfying version is already installed. |
 | `silent` | `boolean` | `false` | Suppress per-file output, printing only the final result line. |

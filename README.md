@@ -386,7 +386,8 @@ Each entry in `filedist.sets` supports:
 | `output.mutable` | `boolean` | `false` | Skip files that already exist; mark extracted files as mutable (check ignores content changes) |
 | `output.noSync` | `boolean` | `false` | Keep stale managed files on disk during extract instead of deleting them. `check` still reports them as extra drift until they are removed or synced |
 | `output.gitignore` | `boolean` | `true` | Write `.gitignore` alongside managed files |
-| `output.managed` | `boolean` | `true` | Write files with tracking (marker, read-only). Set to `false` to skip tracking |
+| `output.managed` | `boolean` | `true` | Write files with tracking (marker). Set to `false` to skip tracking |
+| `output.readonly` | `boolean` | `false` | Set extracted files to read-only (0o444) on disk |
 | `output.dryRun` | `boolean` | `false` | Simulate without writing |
 | `output.symlinks` | `SymlinkConfig[]` | none | Post-extract symlink operations |
 | `output.contentReplacements` | `ContentReplacementConfig[]` | none | Post-extract content replacements |

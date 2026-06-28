@@ -82,10 +82,15 @@ export type OutputConfig = {
    */
   gitignore?: boolean;
   /**
-   * When set to false: write without .filedist marker, no gitignore update, no read-only. Existing files skipped.
+   * When set to false: write without .filedist marker, no gitignore update. Existing files skipped.
    * Takes precedence over force. Defaults to true (managed).
    */
   managed?: boolean;
+  /**
+   * When true, set extracted files to read-only (0o444) on disk.
+   * Defaults to false (files remain writable after extraction).
+   */
+  readonly?: boolean;
   /**
    * Keep stale managed files on disk instead of deleting them during extract.
    * Check still reports them as extra drift until they are removed or synced.
@@ -335,6 +340,8 @@ export type ResolvedFile = {
   mutable: boolean;
   /** Whether extract should leave stale managed files in place for this output. */
   noSync: boolean;
+  /** Whether extracted files should be set to read-only (0o444) on disk. Default: false. */
+  readonly: boolean;
   /** Content replacement rules applied to this file before comparison. */
   contentReplacements: ContentReplacementConfig[];
   /** Symlink operations to apply in the output directory after extraction. */
